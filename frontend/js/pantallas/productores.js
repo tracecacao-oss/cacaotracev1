@@ -69,7 +69,7 @@ export function camposFicha(p = {}) {
       h(
         "div",
         { class: "grid2" },
-        campo({ etiqueta: "Código en Agro Digital (opcional)", name: "codigo_agrodigital", value: p.codigo_agrodigital ?? "", maxlength: 60 }),
+        campo({ etiqueta: "Código en Agro Digital (opcional)", name: "codigo_agrodigital", value: p.codigo_agrodigital ?? "", maxlength: 60, ayuda: "El que el productor tiene en su app Agro Digital del MIDAGRI." }),
         campo({ etiqueta: "Código de socio (opcional)", name: "codigo_socio", value: p.codigo_socio ?? "", maxlength: 60 }),
       ),
     ],

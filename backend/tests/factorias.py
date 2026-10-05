@@ -16,9 +16,9 @@ def cooperativa(sesion: Session, nombre: str = "Coop Prueba", **datos) -> Cooper
     coop = Cooperativa(
         razon_social=f"{nombre} {n}",
         ruc=datos.pop("ruc", f"{20000000000 + n}"),
-        departamento="Departamento X",
-        provincia="Provincia X",
-        distrito="Distrito X",
+        departamento="SAN MARTIN",
+        provincia="PICOTA",
+        distrito="PICOTA",
         **datos,
     )
     sesion.add(coop)
@@ -99,9 +99,9 @@ def punto(este_m: float = 0, norte_m: float = 0) -> dict:
 def datos_parcela(**cambios) -> dict:
     return {
         "nombre": "Parcela Demo",
-        "departamento": "San Martín",
-        "provincia": "Provincia X",
-        "distrito": "Distrito X",
+        "departamento": "SAN MARTIN",
+        "provincia": "PICOTA",
+        "distrito": "PICOTA",
         "area_cultivada_ha": "0.5",
     } | cambios
 

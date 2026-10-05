@@ -7,6 +7,7 @@ import { estado } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo, satelitalDisponible } from "../mapa.js";
 import { ALERTAS, ESTADOS_MIDAGRI, hectareas, insigniaAlerta } from "../textos.js";
 import { campo, conRetraso, h, reemplazar, toast } from "../ui.js";
+import { camposUbigeo } from "../ubigeo.js";
 
 const PASOS = ["Geometría", "Datos", "Revisión"];
 
@@ -203,6 +204,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     bloqueSustento.hidden = e.target.value === "no_registrada";
   });
   const areaDeclarada = campo({ etiqueta: "Área total declarada (ha)", name: "area_declarada_ha", type: "number", step: "0.0001", min: "0" });
+  const [departamento, provincia, distrito] = camposUbigeo();
   const formDatos = h(
     "form",
     { class: "form", novalidate: true },
@@ -210,13 +212,13 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     h(
       "div",
       { class: "grid2" },
-      campo({ etiqueta: "Departamento", name: "departamento", required: true, maxlength: 200 }),
-      campo({ etiqueta: "Provincia", name: "provincia", required: true, maxlength: 200 }),
+      departamento,
+      provincia,
     ),
     h(
       "div",
       { class: "grid2" },
-      campo({ etiqueta: "Distrito", name: "distrito", required: true, maxlength: 200 }),
+      distrito,
       campo({ etiqueta: "Caserío o centro poblado (opcional)", name: "centro_poblado", maxlength: 200 }),
     ),
     h(
@@ -273,6 +275,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
         "dl",
         { class: "ficha" },
         h("div", {}, h("dt", {}, "Nombre"), h("dd", {}, st.datos.nombre)),
+        h("div", {}, h("dt", {}, "Ubicación"), h("dd", {}, [st.datos.centro_poblado, st.datos.distrito, st.datos.provincia, st.datos.departamento].filter(Boolean).join(", "))),
         h("div", {}, h("dt", {}, "Geometría"), h("dd", {}, geo.tipo === "poligono" ? "Polígono" : "Punto", st.modo === "archivo" ? " (de archivo)" : " (dibujada)")),
         h("div", {}, h("dt", {}, "Área calculada"), h("dd", { class: "mono" }, geo.tipo === "poligono" ? hectareas(geo.area_ha) : "No aplica (punto)")),
         h("div", {}, h("dt", {}, "Área declarada"), h("dd", { class: "mono" }, hectareas(st.datos.area_declarada_ha))),

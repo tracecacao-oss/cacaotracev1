@@ -334,6 +334,9 @@ table {
   font-weight: 500;
   color: var(--ink-3);
 }
+.field small.error {
+  color: var(--rose-ink);
+}
 .input,
 .select {
   width: 100%;

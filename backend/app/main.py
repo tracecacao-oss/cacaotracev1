@@ -23,6 +23,7 @@ from app.routers import (
     productores,
     sesion,
     superposiciones,
+    ubigeos,
     usuarios,
 )
 from app.storage import ClienteStorage, crear_storage
@@ -119,6 +120,7 @@ def crear_app(
         superposiciones,
         mi,
         auditoria,
+        ubigeos,
     ):
         app.include_router(modulo.router)
     return app

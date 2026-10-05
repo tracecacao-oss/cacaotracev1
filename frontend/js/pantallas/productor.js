@@ -119,7 +119,7 @@ function pestanaDatos(p, { recargar, navegar }) {
       dato("Correo de contacto", p.correo_contacto, { nivel: "declarado" }),
       dato("Teléfono", p.telefono, { nivel: "declarado" }),
       h("div", {}, h("dt", {}, "Registro en el PPA de MIDAGRI"), h("dd", {}, p.ppa_registrado ? p.ppa_codigo || "Registrado" : "No registrado"), h("dd", {}, insigniaNivel(p.nivel_ppa))),
-      dato("Código en Agro Digital", p.codigo_agrodigital, { nivel: "declarado", mono: true }),
+      dato("Código en Agro Digital (app del MIDAGRI)", p.codigo_agrodigital, { nivel: "declarado", mono: true }),
       dato("Código de socio", p.codigo_socio, { mono: true }),
       dato("Afiliado desde", fecha(p.afiliado_desde)),
       dato(

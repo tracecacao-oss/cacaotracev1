@@ -13,6 +13,7 @@ from geoalchemy2.shape import from_shape, to_shape
 from sqlalchemy import Select, and_, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 
+from app import ubigeo
 from app.contexto import Contexto, cooperativa_del_contexto
 from app.errores import error_api, no_encontrado
 from app.models import Afiliacion, Auditoria, Documento, Parcela, Perfil, Productor
@@ -440,6 +441,8 @@ def crear(
 ) -> ParcelaDetalle:
     sesion = contexto.sesion
     productor = _productor_visible(contexto, productor_id)
+    valores = datos.model_dump()
+    ubigeo.normalizar(valores)
 
     if archivo is not None:
         try:
@@ -483,7 +486,7 @@ def crear(
             id=parcela_id,
             codigo=_codigo_nuevo(contexto, cooperativa_id),
             productor_id=productor.id,
-            **datos.model_dump(),
+            **valores,
             tipo_geometria=r.tipo,
             geometria=from_shape(r.geometria, srid=4326),
             area_calculada_ha=r.area_ha,
@@ -537,6 +540,7 @@ def editar(contexto: Contexto, parcela_id: uuid.UUID, datos: ParcelaCambios) -> 
     }
     nueva_geometria = valores.pop("geometria", None)
     motivo = valores.pop("motivo", None)
+    ubigeo.normalizar(valores, parcela)
     productor = sesion.get(Productor, parcela.productor_id)
 
     declarada = valores.get("area_declarada_ha", parcela.area_declarada_ha)

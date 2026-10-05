@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy import Select, func, or_, select
 
+from app import ubigeo
 from app.auth_admin import ClienteAuthAdmin
 from app.contexto import Contexto
 from app.errores import error_api, no_encontrado
@@ -91,7 +92,9 @@ def crear(contexto: Contexto, auth: ClienteAuthAdmin, datos: CooperativaNueva):
     _comprobar_ruc_libre(contexto, datos.ruc)
     cuentas.comprobar_correo_libre(contexto.sesion, datos.administrador.correo)
 
-    cooperativa = Cooperativa(**datos.model_dump(exclude={"administrador"}), estado="activa")
+    valores = datos.model_dump(exclude={"administrador"})
+    ubigeo.normalizar(valores)
+    cooperativa = Cooperativa(**valores, estado="activa")
     contexto.sesion.add(cooperativa)
     contexto.sesion.flush()
     registrar_auditoria(
@@ -99,7 +102,7 @@ def crear(contexto: Contexto, auth: ClienteAuthAdmin, datos: CooperativaNueva):
         "cooperativa.crear",
         "cooperativa",
         cooperativa.id,
-        datos.model_dump(exclude={"administrador"}),
+        valores,
         cooperativa_id=cooperativa.id,
     )
     # crear_cuenta confirma la cooperativa y el administrador juntos, o deshace ambos.
@@ -122,6 +125,7 @@ def editar(contexto: Contexto, cooperativa_id: uuid.UUID, datos: CooperativaCamb
         _comprobar_ruc_libre(contexto, valores["ruc"], excepto=cooperativa.id)
     # Los campos obligatorios no se vacían con null.
     valores = {k: v for k, v in valores.items() if v is not None or k == "nombre_comercial"}
+    ubigeo.normalizar(valores, cooperativa)
 
     cambios = aplicar_cambios(cooperativa, valores)
     if cambios:

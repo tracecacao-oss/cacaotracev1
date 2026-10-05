@@ -7,6 +7,7 @@ import { puede } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo } from "../mapa.js";
 import { ESTADOS_MIDAGRI, hectareas, insigniaAlerta, insigniaNivel } from "../textos.js";
 import { abrirModal, campo, confirmar, enviarCon, fecha, h, toast } from "../ui.js";
+import { camposUbigeo } from "../ubigeo.js";
 import { seccionesProductores } from "./productores.js";
 
 const ACCIONES = {
@@ -24,6 +25,7 @@ function dato(etiqueta, valor, extra = null, mono = false) {
 
 function abrirEdicion(p, ruta, alGuardar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-parcela" }, "Guardar");
+  const [departamento, provincia, distrito] = camposUbigeo(p);
   const formulario = h(
     "form",
     { class: "form", id: "form-parcela" },
@@ -31,13 +33,13 @@ function abrirEdicion(p, ruta, alGuardar) {
     h(
       "div",
       { class: "grid2" },
-      campo({ etiqueta: "Departamento", name: "departamento", value: p.departamento, required: true }),
-      campo({ etiqueta: "Provincia", name: "provincia", value: p.provincia, required: true }),
+      departamento,
+      provincia,
     ),
     h(
       "div",
       { class: "grid2" },
-      campo({ etiqueta: "Distrito", name: "distrito", value: p.distrito, required: true }),
+      distrito,
       campo({ etiqueta: "Caserío o centro poblado", name: "centro_poblado", value: p.centro_poblado ?? "" }),
     ),
     h(

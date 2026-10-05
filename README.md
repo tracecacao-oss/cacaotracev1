@@ -97,6 +97,15 @@ ArcGIS Location Platform. La crea una persona del equipo:
 Condiciones de uso: mostrar la atribución de Esri (el mapa ya la muestra), no descargar teselas
 para uso sin conexión, y no usar el servicio sin clave (`server.arcgisonline.com`).
 
+## Catálogo de ubicaciones
+
+Departamento, provincia y distrito se eligen de listas encadenadas con el catálogo oficial del
+INEI: `backend/app/datos/ubigeo_inei.csv` (código INEI y los tres nombres, 1891 distritos). Sale
+del archivo "UBIGEO 2022_1891 distritos.xlsx" del conjunto *Ubigeos - Instituto Nacional de
+Estadística e Informática* en [datosabiertos.gob.pe](https://www.datosabiertos.gob.pe). La API lo
+sirve en `GET /ubigeos` y rechaza con `ubigeo_invalido` una combinación que no existe. Si el INEI
+publica una versión nueva, se reemplaza el CSV con las mismas columnas y se corren las pruebas.
+
 ## Deploy
 
 Cada merge a `main` se publica solo: Render reconstruye la API desde `render.yaml` y Cloudflare

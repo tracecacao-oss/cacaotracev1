@@ -11,9 +11,9 @@ def _nueva(ruc="20999999901", correo="admin.nueva@prueba.test", **cambios):
     return {
         "razon_social": "Coop Nueva Prueba",
         "ruc": ruc,
-        "departamento": "Departamento X",
-        "provincia": "Provincia X",
-        "distrito": "Distrito X",
+        "departamento": "SAN MARTIN",
+        "provincia": "PICOTA",
+        "distrito": "PICOTA",
         "administrador": {"nombres": "Admin", "apellidos": "Prueba", "correo": correo},
         **cambios,
     }
