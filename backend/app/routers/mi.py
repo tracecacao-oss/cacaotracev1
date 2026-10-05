@@ -1,17 +1,21 @@
 """Endpoints del productor sobre sus propios registros. Solo tocan lo suyo."""
 
 import uuid
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.contexto import Contexto, requiere_rol
 from app.routers.comun import leer_archivo
+from app.routers.parcelas import TipoDocumentoParcela, cargar_documento_de_parcela
 from app.routers.productores import crear_parcela_desde_formulario
+from app.schemas.habilitacion import AnalisisSalida, ExpedienteSalida, HabilitacionSalida, VisitaSalida
 from app.schemas.parcelas import DocumentoSalida, ParcelaCambios, ParcelaDetalle, ParcelaSalida
 from app.schemas.productores import MisCambios, ProductorDetalle
-from app.services import documentos, parcelas
+from app.services import analisis, documentos, expediente, habilitacion, parcelas, visitas
 from app.services import productores as servicio
+from app.services.fuentes import registro
 from app.services.productores import documento_salida
 from app.storage import ClienteStorage, obtener_storage
 
@@ -78,15 +82,45 @@ def editar_mi_parcela(parcela_id: uuid.UUID, datos: ParcelaCambios, contexto: Pr
 
 
 @router.post("/parcelas/{parcela_id}/documentos", response_model=DocumentoSalida, status_code=201)
-def cargar_mi_sustento(
+def cargar_mi_documento_de_parcela(
     parcela_id: uuid.UUID,
     contexto: Productor,
     storage: Storage,
-    tipo: Annotated[Literal["sustento_midagri"], Form()],
+    tipo: Annotated[TipoDocumentoParcela, Form()],
     archivo: Annotated[UploadFile, File()],
+    numero: Annotated[str | None, Form()] = None,
+    entidad_emisora: Annotated[str | None, Form()] = None,
+    fecha_emision: Annotated[date | None, Form()] = None,
+    fecha_vencimiento: Annotated[date | None, Form()] = None,
 ):
-    parcelas.parcela_visible(contexto, parcela_id)
-    documento = documentos.cargar(
-        contexto, storage, entidad="parcela", entidad_id=parcela_id, tipo=tipo, archivo=leer_archivo(archivo)
+    parcela = parcelas.parcela_visible(contexto, parcela_id)
+    return cargar_documento_de_parcela(
+        contexto, storage, parcela, tipo, archivo, numero, entidad_emisora, fecha_emision, fecha_vencimiento
     )
-    return documento_salida(documento, None)
+
+
+# ---------- Parte 4: la habilitación de mis parcelas, solo lectura ----------
+
+
+@router.get("/parcelas/{parcela_id}/analisis", response_model=list[AnalisisSalida])
+def analisis_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
+    parcela = parcelas.parcela_visible(contexto, parcela_id)
+    filas = analisis.de_parcelas(contexto.sesion, [parcela.id])[parcela.id]
+    # Las mismas tarjetas, sin el enlace a la respuesta completa.
+    return analisis.salidas(contexto.sesion, registro.actuales(), parcela, filas, con_respuesta=False)
+
+
+@router.get("/parcelas/{parcela_id}/visitas", response_model=list[VisitaSalida])
+def visitas_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
+    parcelas.parcela_visible(contexto, parcela_id)
+    return visitas.listar(contexto, parcela_id)
+
+
+@router.get("/parcelas/{parcela_id}/expediente", response_model=ExpedienteSalida)
+def expediente_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
+    return expediente.salida(contexto.sesion, parcelas.parcela_visible(contexto, parcela_id))
+
+
+@router.get("/parcelas/{parcela_id}/habilitacion", response_model=HabilitacionSalida)
+def habilitacion_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
+    return habilitacion.obtener(contexto, parcelas.parcela_visible(contexto, parcela_id))

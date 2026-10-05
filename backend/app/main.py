@@ -1,6 +1,7 @@
 """Crea la aplicación FastAPI, configura CORS y errores, y registra los routers."""
 
 import logging
+from contextlib import asynccontextmanager
 from http import HTTPStatus
 
 from fastapi import FastAPI, Request
@@ -16,6 +17,7 @@ from app.contexto import CABECERA_COOPERATIVA
 from app.routers import (
     auditoria,
     documentos,
+    habilitacion,
     health,
     mi,
     parcelas,
@@ -26,6 +28,7 @@ from app.routers import (
     ubigeos,
     usuarios,
 )
+from app.services.fuentes import Fuente, registro
 from app.storage import ClienteStorage, crear_storage
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -51,9 +54,25 @@ def crear_app(
     verificador: VerificadorJWT | None = None,
     auth_admin: ClienteAuthAdmin | None = None,
     storage: ClienteStorage | None = None,
+    fuentes: dict[str, Fuente] | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     con_docs = not settings.es_produccion
+
+    @asynccontextmanager
+    async def ciclo_de_vida(app: FastAPI):
+        # Parte 4: el bucle de análisis corre dentro de la API (Render gratis no tiene trabajadores aparte).
+        trabajador = None
+        if settings.analisis_en_segundo_plano and app.state.storage is not None:
+            from app.trabajador import Trabajador
+
+            trabajador = Trabajador(app.state.fuentes, app.state.storage)
+            trabajador.start()
+        elif settings.analisis_en_segundo_plano:
+            log.warning("Sin Storage configurado: el análisis de cobertura no se procesa")
+        yield
+        if trabajador:
+            trabajador.detener()
 
     app = FastAPI(
         title="CacaoTrace API",
@@ -61,6 +80,7 @@ def crear_app(
         docs_url="/docs" if con_docs else None,
         redoc_url=None,
         openapi_url="/openapi.json" if con_docs else None,
+        lifespan=ciclo_de_vida,
     )
     app.state.settings = settings
     if verificador is None:
@@ -69,6 +89,8 @@ def crear_app(
     app.state.verificador = verificador
     app.state.auth_admin = auth_admin or crear_auth_admin(settings)
     app.state.storage = storage or crear_storage(settings)
+    app.state.fuentes = fuentes if fuentes is not None else registro.construir(settings)
+    registro.fijar(app.state.fuentes)
 
     app.add_middleware(
         CORSMiddleware,
@@ -121,6 +143,7 @@ def crear_app(
         mi,
         auditoria,
         ubigeos,
+        habilitacion,
     ):
         app.include_router(modulo.router)
     return app

@@ -1629,6 +1629,16 @@ Se auditan `analisis.solicitar`, `visita.registrar` y `visita.anular`. Los anál
 
 Claude Code no inventa el formato de respuesta de Whisp ni de GFW. Una persona del equipo hace una llamada real con una parcela ficticia y guarda las respuestas en `backend/tests/datos/`. Las pruebas se escriben contra esos archivos.
 
+### Notas de implementación (2026-10-05)
+
+Tomadas de la documentación oficial de cada servicio, consultada el 2026-10-05. Las marcadas "por confirmar" esperan al equipo.
+
+1. Reintentos, por confirmar: hay 3 intentos en total por fila, con esperas de 10 segundos y 1 minuto entre ellos, para que "Whisp responde 500 tres veces" termine en `error`. Si el equipo prefiere 3 reintentos además del primer intento, se agrega la espera de 5 minutos.
+2. Whisp: `POST /api/submit/geojson` con el encabezado `x-api-key` y `analysisOptions` `{"externalIdColumn": "id", "unitType": "ha"}`. El identificador enviado es el del análisis, nunca datos de la parcela ni del productor. `resultado_fuente` es `risk_pcrop` (`low`, `more_info_needed` o `high`), el riesgo para cultivos permanentes, que incluye cacao. Todo valor distinto de `low`, o la falta de valor, pide revisión en campo. Un 429 trae la espera en el mensaje, no en un encabezado.
+3. GFW: dos consultas por análisis, a `gfw_integrated_alerts` (alertas desde el 2021-01-01) y a `umd_tree_cover_loss` (pérdida desde 2021 con densidad de copa al 2000 mayor a 30 %, el valor por defecto de la plataforma de GFW). La versión del conjunto sale de la redirección de `latest`. GFW no entrega un veredicto, así que `resultado_fuente` queda vacío; alertas o pérdida mayores a cero piden revisión.
+4. La respuesta completa se guarda en Storage antes de interpretarla. Si no tiene la forma esperada, el análisis queda `completado` sin resultado, con el motivo en `error_detalle`, y pide revisión en campo: una columna que falta nunca se lee como cero.
+5. Capas WMS: Geobosques `gis.bosques.gob.pe/server/services/Interoperabilidad/bosque_humedo_2025/MapServer/WMSServer` (capas 0, 2, 3 y 5), GeoSERFOR `geo.serfor.gob.pe/geoservicios/services/Servicios_OGC/Zonificacion_Forestal/MapServer/WMSServer` (capa 0) y JRC `ies-ows.jrc.ec.europa.eu/iforce/gfc2020/wms.py` (capa `gfc2020_v4`, cita Bourgoin et al. 2026, doi:10.2905/JRC.3KATEH8).
+
 ### Pruebas automáticas mínimas
 
 | Caso | Resultado esperado |

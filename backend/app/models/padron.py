@@ -1,12 +1,13 @@
-"""Tablas de la Parte 3: documentos de sustento, parcelas y superposiciones."""
+"""Tablas de la Parte 3 (documentos de sustento, parcelas y superposiciones), ampliadas en la Parte 4."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -23,8 +24,28 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base, ConFechas
 
-TIPOS_DOCUMENTO = ("dni", "constancia_ppa", "sustento_midagri", "archivo_geometria")
-ENTIDADES_DOCUMENTO = ("productor", "parcela")
+# Los 7 documentos del expediente legal de la parcela (Parte 4); su catálogo vive en
+# app/catalogos/documentos_legales.py.
+TIPOS_LEGALES = (
+    "titulo_sunarp",
+    "constancia_posesion",
+    "cusaf",
+    "autorizacion_serfor",
+    "sunafil",
+    "sunat",
+    "zonificacion",
+)
+TIPOS_DOCUMENTO = (
+    "dni",
+    "constancia_ppa",
+    "sustento_midagri",
+    "archivo_geometria",
+    *TIPOS_LEGALES,
+    "foto_visita",
+    "respuesta_analisis",
+)
+ENTIDADES_DOCUMENTO = ("productor", "parcela", "visita", "analisis")
+ESTADOS_HABILITACION = ("pendiente", "habilitada", "observada", "excluida")
 ESTADOS_MIDAGRI = ("no_registrada", "sin_observacion", "en_revision", "validado")
 ESTADOS_PARCELA = ("activa", "inactiva")
 ESTADOS_SUPERPOSICION = ("abierta", "resuelta", "aceptada")
@@ -45,6 +66,14 @@ class Documento(Base):
         CheckConstraint(f"entidad IN ({_en(ENTIDADES_DOCUMENTO)})", name="entidad_valida"),
         CheckConstraint(f"tipo IN ({_en(TIPOS_DOCUMENTO)})", name="tipo_valido"),
         CheckConstraint("sha256 ~ '^[0-9a-f]{64}$'", name="sha256_hex"),
+        # Solo la respuesta de un análisis la guarda el sistema, sin persona que la suba.
+        CheckConstraint(
+            "subido_por IS NOT NULL OR tipo = 'respuesta_analisis'", name="subido_por_si_no_sistema"
+        ),
+        CheckConstraint(
+            "fecha_vencimiento IS NULL OR fecha_emision IS NULL OR fecha_vencimiento > fecha_emision",
+            name="vencimiento_despues_de_emision",
+        ),
         Index("ix_documentos_entidad", "entidad", "entidad_id"),
         # El mismo contenido no se carga dos veces para el mismo registro y tipo.
         Index(
@@ -70,11 +99,19 @@ class Documento(Base):
     tipo_mime: Mapped[str] = mapped_column(Text)
     tamano_bytes: Mapped[int] = mapped_column(Integer)
     sha256: Mapped[str] = mapped_column(String(64))
-    subido_por: Mapped[uuid.UUID] = mapped_column(ForeignKey("perfiles.id"))
+    subido_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     anulado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     anulado_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))
     motivo_anulacion: Mapped[str | None] = mapped_column(Text)
+    # Parte 4: datos de los documentos legales y su cotejo en fuente. Opcionales para los demás tipos.
+    numero: Mapped[str | None] = mapped_column(Text)
+    entidad_emisora: Mapped[str | None] = mapped_column(Text)
+    fecha_emision: Mapped[date | None] = mapped_column(Date)
+    fecha_vencimiento: Mapped[date | None] = mapped_column(Date)
+    cotejado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cotejado_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))
+    cotejo_nota: Mapped[str | None] = mapped_column(Text)
 
 
 class Parcela(ConFechas, Base):
@@ -107,6 +144,9 @@ class Parcela(ConFechas, Base):
         ),
         CheckConstraint(f"midagri_estado IN ({_en(ESTADOS_MIDAGRI)})", name="midagri_estado_valido"),
         CheckConstraint(f"estado IN ({_en(ESTADOS_PARCELA)})", name="estado_valido"),
+        CheckConstraint(
+            f"habilitacion_estado IN ({_en(ESTADOS_HABILITACION)})", name="habilitacion_estado_valido"
+        ),
         UniqueConstraint("cooperativa_registro_id", "codigo", name="uq_parcelas_cooperativa_codigo"),
         Index("uq_parcelas_productor_nombre", "productor_id", text("lower(nombre)"), unique=True),
     )
@@ -136,6 +176,11 @@ class Parcela(ConFechas, Base):
     registrada_por: Mapped[uuid.UUID] = mapped_column(ForeignKey("perfiles.id"))
     registrada_por_rol: Mapped[str] = mapped_column(Text)
     cooperativa_registro_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cooperativas.id"))
+    # Parte 4: compuerta de habilitación y momento del último cambio de geometría.
+    habilitacion_estado: Mapped[str] = mapped_column(Text, server_default="pendiente")
+    geometria_actualizada_en: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class Superposicion(ConFechas, Base):

@@ -1,0 +1,193 @@
+"""Entradas y salidas de la Parte 4: análisis, visitas, expediente y compuerta de habilitación."""
+
+import uuid
+from datetime import date, datetime
+from typing import Annotated, Any, Literal
+
+from pydantic import BaseModel, StringConstraints
+
+from app.schemas.comunes import Entrada, Salida, Texto
+from app.schemas.parcelas import DocumentoSalida
+
+TextoLargo30 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=30, max_length=4000)]
+TextoLargo50 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=50, max_length=4000)]
+Nota = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=4000)]
+TipoExencion = Literal["cusaf", "autorizacion_serfor", "sunafil", "sunat", "zonificacion"]
+
+# ---------- Análisis de cobertura ----------
+
+
+class FuenteSalida(BaseModel):
+    fuente: Literal["whisp", "gfw"]
+    nombre: str
+    configurada: bool
+
+
+class AnalisisSalida(BaseModel):
+    id: uuid.UUID
+    parcela_id: uuid.UUID
+    fuente: str
+    estado: str
+    es_aproximacion: bool
+    resultado_fuente: str | None
+    resultado_texto: str | None
+    indicadores: dict[str, Any] | None
+    version_fuente: str | None
+    solicitado_en: datetime
+    solicitado_por_nombre: str | None
+    completado_en: datetime | None
+    intentos: int
+    error_detalle: str | None
+    obsoleto: bool
+    vigente: bool
+    # El productor no recibe la respuesta completa de la fuente.
+    respuesta_documento_id: uuid.UUID | None = None
+
+
+class AnalisisDetalle(AnalisisSalida):
+    respuesta_url: str | None = None
+
+
+class AnalisisSolicitado(BaseModel):
+    analisis: list[AnalisisSalida]
+
+
+# ---------- Visitas de campo ----------
+
+
+class VisitaNueva(Entrada):
+    fecha: date
+    realizada_por_nombre: Texto
+    realizada_por_cargo: Texto
+    motivo: Literal["analisis_requiere_revision", "verificacion_de_coordenadas", "otro"]
+    perimetro_recorrido: bool
+    uso_observado: Literal["cacao_bajo_sombra", "cacao_sin_sombra", "bosque", "otro_cultivo", "mixto"]
+    descripcion: TextoLargo30
+
+
+class VisitaSalida(BaseModel):
+    id: uuid.UUID
+    parcela_id: uuid.UUID
+    fecha: date
+    realizada_por_nombre: str
+    realizada_por_cargo: str
+    registrada_por_nombre: str | None
+    motivo: str
+    perimetro_recorrido: bool
+    uso_observado: str
+    descripcion: str
+    creado_en: datetime
+    anulada_en: datetime | None
+    motivo_anulacion: str | None
+    vigente: bool
+    fotos: list[DocumentoSalida]
+
+
+class Anulacion(Entrada):
+    motivo: Texto
+
+
+class Procedencia(BaseModel):
+    origen_geometria: str
+    registrada_por_rol: str
+    recorrida_en_campo: bool
+    fecha_recorrido: date | None
+
+
+# ---------- Expediente legal ----------
+
+
+class ExencionNueva(Entrada):
+    tipo: TipoExencion
+    motivo: TextoLargo30
+
+
+class ExencionSalida(BaseModel):
+    id: uuid.UUID
+    tipo: str
+    motivo: str
+    declarada_en: datetime
+    declarada_por_nombre: str | None
+    retirada_en: datetime | None
+
+
+class CasillaSalida(BaseModel):
+    codigo: str
+    nombre: str
+    grupo: str
+    tenencia: bool
+    registro_consultable: bool
+    admite_exencion: bool
+    estado: Literal["vigente", "por_vencer", "vencido", "no_aplica", "faltante"]
+    nivel: Literal["documentado", "verificado_en_fuente"] | None
+    vence_en: date | None
+    documentos: list[DocumentoSalida]
+    exencion: ExencionSalida | None
+
+
+class ExpedienteSalida(BaseModel):
+    estado: Literal["completo", "incompleto"]
+    faltan: list[str]
+    tenencia_solo_posesion: bool
+    casillas: list[CasillaSalida]
+
+
+class CotejoNuevo(Entrada):
+    nota: Nota
+
+
+# ---------- Compuerta de habilitación ----------
+
+
+class Requisito(BaseModel):
+    codigo: str
+    cumple: bool
+    detalle: str
+
+
+class DecisionSalida(Salida):
+    id: uuid.UUID
+    decision: str
+    decidida_por_nombre: str | None = None
+    decidida_en: datetime
+    nota: str | None
+    requisitos: dict[str, Any]
+    evidencia_visita_id: uuid.UUID | None
+    evidencia_analisis_id: uuid.UUID | None
+
+
+class HabilitacionSalida(BaseModel):
+    parcela_id: uuid.UUID
+    estado: Literal["pendiente", "habilitada", "observada", "excluida"]
+    requisitos: list[Requisito]
+    puede_habilitar: bool
+    alertas: list[str]
+    nota_obligatoria: bool
+    decisiones: list[DecisionSalida]
+
+
+class HabilitarEntrada(Entrada):
+    nota: Annotated[str, StringConstraints(strip_whitespace=True, max_length=4000)] | None = None
+
+
+class ExcluirEntrada(Entrada):
+    descripcion: TextoLargo50
+    evidencia_visita_id: uuid.UUID | None = None
+    evidencia_analisis_id: uuid.UUID | None = None
+    confirmacion: str
+
+
+class PorVencerSalida(BaseModel):
+    parcela_id: uuid.UUID
+    parcela_codigo: str
+    parcela_nombre: str
+    productor_nombre: str
+    tipo: str
+    tipo_nombre: str
+    estado: str
+    vence_en: date
+
+
+class ResumenHabilitacion(BaseModel):
+    por_estado: dict[str, int]
+    por_vencer: list[PorVencerSalida]

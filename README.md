@@ -84,7 +84,7 @@ Crea un usuario de prueba ya confirmado, inicia sesión con él, lo bloquea, lo 
 ## Mapa satelital
 
 El mapa usa Leaflet 1.9.4 y Leaflet-Geoman 2.20.2 desde CDN, con calles de OpenStreetMap y la
-capa satelital de **Esri World Imagery** (ArcGIS Location Platform, aprobada por el equipo).
+capa satelital de **Esri World Imagery** (ArcGIS Location Platform, elegida por el equipo).
 
 La capa satelital se activa al poner en `frontend/config.js` (`ESRI_API_KEY`) una clave pública de
 ArcGIS Location Platform. La crea una persona del equipo:
@@ -112,6 +112,29 @@ del archivo "UBIGEO 2022_1891 distritos.xlsx" del conjunto *Ubigeos - Instituto 
 Estadística e Informática* en [datosabiertos.gob.pe](https://www.datosabiertos.gob.pe). La API lo
 sirve en `GET /ubigeos` y rechaza con `ubigeo_invalido` una combinación que no existe. Si el INEI
 publica una versión nueva, se reemplaza el CSV con las mismas columnas y se corren las pruebas.
+
+## Habilitación de la parcela: cobertura forestal
+
+Cada parcela se analiza con dos fuentes, cada una con su fecha y su versión, sin combinarlas:
+
+| Fuente | Variable en Render | Notas |
+| --- | --- | --- |
+| Whisp (FAO), `whisp.openforis.org` | `WHISP_API_KEY` | Riesgo para cultivos permanentes (`risk_pcrop`) e indicadores |
+| GFW Data API, `data-api.globalforestwatch.org` | `GFW_API_KEY` | Alertas integradas y pérdida de cobertura desde 2021 (densidad 2000 > 30 %) |
+
+- **La clave de GFW vence al año de creada.** Fecha de vencimiento: _pendiente de anotar por el
+  equipo_. Renovarla antes y reemplazarla en Render.
+- Sin una clave, esa fuente no crea análisis y la interfaz muestra "Fuente no configurada".
+- El análisis corre en segundo plano dentro de la API: hasta 3 intentos por fuente, 20 consultas
+  por minuto y 60 segundos de espera máxima. La respuesta completa se guarda en Storage antes de
+  interpretarla; si no se puede interpretar, el análisis queda sin resultado y pide revisión en campo.
+- En el mapa de la parcela se pueden encender, solo como referencia visual, Geobosques (MINAM),
+  la zonificación forestal de GeoSERFOR y el mapa de bosque 2020 del JRC.
+
+Para guardar respuestas reales de prueba en `backend/tests/datos/` con una parcela ficticia, una
+persona del equipo corre `python scripts/muestras_cobertura.py` desde `backend/` y pega las claves
+cuando se las pide (no se guardan en ningún archivo). También sirve descargar, desde la pestaña
+Cobertura forestal de una parcela ficticia en producción, "Descargar la respuesta completa".
 
 ## Deploy
 

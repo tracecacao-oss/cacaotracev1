@@ -11,7 +11,7 @@ export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_kW2OS1Nto6mhXsn6-c7tJg_Q
 
 export const PRODUCTOR_EMAIL_DOMAIN = "productores.cacaotrace.local";
 
-// Capa satelital: Esri World Imagery en ArcGIS Location Platform (aprobada por el equipo).
+// Capa satelital: Esri World Imagery en ArcGIS Location Platform (elegida por el equipo).
 // Clave pública "Public application", solo con el privilegio de Basemaps. Está restringida a
 // https://cacaotrace.pages.dev, pero Esri no aplica esa restricción en las teselas (probado el
 // 2026-10-05): la cuenta tiene alerta de uso y la clave se rota si hay abuso. Vence al año.

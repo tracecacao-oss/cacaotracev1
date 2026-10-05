@@ -19,6 +19,7 @@ const RUTAS = [
   { patron: /^#\/productores$/, roles: PERSONAL, cargar: () => import("./pantallas/productores.js") },
   { patron: /^#\/productores\/mapa$/, roles: PERSONAL, cargar: () => import("./pantallas/mapa-parcelas.js") },
   { patron: /^#\/productores\/superposiciones$/, roles: PERSONAL, cargar: () => import("./pantallas/superposiciones.js") },
+  { patron: /^#\/productores\/habilitacion$/, roles: PERSONAL, cargar: () => import("./pantallas/habilitacion.js") },
   { patron: /^#\/productores\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/productor.js") },
   { patron: /^#\/productores\/([0-9a-f-]{36})\/parcelas\/nueva$/, roles: ["admin_cooperativa", "operador"], cargar: () => import("./pantallas/parcela-nueva.js") },
   { patron: /^#\/parcelas\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/parcela.js") },

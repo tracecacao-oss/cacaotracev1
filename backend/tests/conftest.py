@@ -14,6 +14,10 @@ os.environ["SUPABASE_URL"] = "https://proyecto-prueba.supabase.co"
 os.environ["SUPABASE_SECRET_KEY"] = "sb_secret_prueba"
 os.environ["CORS_ORIGINS"] = "https://cacaotrace.pages.dev,http://localhost:5500"
 os.environ["GIT_SHA"] = "abc1234"
+# Parte 4: el bucle de análisis no corre en las pruebas; las fuentes llegan simuladas.
+os.environ["ANALISIS_EN_SEGUNDO_PLANO"] = "false"
+os.environ.pop("WHISP_API_KEY", None)
+os.environ.pop("GFW_API_KEY", None)
 os.environ.pop("SUPABASE_JWT_SECRET", None)
 os.environ.pop("RENDER_GIT_COMMIT", None)
 
@@ -206,8 +210,19 @@ class ClienteAPI(TestClient):
 
 
 @pytest.fixture
-def api(sesion, verificador, auth_falso, storage_falso) -> ClienteAPI:
-    app = crear_app(get_settings(), verificador=verificador, auth_admin=auth_falso, storage=storage_falso)
+def fuentes() -> dict:
+    """Fuentes del análisis sin clave: "no configuradas". Las pruebas de la Parte 4 la reemplazan."""
+    from app.services.fuentes.gfw import GFW
+    from app.services.fuentes.whisp import Whisp
+
+    return {"whisp": Whisp(None), "gfw": GFW(None)}
+
+
+@pytest.fixture
+def api(sesion, verificador, auth_falso, storage_falso, fuentes) -> ClienteAPI:
+    app = crear_app(
+        get_settings(), verificador=verificador, auth_admin=auth_falso, storage=storage_falso, fuentes=fuentes
+    )
     app.dependency_overrides[obtener_sesion] = lambda: sesion
     with ClienteAPI(app, raise_server_exceptions=False) as c:
         yield c

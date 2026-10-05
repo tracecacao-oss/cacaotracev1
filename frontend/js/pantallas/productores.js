@@ -26,6 +26,7 @@ export function seccionesProductores() {
     ["Padrón", "#/productores"],
     ["Mapa de parcelas", "#/productores/mapa"],
     ["Superposiciones", "#/productores/superposiciones"],
+    ["Habilitación", "#/productores/habilitacion"],
   ];
 }
 

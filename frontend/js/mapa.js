@@ -66,8 +66,87 @@ export function cargarMapas() {
 
 export const satelitalDisponible = Boolean(ESRI_API_KEY);
 
+// Parte 4: capas oficiales para la revisión humana. Son ayuda visual: el sistema no calcula nada con
+// ellas. Servicios WMS públicos, confirmados el 2026-10-05 en sus páginas de servicios.
+const CAPAS_OFICIALES = [
+  {
+    nombre: "Geobosques · bosque y pérdida (MINAM)",
+    url: "https://gis.bosques.gob.pe/server/services/Interoperabilidad/bosque_humedo_2025/MapServer/WMSServer",
+    capas: "0,2,3,5",
+    // Títulos oficiales del GetCapabilities del servicio (consultado el 2026-10-05).
+    leyenda: [
+      ["0", "No bosque al 2000"],
+      ["2", "Bosque al 2025"],
+      ["3", "Pérdida 2001 - 2024"],
+      ["5", "Pérdida antrópica (Deforestación) 2025"],
+    ],
+    atribucion: 'Geobosques · <a href="https://geobosques.minam.gob.pe">MINAM (PNCBMCC)</a>',
+  },
+  {
+    nombre: "GeoSERFOR · zonificación forestal",
+    url: "https://geo.serfor.gob.pe/geoservicios/services/Servicios_OGC/Zonificacion_Forestal/MapServer/WMSServer",
+    capas: "0",
+    leyenda: [["0", "Zonificación forestal"]],
+    atribucion: '<a href="https://geo.serfor.gob.pe">GeoSERFOR · SERFOR</a>',
+  },
+  {
+    nombre: "JRC · bosque al 2020 (UE)",
+    url: "https://ies-ows.jrc.ec.europa.eu/iforce/gfc2020/wms.py",
+    capas: "gfc2020_v4",
+    leyenda: [["gfc2020_v4", "Bosque al 2020 (v4)"]],
+    atribucion:
+      '<a href="https://forobs.jrc.ec.europa.eu/GFC">JRC GFC2020 v4</a> · Bourgoin et al. (2026), doi:10.2905/JRC.3KATEH8',
+  },
+];
+
+function capaOficial(L, c) {
+  // Sin crossOrigin: GeoSERFOR responde con dos encabezados CORS y el navegador rechazaría la imagen.
+  return L.tileLayer.wms(c.url, {
+    layers: c.capas,
+    format: "image/png",
+    transparent: true,
+    version: "1.3.0",
+    opacity: 0.6,
+    attribution: c.atribucion,
+  });
+}
+
+/** Leyenda de las capas oficiales encendidas, con la imagen que entrega cada servicio. */
+function agregarLeyendaOficial(L, mapa, capas) {
+  const caja = h("div", { class: "mapa-control leyenda-oficial", hidden: true });
+  const Control = L.Control.extend({ options: { position: "bottomright" }, onAdd: () => caja });
+  new Control().addTo(mapa);
+  const pintar = () => {
+    const activas = capas.filter(({ capa }) => mapa.hasLayer(capa));
+    caja.hidden = !activas.length;
+    caja.replaceChildren(
+      ...activas.map(({ def }) =>
+        h(
+          "div",
+          { class: "leyenda-bloque" },
+          h("b", {}, def.nombre),
+          def.leyenda.map(([capa, titulo]) =>
+            h(
+              "span",
+              { class: "leyenda-fila" },
+              h("img", {
+                alt: "",
+                loading: "lazy",
+                src: `${def.url}?service=WMS&request=GetLegendGraphic&version=1.3.0&format=image/png&layer=${encodeURIComponent(capa)}`,
+                onerror: (e) => e.target.remove(),
+              }),
+              titulo,
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+  mapa.on("overlayadd overlayremove", pintar);
+}
+
 /** Crea un mapa en el contenedor, con capas de satélite (si hay clave) y calles. */
-export async function crearMapa(contenedor, { coordenadas = true } = {}) {
+export async function crearMapa(contenedor, { coordenadas = true, capasOficiales = false } = {}) {
   const L = await cargarMapas();
   const mapa = L.map(contenedor, { zoomControl: true, maxZoom: 19 }).setView(PERU, 5);
   const calles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -90,7 +169,13 @@ export async function crearMapa(contenedor, { coordenadas = true } = {}) {
   } else {
     calles.addTo(mapa);
   }
-  L.control.layers(capas, null, { position: "topright" }).addTo(mapa);
+  let superpuestas = null;
+  if (capasOficiales) {
+    const oficiales = CAPAS_OFICIALES.map((def) => ({ def, capa: capaOficial(L, def) }));
+    superpuestas = Object.fromEntries(oficiales.map(({ def, capa }) => [def.nombre, capa]));
+    agregarLeyendaOficial(L, mapa, oficiales);
+  }
+  L.control.layers(capas, superpuestas, { position: "topright" }).addTo(mapa);
   if (coordenadas) agregarIrACoordenadas(L, mapa);
   // Las pantallas crean el mapa antes de insertarlo en la página: se ajusta cuando el
   // contenedor obtiene tamaño (y cada vez que cambia, por ejemplo al girar el celular).

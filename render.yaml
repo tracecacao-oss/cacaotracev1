@@ -29,3 +29,12 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      # Parte 4: análisis de cobertura forestal.
+      - key: WHISP_API_KEY
+        sync: false
+      - key: GFW_API_KEY
+        sync: false
+      - key: ANALISIS_VIGENCIA_DIAS
+        value: "180"
+      - key: AVISO_VENCIMIENTO_DIAS
+        value: "30"
