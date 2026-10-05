@@ -10,7 +10,13 @@ from app.contexto import Contexto, requiere_rol
 from app.routers.comun import leer_archivo
 from app.routers.parcelas import TipoDocumentoParcela, cargar_documento_de_parcela
 from app.routers.productores import crear_parcela_desde_formulario
-from app.schemas.habilitacion import AnalisisSalida, ExpedienteSalida, HabilitacionSalida, VisitaSalida
+from app.schemas.habilitacion import (
+    AnalisisSalida,
+    ConvergenciaSalida,
+    ExpedienteSalida,
+    HabilitacionSalida,
+    VisitaSalida,
+)
 from app.schemas.parcelas import DocumentoSalida, ParcelaCambios, ParcelaDetalle, ParcelaSalida
 from app.schemas.productores import MisCambios, ProductorDetalle
 from app.services import analisis, documentos, expediente, habilitacion, parcelas, visitas
@@ -108,6 +114,12 @@ def analisis_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
     filas = analisis.de_parcelas(contexto.sesion, [parcela.id])[parcela.id]
     # Las mismas tarjetas, sin el enlace a la respuesta completa.
     return analisis.salidas(contexto.sesion, registro.actuales(), parcela, filas, con_respuesta=False)
+
+
+@router.get("/parcelas/{parcela_id}/convergencia", response_model=ConvergenciaSalida)
+def convergencia_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
+    parcela = parcelas.parcela_visible(contexto, parcela_id)
+    return analisis.convergencia_salida(contexto.sesion, registro.actuales(), parcela)
 
 
 @router.get("/parcelas/{parcela_id}/visitas", response_model=list[VisitaSalida])

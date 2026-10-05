@@ -1374,6 +1374,8 @@ Una parcela puede respaldar cacao solo después de habilitarse, una vez, con tre
 
 Esta parte corresponde a la etapa 1 del flujo operativo del equipo, "Habilitación de la parcela".
 
+> **Adenda del 2026-10-05:** `docs/adenda-parte-4-fuentes.md` amplía esta parte. Agrega el detalle por capa de Whisp, dos consultas más a GFW, MapBiomas Perú como tercera fuente y la tabla de convergencia. Donde difiera de esta especificación, manda la adenda.
+
 ### Principio: exponer, no concluir
 
 1. CacaoTrace no emite constancias, certificados ni veredictos de riesgo. Registra lo que dice cada fuente, con su nombre, su versión y su fecha.
@@ -2155,6 +2157,8 @@ El DOP es una copia sellada de todo lo que respalda una tanda en el momento de v
 | `anulado_en`, `anulado_por`, `motivo_anulacion` | timestamptz, uuid, text | Se llenan al anular |
 
 ### Contenido sellado
+
+Por la adenda de la Parte 4, el contenido sellado copia también la tabla de convergencia de la parcela, con su frase de conteo, tal como estaba al validar la tanda.
 
 | Bloque | Qué copia |
 | --- | --- |
@@ -3365,6 +3369,12 @@ Cada endpoint tiene además la prueba de las dos cooperativas definida en la Par
 El DEX es el expediente que la cooperativa entrega al importador: todo lo que respalda un lote, más un informe que dice dónde están los riesgos y a qué se deben. No concluye ni se firma. El importador lo lee, evalúa, decide y presenta la DDS en TRACES.
 
 Esta parte cierra la etapa 3 del flujo operativo.
+
+> **Adenda de la Parte 4:** se suman al catálogo los hallazgos de su sección 8:
+> - `conjuntos_registran_bosque_2020`, `conjuntos_registran_cambio_posterior`, `conjuntos_discrepan`, `mapbiomas_pocos_pixeles` y `mapbiomas_sin_cobertura_reciente`.
+> - En "Datos del lote", cuántos conjuntos de datos se consultaron por parcela, con el mínimo y el máximo del lote.
+>
+> El contenido sellado del DEX copia la tabla de convergencia de cada parcela.
 
 ### Decisiones tomadas por el equipo
 

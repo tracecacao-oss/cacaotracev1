@@ -38,3 +38,12 @@ services:
         value: "180"
       - key: AVISO_VENCIMIENTO_DIAS
         value: "30"
+      # Adenda de la Parte 4. MapBiomas pasó la comprobación de viabilidad el 2026-10-05.
+      - key: MAPBIOMAS_ACTIVO
+        value: "true"
+      - key: MAPBIOMAS_ANIO_INICIAL
+        value: "2015"
+      - key: MAPBIOMAS_ANIO_FINAL
+        value: "2024"
+      - key: UMBRAL_BOSQUE_2020_PCT
+        value: "10"

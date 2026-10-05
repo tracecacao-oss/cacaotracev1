@@ -24,7 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models import Base, ConFechas
 from app.models.padron import _en
 
-FUENTES = ("whisp", "gfw")
+FUENTES = ("whisp", "gfw", "mapbiomas")
 ESTADOS_ANALISIS = ("pendiente", "en_proceso", "completado", "error")
 MOTIVOS_VISITA = ("analisis_requiere_revision", "verificacion_de_coordenadas", "otro")
 USOS_OBSERVADOS = ("cacao_bajo_sombra", "cacao_sin_sombra", "bosque", "otro_cultivo", "mixto")

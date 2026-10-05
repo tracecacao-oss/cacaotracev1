@@ -91,6 +91,11 @@ class ClienteStorage:
         respuesta = self._http.post(self._url_objeto(ruta), content=contenido, headers=cabeceras)
         self._comprobar(respuesta, "subir")
 
+    def descargar(self, ruta: str) -> bytes:
+        respuesta = self._http.get(self._url_objeto(ruta), headers=self._cabeceras())
+        self._comprobar(respuesta, "descargar")
+        return respuesta.content
+
     def url_firmada(
         self, ruta: str, segundos: int = VIGENCIA_URL_FIRMADA, descarga: str | None = None
     ) -> str:

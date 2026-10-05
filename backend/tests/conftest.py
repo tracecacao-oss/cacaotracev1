@@ -153,6 +153,9 @@ class StorageFalso(ClienteStorage):
     def subir(self, ruta, contenido, tipo_mime):
         self.archivos[ruta] = contenido
 
+    def descargar(self, ruta):
+        return self.archivos[ruta]
+
     def url_firmada(self, ruta, segundos=300, descarga=None):
         return f"https://storage.prueba/firmada/{ruta}?vence={segundos}" + (
             f"&download={descarga}" if descarga else ""

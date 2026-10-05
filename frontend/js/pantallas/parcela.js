@@ -7,7 +7,7 @@ import { llamarApi } from "../api.js";
 import { formularioCarga, listaDocumentos } from "../documentos.js";
 import { puede } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo } from "../mapa.js";
-import { ESTADOS_MIDAGRI, hectareas, insigniaAlerta, insigniaHabilitacion, insigniaNivel } from "../textos.js";
+import { ESTADOS_MIDAGRI, MOTIVOS_VISITA, hectareas, insigniaAlerta, insigniaHabilitacion, insigniaNivel } from "../textos.js";
 import { abrirModal, cabeceraFicha, campo, confirmar, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 import { camposUbigeo } from "../ubigeo.js";
 import { cargarPestana, pestanaCobertura, pestanaExpediente, pestanaHabilitacion, pestanaVisitas } from "./parcela-habilitacion.js";
@@ -29,6 +29,10 @@ const ACCIONES = {
   "parcela.observar": "La parcela pasó a observada",
   "parcela.excluir": "Excluyó la parcela",
 };
+
+// En una visita el motivo es un código de la lista; en lo demás, un texto libre.
+const motivoLegible = (x) =>
+  x.accion === "visita.registrar" ? (MOTIVOS_VISITA.find(([v]) => v === x.detalle.motivo)?.[1] ?? x.detalle.motivo) : x.detalle.motivo;
 
 const PESTANAS = [
   ["general", "General"],
@@ -278,7 +282,7 @@ export default async function parcela({ hash, parametros, recargar }) {
                 {},
                 h("b", {}, ACCIONES[x.accion] ?? x.accion),
                 h("span", { class: "sec" }, [fecha(x.ocurrido_en, { hora: true }), x.usuario_nombre].filter(Boolean).join(" · ")),
-                x.detalle?.motivo ? h("span", { class: "sec" }, `Motivo: ${x.detalle.motivo}`) : null,
+                x.detalle?.motivo ? h("span", { class: "sec" }, `Motivo: ${motivoLegible(x)}`) : null,
               ),
             ),
           )

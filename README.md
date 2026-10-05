@@ -131,6 +131,25 @@ Cada parcela se analiza con dos fuentes, cada una con su fecha y su versión, si
 - En el mapa de la parcela se pueden encender, solo como referencia visual, Geobosques (MINAM),
   la zonificación forestal de GeoSERFOR y el mapa de bosque 2020 del JRC.
 
+### Adenda de la Parte 4 (`docs/adenda-parte-4-fuentes.md`)
+
+- **Detalle por capa de Whisp:** cada columna de su respuesta, con la pregunta a la que responde y su
+  conjunto de datos (`backend/app/catalogos/capas_whisp.py`). Los análisis anteriores se reprocesan
+  solos al arrancar la API, desde la respuesta guardada; a mano: `python -m app.scripts.reprocesar_whisp`.
+- **GFW:** además, bosque natural al 2020 (SBTN) y alertas DIST desde 2021.
+- **MapBiomas Perú, Colección 3:** uso del suelo de la parcela, año por año (`MAPBIOMAS_ANIO_INICIAL` a
+  `MAPBIOMAS_ANIO_FINAL`). Lee solo la ventana de la parcela de sus GeoTIFF públicos, con peticiones por
+  rango; no usa clave. Se enciende con `MAPBIOMAS_ACTIVO`. Antes de encenderlo en otro entorno:
+
+  ```bash
+  cd backend
+  python scripts/check_mapbiomas.py
+  ```
+
+- **Tabla de convergencia:** una fila por conjunto de datos y una frase que solo cuenta
+  (`GET /parcelas/{id}/convergencia`). Un conjunto "registra bosque en 2020" desde
+  `UMBRAL_BOSQUE_2020_PCT` del área de la parcela.
+
 Para guardar respuestas reales de prueba en `backend/tests/datos/` con una parcela ficticia, una
 persona del equipo corre `python scripts/muestras_cobertura.py` desde `backend/` y pega las claves
 cuando se las pide (no se guardan en ningún archivo). También sirve descargar, desde la pestaña

@@ -71,15 +71,127 @@ function indicadoresWhisp(ind) {
     .map(([clave, etiqueta]) => h("div", {}, h("dt", {}, etiqueta, h("span", { class: "campo-fuente mono" }, clave)), h("dd", {}, valorIndicador(clave, ind[clave], unidad))));
 }
 
+const PREGUNTAS = [
+  ["estado_2020", "Al 31 de diciembre de 2020"],
+  ["cambio_posterior", "Después de 2020"],
+  ["cultivo", "Cultivos"],
+  ["otra", "Otras capas"],
+];
+
+function numero(valor) {
+  return typeof valor === "number" ? valor.toLocaleString("es-PE", { maximumFractionDigits: 4 }) : String(valor);
+}
+
+function conUnidad(valor, unidad) {
+  return `${numero(valor)}${typeof valor === "number" && unidad ? ` ${unidad}` : ""}`;
+}
+
+/** Detalle por capa de Whisp (adenda): qué conjuntos vieron bosque en 2020 y cuáles vieron cambios. */
+function capasWhisp(capas) {
+  if (!capas?.length) return null;
+  return h(
+    "details",
+    { class: "capas-detalle" },
+    h("summary", {}, `Detalle por capa (${capas.length} capas)`),
+    PREGUNTAS.map(([pregunta, titulo]) => {
+      const grupo = capas.filter((c) => c.pregunta === pregunta);
+      if (!grupo.length) return null;
+      // Primero las que miden algo distinto de cero.
+      const orden = [...grupo].sort((a, b) => Number(b.valor !== 0) - Number(a.valor !== 0));
+      const distintas = grupo.filter((c) => typeof c.valor === "number" && c.valor !== 0).length;
+      return h(
+        "div",
+        { class: "capas-grupo" },
+        h("b", {}, titulo, h("span", { class: "sec" }, ` · ${grupo.length} capas, ${distintas} distintas de cero`)),
+        h(
+          "div",
+          { class: "tbl-box" },
+          h(
+            "table",
+            { class: "tabla tabla-compacta" },
+            h("thead", {}, h("tr", {}, h("th", {}, "Capa"), h("th", {}, "Conjunto de datos"), h("th", { class: "num" }, "Valor"))),
+            h(
+              "tbody",
+              {},
+              orden.map((c) =>
+                h(
+                  "tr",
+                  {},
+                  h("td", { class: "mono" }, c.nombre),
+                  h("td", {}, c.conjunto_nombre ?? h("span", { class: "sec" }, "Fuera del catálogo")),
+                  h("td", { class: "num mono" }, conUnidad(c.valor, c.unidad)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }),
+  );
+}
+
 function indicadoresGfw(ind) {
   const filas = [
     ["Alertas integradas de deforestación", ind.alertas_desde_2021 != null ? String(ind.alertas_desde_2021) : "—"],
     ["Pérdida de cobertura arbórea", hectareas(ind.perdida_ha_total)],
+    ind.bosque_natural_2020_ha != null && ["Bosque natural en 2020 (SBTN)", hectareas(ind.bosque_natural_2020_ha)],
+    ind.alertas_dist_desde_2021 != null && ["Alertas DIST desde 2021", String(ind.alertas_dist_desde_2021)],
     ...Object.entries(ind.perdida_ha_por_anio ?? {}).map(([anio, ha]) => [`Pérdida en ${anio}`, hectareas(ha)]),
     ["Rango consultado", ind.desde ? `${ind.desde} a ${ind.hasta}` : "—"],
     ["Umbral de densidad arbórea 2000", ind.umbral_densidad_2000_porcentaje != null ? `${ind.umbral_densidad_2000_porcentaje} %` : "—"],
-  ];
+  ].filter(Boolean);
   return filas.map(([etiqueta, valor]) => h("div", {}, h("dt", {}, etiqueta), h("dd", {}, valor)));
+}
+
+function indicadoresMapbiomas(ind) {
+  return [
+    ["Clase predominante en 2020", ind.clase_predominante_2020 ?? "—"],
+    ["Bosque en 2020", hectareas(ind.bosque_2020_ha)],
+    [`Pasó de bosque a otra clase (2020 a ${ind.ultimo_anio ?? "—"})`, hectareas(ind.cambio_bosque_a_no_bosque_ha)],
+    ["Píxeles de 30 m en la parcela", ind.pixeles != null ? String(ind.pixeles) : "—"],
+  ].map(([etiqueta, valor]) => h("div", {}, h("dt", {}, etiqueta), h("dd", {}, valor)));
+}
+
+/** Historial de uso del suelo: hectáreas por clase, año por año. */
+function historialMapbiomas(ind) {
+  const anios = Object.keys(ind.anios ?? {}).sort();
+  if (!anios.length) return null;
+  const en2020 = ind.anios["2020"] ?? {};
+  const clases = Object.keys(ind.clases ?? {}).sort((a, b) => (en2020[b] ?? 0) - (en2020[a] ?? 0));
+  const bosque = new Set(ind.clases_bosque ?? []);
+  return h(
+    "details",
+    { class: "capas-detalle", open: true },
+    h("summary", {}, "Uso del suelo por año (ha)"),
+    h(
+      "div",
+      { class: "tbl-box tabla-desliza" },
+      h(
+        "table",
+        { class: "tabla tabla-compacta" },
+        h("thead", {}, h("tr", {}, h("th", {}, "Clase"), anios.map((a) => h("th", { class: a === "2020" ? "num col-2020" : "num" }, a)))),
+        h(
+          "tbody",
+          {},
+          clases.map((c) =>
+            h(
+              "tr",
+              {},
+              h("td", {}, ind.clases[c], bosque.has(c) && h("span", { class: "sec" }, "bosque")),
+              anios.map((a) => h("td", { class: a === "2020" ? "num mono col-2020" : "num mono" }, ind.anios[a]?.[c] ? numero(ind.anios[a][c]) : "—")),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+function detalleFuente(codigo, ind) {
+  if (codigo === "whisp") return [h("dl", { class: "kv" }, indicadoresWhisp(ind)), capasWhisp(ind.capas)];
+  if (codigo === "gfw") return h("dl", { class: "kv" }, indicadoresGfw(ind));
+  if (codigo === "mapbiomas") return [h("dl", { class: "kv" }, indicadoresMapbiomas(ind)), historialMapbiomas(ind)];
+  return null;
 }
 
 const ESTADO_ANALISIS = {
@@ -135,18 +247,80 @@ function tarjetaFuente(codigo, analisis, configurada, ctx) {
       h("p", { class: "alerta warn" }, `${ultimo.error_detalle}. La respuesta completa quedó guardada; una persona debe revisar la parcela.`),
     ultimo.estado !== "completado" && ultimo.estado !== "error" && h("p", { class: "panel-sub" }, `Consultando a ${nombre}… intento ${Math.max(ultimo.intentos, 1)}.`),
     ultimo.es_aproximacion && h("p", { class: "panel-sub" }, "La parcela es un punto: esta fuente analizó un círculo con el área declarada."),
-    ultimo.estado === "completado" && h("dl", { class: "kv" }, codigo === "whisp" ? indicadoresWhisp(ind) : indicadoresGfw(ind)),
+    ultimo.estado === "completado" && ind.pocos_pixeles && h("p", { class: "alerta info" }, "La parcela tiene menos de 10 píxeles de 30 m: las cifras de esta fuente salen de pocos píxeles."),
+    ultimo.estado === "completado" && codigo === "mapbiomas" && h("p", { class: "panel-sub" }, `Esta fuente no ve lo ocurrido después de ${ind.ultimo_anio ?? "su último año"}.`),
+    ultimo.estado === "completado" && detalleFuente(codigo, ind),
     !ctx.delProductor && ultimo.respuesta_documento_id && h("button", { class: "linkbtn", type: "button", onclick: () => descargarRespuesta(ultimo) }, "Descargar la respuesta completa"),
+  );
+}
+
+function medidas(lista) {
+  if (!lista) return null; // ese conjunto no mide esa pregunta: celda vacía
+  // Las columnas por año de Whisp ya están en su agregado; se ven en el detalle por capa.
+  const visibles = lista.filter((m) => !m.serie);
+  return h(
+    "ul",
+    { class: "medidas" },
+    (visibles.length ? visibles : lista).map((m) => h("li", {}, h("span", { class: "mono" }, conUnidad(m.valor, m.unidad)), h("span", { class: "sec" }, `${m.nombre} · ${m.via}`))),
+  );
+}
+
+function fechasDe(fila) {
+  const dias = fila.vias.map((v) => fecha(fila.fechas[v]));
+  if (new Set(dias).size === 1) return dias[0];
+  return fila.vias.map((v, i) => h("span", { class: "sec" }, `${v}: ${dias[i]}`));
+}
+
+/** Tabla de convergencia (adenda): una fila por conjunto de datos y una frase que solo cuenta. */
+function tablaConvergencia(tabla) {
+  if (!tabla?.filas.length) return null;
+  return h(
+    "div",
+    { class: "convergencia" },
+    h("h4", {}, "Conjuntos de datos y las dos preguntas del Reglamento"),
+    h(
+      "p",
+      { class: "panel-sub" },
+      `Un conjunto registra bosque en 2020 si su medida de bosque alcanza el ${tabla.umbral_bosque_2020_pct} % del área de la parcela, y registra cambios si alguna de sus medidas posteriores a 2020 es mayor que cero.`,
+    ),
+    h(
+      "div",
+      { class: "tbl-box tabla-desliza" },
+      h(
+        "table",
+        { class: "tabla" },
+        h("thead", {}, h("tr", {}, h("th", {}, "Conjunto de datos"), h("th", {}, "Consultado vía"), h("th", {}, "Fecha"), h("th", {}, "Al 31 de diciembre de 2020"), h("th", {}, "Después de 2020"))),
+        h(
+          "tbody",
+          {},
+          tabla.filas.map((f) =>
+            h(
+              "tr",
+              {},
+              h("td", {}, f.nombre),
+              h("td", {}, f.vias.join(" y ")),
+              h("td", { class: "fecha" }, fechasDe(f)),
+              h("td", {}, medidas(f.al_2020), f.registra_bosque_2020 && insignia("warn", "Registra bosque en 2020")),
+              h("td", {}, medidas(f.despues_2020), f.registra_cambio && insignia("warn", "Registra cambios")),
+            ),
+          ),
+        ),
+      ),
+    ),
+    h("p", { class: "frase-conteo" }, tabla.frase),
   );
 }
 
 export async function pestanaCobertura(ctx) {
   const { p, base } = ctx;
-  const [analisis, fuentes] = await Promise.all([
+  const [analisis, fuentes, tabla] = await Promise.all([
     llamarApi(`${base}/analisis`),
     ctx.delProductor ? Promise.resolve(null) : llamarApi("/analisis/fuentes"),
+    llamarApi(`${base}/convergencia`),
   ]);
   const configurada = Object.fromEntries((fuentes ?? []).map((f) => [f.fuente, f.configurada]));
+  // El personal ve las fuentes del servidor; el productor, las que analizaron su parcela.
+  const codigos = fuentes ? fuentes.map((f) => f.fuente) : [...new Set(["whisp", "gfw", ...analisis.map((a) => a.fuente)])];
   const puedo = permisos(ctx);
   const repetir =
     puedo.registro &&
@@ -178,7 +352,8 @@ export async function pestanaCobertura(ctx) {
     sub: "Lo que dice cada fuente sobre la parcela, con su fecha y su versión. CacaoTrace no emite veredictos ni combina fuentes.",
     acciones: repetir,
     contenido: [
-      h("div", { class: "fuentes" }, ["whisp", "gfw"].map((c) => tarjetaFuente(c, analisis, configurada[c], ctx))),
+      h("div", { class: "fuentes" }, codigos.map((c) => tarjetaFuente(c, analisis, configurada[c], ctx))),
+      tablaConvergencia(tabla),
       analisis.length > 0 &&
         h(
           "details",
