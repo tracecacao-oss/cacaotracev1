@@ -334,32 +334,13 @@ def test_ninguna_frase_prohibida_en_el_codigo():
 DATOS = Path(__file__).parent / "datos"
 WHISP_REAL = (DATOS / "whisp_respuesta_real.json").read_bytes()
 GFW_REAL = (DATOS / "gfw_respuesta_real.json").read_bytes()
-# Las dos consultas de la adenda (refuerzo B) todavía no tienen respuesta real guardada: se arman con los
-# campos que publica la API de GFW (/dataset/{conjunto}/latest/fields) y la forma de las respuestas reales
-# de arriba. Se reemplazan por una respuesta real cuando el equipo la baje de producción.
-GFW_ADENDA = {
-    "bosque_natural": {
-        "conjunto": "sbtn_natural_forests_map",
-        "version": "v202410",
-        "respuesta": {
-            "data": [
-                {"sbtn_natural_forests_map__class": "Non-Forest", "area__ha": 3.2},
-                {"sbtn_natural_forests_map__class": "Natural Forest", "area__ha": 1.3},
-            ],
-            "status": "success",
-        },
-    },
-    "alertas_dist": {
-        "conjunto": "umd_glad_dist_alerts",
-        "version": "v20261003",
-        "respuesta": {"data": [{"count": 2}], "status": "success"},
-    },
-}
+# Con las cuatro consultas de la adenda (refuerzo B), de la parcela ficticia PA-00002: trae pérdida en
+# 2022 y la clase de bosque natural como texto ("Non-Forest").
+GFW_REAL_ADENDA = (DATOS / "gfw_respuesta_real_adenda.json").read_bytes()
 
 
 def _gfw_completo() -> dict:
-    """La respuesta real de GFW con las dos consultas de la adenda."""
-    return json.loads(GFW_REAL) | GFW_ADENDA
+    return json.loads(GFW_REAL_ADENDA)
 
 
 def _gfw_simulado(evidencia: dict) -> list[httpx.Response]:
@@ -421,16 +402,24 @@ def test_gfw_responde_con_el_ejemplo_guardado(
         "umd_glad_dist_alerts v20261003"
     )
     assert fila.indicadores["alertas_desde_2021"] == 0
-    assert fila.indicadores["perdida_ha_por_anio"] == {}
-    assert fila.indicadores["perdida_ha_total"] == 0
-    assert fila.indicadores["bosque_natural_2020_ha"] == 1.3
-    assert fila.indicadores["alertas_dist_desde_2021"] == 2
-    assert fuentes["gfw"].requiere_revision(None, fila.indicadores)  # hay alertas DIST
+    assert fila.indicadores["perdida_ha_por_anio"] == {"2022": 0.2292}
+    assert fila.indicadores["perdida_ha_total"] == 0.2292
+    assert fila.indicadores["bosque_natural_2020_ha"] == 0  # solo "Non-Forest"
+    assert fila.indicadores["alertas_dist_desde_2021"] == 0
+    assert fuentes["gfw"].requiere_revision(None, fila.indicadores)  # hay pérdida en 2022
     tarjeta = next(a for a in api.get(f"/parcelas/{parcela.id}/analisis").json() if a["id"] == str(fila.id))
     assert tarjeta["resultado_texto"] == (
-        "GFW: sin alertas ni pérdida registrada desde 2021; 1.3 ha de bosque natural en 2020; "
-        "2 alertas DIST desde 2021"
+        "GFW: 0 alertas y 0.2292 ha de pérdida desde 2021; 0 ha de bosque natural en 2020; "
+        "0 alertas DIST desde 2021"
     )
+
+
+def test_gfw_primera_respuesta_real_sin_perdida():
+    """La primera respuesta real (PA-00001), anterior a la adenda: solo alertas y pérdida."""
+    evidencia = json.loads(GFW_REAL)
+    assert {"alertas", "perdida"} <= evidencia.keys()
+    assert evidencia["alertas"]["respuesta"] == {"data": [{"count": 0}], "status": "success"}
+    assert evidencia["perdida"]["respuesta"] == {"data": [], "status": "success"}
 
 
 def test_falla_una_de_las_cuatro_consultas_de_gfw(
@@ -454,16 +443,22 @@ def test_falla_una_de_las_cuatro_consultas_de_gfw(
     assert consultas.count("gfw_integrated_alerts") == 3
 
 
-def test_gfw_con_perdida_desde_2021():
-    """Sobre la respuesta real, filas de pérdida con las columnas que documenta GFW ("area__ha")."""
+def test_gfw_bosque_natural_y_alertas_dist():
+    """Sobre la respuesta real, con la clase 1 que documenta GFW (sbtn_natural_forests_map__class) y
+    alertas DIST: la clase llega como texto, como en la respuesta real, o como número."""
     evidencia = _gfw_completo()
-    evidencia["perdida"]["respuesta"]["data"] = [
-        {"umd_tree_cover_loss__year": 2022, "area__ha": 0.12},
-        {"umd_tree_cover_loss__year": 2024, "area__ha": 0.5},
+    evidencia["bosque_natural"]["respuesta"]["data"] = [
+        {"sbtn_natural_forests_map__class": "Non-Forest", "area__ha": 4.0},
+        {"sbtn_natural_forests_map__class": "Natural Forest", "area__ha": 1.25},
+        {"sbtn_natural_forests_map__class": 1, "area__ha": 0.25},
+        {"sbtn_natural_forests_map__class": "Non-Natural Forest", "area__ha": 1.0},
     ]
+    evidencia["alertas_dist"]["respuesta"]["data"] = [{"count": 3}]
     gfw = fuentes_configuradas()["gfw"]
     resultado, indicadores, _ = gfw.interpretar(json.dumps(evidencia).encode())
-    assert indicadores["perdida_ha_por_anio"] == {"2022": 0.12, "2024": 0.5}
-    assert indicadores["perdida_ha_total"] == 0.62
+    assert indicadores["bosque_natural_2020_ha"] == 1.5
+    assert indicadores["alertas_dist_desde_2021"] == 3
     assert gfw.requiere_revision(resultado, indicadores)
-    assert gfw.texto(resultado, indicadores).startswith("GFW: 0 alertas y 0.62 ha de pérdida desde 2021; ")
+    assert gfw.texto(resultado, indicadores).endswith(
+        "; 1.5 ha de bosque natural en 2020; 3 alertas DIST desde 2021"
+    )

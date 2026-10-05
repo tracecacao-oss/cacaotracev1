@@ -15,7 +15,8 @@ from dataclasses import dataclass, field
 import httpx
 import numpy as np
 
-CABECERA_INICIAL = 64 * 1024
+# El directorio del primer IFD cabe de sobra; lo demás se pide aparte si está más lejos.
+CABECERA_INICIAL = 16 * 1024
 # tipo TIFF -> (bytes, formato de struct)
 TIPOS = {
     1: (1, "B"),
@@ -92,7 +93,7 @@ class LectorCog:
         return r
 
     def cabecera(self, url: str) -> Cabecera:
-        """Lee los primeros 64 KiB y, aparte, solo los valores de la cabecera guardados más adelante (en
+        """Lee los primeros 16 KiB y, aparte, solo los valores de la cabecera guardados más adelante (en
         MapBiomas, la georreferencia va después de la tabla de bloques)."""
         r = self._rango(url, 0, CABECERA_INICIAL - 1)
         trozos = {0: r.content}
