@@ -363,6 +363,15 @@ table {
 .input::placeholder {
   color: var(--ink-4);
 }
+textarea.input {
+  height: auto;
+  min-height: 132px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
 .check {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -412,7 +421,8 @@ table {
 }
 .seg2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 4px;
   padding: 4px;
   border-radius: 11px;
@@ -479,6 +489,12 @@ table {
   display: block;
   font-size: 12px;
   color: var(--ink-3);
+}
+.carga-tabla {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
 }
 .tabla .acciones {
   text-align: right;

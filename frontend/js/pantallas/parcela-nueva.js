@@ -10,6 +10,12 @@ import { campo, conRetraso, h, reemplazar, toast } from "../ui.js";
 import { camposUbigeo } from "../ubigeo.js";
 
 const PASOS = ["Geometría", "Datos", "Revisión"];
+const AYUDA_MODO = {
+  dibujar: "Dibuja un polígono tocando cada vértice, o marca un punto si la parcela mide menos de 4 ha.",
+  archivo: "Sube el archivo y elige una geometría.",
+  coordenadas: "Escribe o pega las coordenadas y pulsa «Revisar coordenadas».",
+};
+const ORIGEN = { dibujar: " (dibujada)", archivo: " (de archivo)", coordenadas: " (de coordenadas)" };
 
 function alertasPrevistas(geo, datos, conSustento) {
   const alertas = [];
@@ -75,7 +81,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     siguiente.disabled = !(geo && geo.valida && !geo.superposiciones.some((s) => s.propia));
     if (!geo) {
       estadoGeometria.replaceChildren(
-        h("p", { class: "panel-sub" }, st.modo === "dibujar" ? "Dibuja un polígono tocando cada vértice, o marca un punto si la parcela mide menos de 4 ha." : "Sube el archivo y elige una geometría."),
+        h("p", { class: "panel-sub" }, AYUDA_MODO[st.modo]),
       );
       return;
     }
@@ -128,7 +134,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
               mostrarResultado();
             },
           }),
-          h("span", {}, h("b", {}, g.nombre || `Geometría ${g.indice + 1}`), " · ", g.tipo ?? "no admitida", g.area_ha ? ` · ${hectareas(g.area_ha)}` : "", !g.valida && h("span", { class: "sec" }, g.errores[0].mensaje)),
+          h("span", {}, h("b", {}, g.nombre || `Geometría ${g.indice + 1}`), " · ", g.tipo === "poligono" ? "polígono" : g.tipo ?? "no admitida", g.area_ha ? ` · ${hectareas(g.area_ha)}` : "", !g.valida && h("span", { class: "sec" }, g.errores[0].mensaje)),
         );
       }),
     );
@@ -136,33 +142,77 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     if (capa.getLayers().length) encuadrar(mapa, capa);
   }
 
-  const archivoInput = h("input", { class: "input", type: "file", accept: ".geojson,.json,.kml" });
-  archivoInput.addEventListener("change", async () => {
-    const archivo = archivoInput.files[0];
-    if (!archivo) return;
+  // Archivo o coordenadas escritas: la API lee los dos igual y guarda el original como sustento.
+  async function usarArchivo(archivo, lista) {
     st.archivo = archivo;
     const geometrias = await analizar(archivo);
     if (!geometrias) return;
     st.analisis = geometrias;
     const validas = geometrias.filter((g) => g.valida);
     st.indice = geometrias.length === 1 ? 0 : validas.length === 1 ? validas[0].indice : null;
+    listaCandidatas.remove();
+    lista.append(listaCandidatas);
     pintarCandidatas();
     mostrarResultado();
-  });
+  }
+
+  const archivoInput = h("input", { class: "input", type: "file", accept: ".geojson,.json,.kml,.kmz,.zip,.csv,.xlsx,.txt" });
+  const candidatasArchivo = h("div");
+  archivoInput.addEventListener("change", () => archivoInput.files[0] && usarArchivo(archivoInput.files[0], candidatasArchivo));
   const bloqueArchivo = h(
     "div",
     { class: "form", hidden: true },
-    h("label", { class: "field" }, "Archivo GeoJSON o KML (hasta 2 MB, en WGS 84)", archivoInput),
-    h("small", { class: "panel-sub" }, "Si el archivo trae varias geometrías, elige una. KMZ y Shapefile no se aceptan: expórtalos como KML o GeoJSON."),
-    listaCandidatas,
+    h(
+      "label",
+      { class: "field" },
+      "Archivo de la parcela (hasta 2 MB, en WGS 84)",
+      archivoInput,
+      h("small", {}, "GeoJSON, KML, KMZ, Shapefile comprimido en .zip, o una lista de coordenadas en Excel, CSV o texto. Si trae varias geometrías, elige una."),
+    ),
+    candidatasArchivo,
+  );
+
+  const textoCoordenadas = h("textarea", {
+    class: "input",
+    id: "c-coordenadas",
+    rows: 6,
+    spellcheck: "false",
+    placeholder: "-6.95120, -76.54870\n-6.95120, -76.54780\n-6.95030, -76.54780\n-6.95030, -76.54870",
+  });
+  const candidatasCoordenadas = h("div");
+  const bloqueCoordenadas = h(
+    "div",
+    { class: "form", hidden: true },
+    h(
+      "label",
+      { class: "field", for: "c-coordenadas" },
+      "Coordenadas de la parcela",
+      textoCoordenadas,
+      h("small", {}, "Una línea por vértice: latitud y longitud en grados (también 6°57'12\"S 76°33'W). Un solo vértice es un punto. Para varias parcelas, deja una línea en blanco o escribe su nombre en una línea aparte. UTM no se acepta."),
+    ),
+    h(
+      "button",
+      {
+        class: "btn",
+        type: "button",
+        onclick: () => {
+          const texto = textoCoordenadas.value.trim();
+          if (!texto) return textoCoordenadas.focus();
+          usarArchivo(new File([texto], "coordenadas.txt", { type: "text/plain" }), candidatasCoordenadas);
+        },
+      },
+      "Revisar coordenadas",
+    ),
+    candidatasCoordenadas,
   );
 
   const modos = h(
     "div",
     { class: "seg2", role: "group", "aria-label": "Cómo capturar la geometría" },
     [
-      ["dibujar", "Dibujar en el mapa"],
+      ["dibujar", "Dibujar"],
       ["archivo", "Subir archivo"],
+      ["coordenadas", "Coordenadas"],
     ].map(([modo, texto]) =>
       h(
         "button",
@@ -173,13 +223,15 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
             st.modo = modo;
             for (const b of modos.children) b.setAttribute("aria-pressed", String(b === e.currentTarget));
             bloqueArchivo.hidden = modo !== "archivo";
+            bloqueCoordenadas.hidden = modo !== "coordenadas";
             st.analisis = [];
             st.indice = null;
+            listaCandidatas.replaceChildren();
             candidatas.clearLayers();
             editor.reemplazar(null);
-            // Con archivo no se dibuja: se ocultan las herramientas de dibujo.
-            if (modo === "archivo") mapa.pm.removeControls();
-            else editor.mostrarControles();
+            // Sin dibujo se ocultan las herramientas de dibujo.
+            if (modo === "dibujar") editor.mostrarControles();
+            else mapa.pm.removeControls();
             mostrarResultado();
           },
         },
@@ -193,6 +245,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     modos,
     !satelitalDisponible && h("p", { class: "alerta warn" }, "La capa satelital todavía no está activa: el mapa muestra solo calles."),
     bloqueArchivo,
+    bloqueCoordenadas,
     estadoGeometria,
   );
 
@@ -276,7 +329,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
         { class: "ficha" },
         h("div", {}, h("dt", {}, "Nombre"), h("dd", {}, st.datos.nombre)),
         h("div", {}, h("dt", {}, "Ubicación"), h("dd", {}, [st.datos.centro_poblado, st.datos.distrito, st.datos.provincia, st.datos.departamento].filter(Boolean).join(", "))),
-        h("div", {}, h("dt", {}, "Geometría"), h("dd", {}, geo.tipo === "poligono" ? "Polígono" : "Punto", st.modo === "archivo" ? " (de archivo)" : " (dibujada)")),
+        h("div", {}, h("dt", {}, "Geometría"), h("dd", {}, geo.tipo === "poligono" ? "Polígono" : "Punto", ORIGEN[st.modo])),
         h("div", {}, h("dt", {}, "Área calculada"), h("dd", { class: "mono" }, geo.tipo === "poligono" ? hectareas(geo.area_ha) : "No aplica (punto)")),
         h("div", {}, h("dt", {}, "Área declarada"), h("dd", { class: "mono" }, hectareas(st.datos.area_declarada_ha))),
         h("div", {}, h("dt", {}, "Área con cacao"), h("dd", { class: "mono" }, hectareas(st.datos.area_cultivada_ha))),
@@ -302,7 +355,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     const geo = seleccion();
     const formulario = new FormData();
     formulario.append("datos", JSON.stringify(st.datos));
-    if (st.modo === "archivo") {
+    if (st.modo !== "dibujar") {
       formulario.append("archivo", st.archivo);
       formulario.append("indice", String(geo.indice));
     } else {

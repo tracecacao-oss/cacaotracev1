@@ -231,7 +231,7 @@ Supabase expone una API de datos automática que cualquiera puede llamar con la 
 2. Ruta de cada archivo: `{cooperativa_id}/{entidad}/{entidad_id}/{uuid}.{ext}`.
 3. Subida: el navegador envía el archivo a la API y la API lo sube a Storage con la clave secreta.
 4. Descarga: la API verifica el permiso y devuelve una URL firmada que vence a los 5 minutos.
-5. Límites que aplica la API: 10 MB por archivo y solo PDF, JPG y PNG, validando el tipo real del contenido. La excepción son los archivos de geometría de la Parte 3: GeoJSON o KML de hasta 2 MB.
+5. Límites que aplica la API: 10 MB por archivo y solo PDF, JPG y PNG, validando el tipo real del contenido. Las excepciones son los archivos de geometría de la Parte 3 (GeoJSON, KML, KMZ, Shapefile en .zip y listas de coordenadas en .txt, .csv o .xlsx) y la hoja de la carga masiva de productores (.csv o .xlsx), todos de hasta 2 MB.
 6. Ningún archivo se guarda en la base de datos ni en el disco de Render. La base guarda la ruta, el nombre original, el tamaño y el hash SHA-256.
 
 ### Claves de Supabase
@@ -899,7 +899,8 @@ Dejar completo el padrón: la ficha de cada productor y sus parcelas, con geomet
 | Tema | Decisión |
 | --- | --- |
 | Datos de MIDAGRI | Se cargan manualmente o como documentos. CacaoTrace no consulta a MIDAGRI por DNI |
-| Captura de la parcela | Dibujo sobre el mapa o carga de archivo GeoJSON o KML |
+| Captura de la parcela | Dibujo sobre el mapa, carga de archivo (GeoJSON, KML, KMZ o Shapefile en .zip) o lista de coordenadas escrita o en hoja de cálculo |
+| Carga masiva | El padrón de productores se puede cargar desde un Excel o un CSV |
 | Unidad del DOP | Un DOP por parcela y por cada cosecha entregada. Se emite en la Parte 5 |
 | Quién registra | El productor o el personal de la cooperativa |
 
@@ -912,8 +913,8 @@ Si en el futuro MIDAGRI ofrece una consulta automática, deberá llenar estos mi
 ### Fuera de alcance en esta parte
 
 - Análisis de cobertura forestal y expediente legal de la parcela, que son la Parte 4, y recepción de la tanda, que es la Parte 5.
-- Captura de la parcela caminando con GPS y carga de coordenadas escritas a mano.
-- Carga masiva de productores desde una hoja de cálculo.
+- Captura de la parcela caminando con GPS (archivos GPX).
+- Coordenadas en UTM u otra proyección: se piden en grados de latitud y longitud (WGS 84).
 
 ## Ficha del productor
 
@@ -963,6 +964,15 @@ Además de sus columnas, `GET /productores/{id}` devuelve tres campos calculados
 3. El productor solo edita su teléfono y carga sus propios documentos. No cambia su DNI, sus nombres ni sus apellidos.
 4. Un productor no se elimina. Se cierra su afiliación con fecha `hasta` y estado `inactiva`.
 
+### Carga masiva de productores
+
+1. El personal con rol `admin_cooperativa` u `operador` sube un Excel (.xlsx) o un CSV de hasta 2 MB y 1,000 filas, con una fila por productor.
+2. Columnas obligatorias: DNI, nombres, apellidos y dirección postal. Opcionales: teléfono, correo, RUC, PPA (sí o no), código del PPA, código en Agro Digital y código de socio. Los encabezados se reconocen sin importar mayúsculas, tildes ni espacios, con nombres comunes como "Documento", "Domicilio" o "Celular"; las columnas desconocidas se ignoran y se informan. Puede haber filas de título antes de los encabezados.
+3. Un DNI de 6 o 7 cifras se completa con ceros a la izquierda, porque Excel los borra. Si trae código del PPA y la columna PPA está vacía, se toma como registrado.
+4. Primero se revisa: `POST /productores/carga-masiva/analizar` devuelve cada fila con su estado (`lista`, `error`, `repetida`, `ya_registrado` u `otra_cooperativa`) y sus mensajes, y no guarda nada. Un DNI de otra cooperativa se informa sin decir cuál.
+5. Al confirmar, `POST /productores/carga-masiva` revisa el archivo de nuevo y registra solo las filas `lista`, en una sola transacción, con las mismas reglas y la misma auditoría (`productor.crear`) que el alta de uno en uno, más una fila `productor.carga_masiva` con el nombre del archivo y los totales. Las demás filas no se guardan.
+6. La carga masiva no registra el consentimiento: cada productor queda con el pendiente `sin_consentimiento`.
+
 ## Documentos de sustento
 
 Todos los archivos cargados, de esta parte y de las siguientes, se registran en una sola tabla `documentos`. El archivo vive en Supabase Storage; la tabla guarda dónde está y a qué respalda.
@@ -990,7 +1000,7 @@ Todos los archivos cargados, de esta parte y de las siguientes, se registran en 
 | `dni` | Productor | PDF, JPG, PNG | 10 MB |
 | `constancia_ppa` | Productor | PDF, JPG, PNG | 10 MB |
 | `sustento_midagri` | Parcela | PDF, JPG, PNG | 10 MB |
-| `archivo_geometria` | Parcela | GeoJSON, KML | 2 MB |
+| `archivo_geometria` | Parcela | GeoJSON, KML, KMZ, Shapefile en .zip; .txt, .csv o .xlsx con coordenadas | 2 MB |
 
 `sustento_midagri` es la constancia, el reporte o la captura que muestra la parcela registrada en MIDAGRI y su estado de validación.
 
@@ -1082,12 +1092,24 @@ La geometría entra por dos caminos, dibujo o archivo, y ambos pasan por las mis
 
 ### Subir un archivo
 
-1. Formatos aceptados: GeoJSON, con extensión `.geojson` o `.json`, y KML, con extensión `.kml`.
-2. KMZ y Shapefile no se aceptan. El mensaje de error indica que se debe exportar como KML o GeoJSON.
+1. Formatos aceptados: GeoJSON (`.geojson` o `.json`), KML (`.kml`), KMZ (`.kmz`, el KML comprimido de Google Earth), Shapefile comprimido en `.zip` con sus archivos `.shp`, `.shx`, `.dbf` y `.prj`, y listas de coordenadas (`.txt`, `.csv` o `.xlsx`). Como no se sabe en qué formato entrega MIDAGRI la parcela al productor, el sistema acepta todos estos.
+2. Un `.shp` suelto o un `.dbf` se rechaza y el mensaje pide el `.zip` completo. Un Excel antiguo (`.xls`) se rechaza y el mensaje pide guardarlo como `.xlsx` o `.csv`. GPX y otros formatos se rechazan con `formato_no_admitido`.
 3. `POST /parcelas/analizar-archivo` recibe el archivo y devuelve las geometrías que contiene, cada una con su tipo, su área, su nombre si lo trae y el resultado de las validaciones. No guarda nada.
 4. La interfaz las dibuja en el mapa. Si el archivo trae varias, el usuario elige una.
 5. Al guardar, la interfaz envía de nuevo el archivo junto con el índice elegido y los datos de la parcela. La API vuelve a analizarlo, y crea el documento `archivo_geometria` y la parcela en una sola transacción.
 6. El KML se lee en el backend con un analizador XML seguro, como `defusedxml`. Solo se toman elementos `Polygon` y `Point`, y se ignora la altitud.
+7. Los archivos comprimidos (KMZ, `.zip` y `.xlsx`) se rechazan sin abrirse si descomprimidos pasan de 50 MB o de 500 archivos.
+8. Shapefile: si el `.prj` indica una proyección (por ejemplo UTM) o un datum distinto de WGS 84, se rechaza con `coordenadas_invalidas`. Sin `.prj`, valen las validaciones de coordenadas. El nombre de cada parcela se toma de la columna `nombre`, `name` o `parcela` del `.dbf`.
+
+### Lista de coordenadas
+
+La tercera forma de capturar la parcela es escribir o pegar sus coordenadas, por ejemplo copiadas de una constancia, de un reporte o de la app del productor. La interfaz las envía a la API como un archivo `coordenadas.txt`, que queda guardado como `archivo_geometria`. Las mismas reglas valen para un `.txt`, `.csv` o `.xlsx` subido.
+
+1. Cada línea o fila es un vértice: latitud y longitud en grados, con punto o coma decimal, o en grados, minutos y segundos (`6°57'12"S 76°33'00"W`). Un solo vértice es un punto; tres o más, un polígono; dos se rechazan.
+2. Si las columnas dicen "latitud" y "longitud" se usan; si no, cada valor se reconoce por su tamaño, porque en el Perú la latitud va de 0 a 18.5 y la longitud de 68.5 a 81.5, en valor absoluto. Si ambas vienen sin signo y sin hemisferio, se toman como sur y oeste.
+3. Varias parcelas se separan con una línea en blanco, con una línea que solo trae el nombre o con una columna de nombre.
+4. Los números enteros cortos al inicio de la línea se toman como numeración de vértices y se ignoran.
+5. Valores en metros (UTM) se rechazan con `coordenadas_invalidas` y el mensaje pide grados. Una línea que no se entiende se rechaza indicando su número.
 
 ### Tipos de geometría
 
@@ -1173,6 +1195,8 @@ Los endpoints del personal trabajan sobre los productores afiliados a su coopera
 | `GET /productores/{id}` | `admin_cooperativa`, `operador`, `lector` | Amplía la respuesta de la Parte 2 con `nivel_identidad`, `nivel_ppa`, `pendientes` y el resumen de parcelas |
 | `PATCH /productores/{id}` | `admin_cooperativa`, `operador` | Edita la ficha. Cambiar el DNI exige el campo `motivo` |
 | `POST /productores/{id}/afiliacion/cerrar` | `admin_cooperativa` | Cierra la afiliación y desactiva el acceso del productor |
+| `POST /productores/carga-masiva/analizar` | `admin_cooperativa`, `operador` | Revisa una hoja de productores y devuelve el estado de cada fila. No guarda nada |
+| `POST /productores/carga-masiva` | `admin_cooperativa`, `operador` | Registra las filas listas de la hoja |
 
 ### Documentos
 
@@ -1189,7 +1213,7 @@ Los endpoints del personal trabajan sobre los productores afiliados a su coopera
 | --- | --- | --- |
 | `GET /parcelas` | `admin_cooperativa`, `operador`, `lector` | Lista las parcelas de la cooperativa, con filtros por productor, estado y alertas. Con `?formato=geojson` devuelve un `FeatureCollection` para el mapa |
 | `GET /productores/{id}/parcelas` | `admin_cooperativa`, `operador`, `lector` | Parcelas de un productor |
-| `POST /parcelas/analizar-archivo` | `admin_cooperativa`, `operador`, `productor` | Analiza un GeoJSON o KML y devuelve sus geometrías con validaciones. No guarda nada |
+| `POST /parcelas/analizar-archivo` | `admin_cooperativa`, `operador`, `productor` | Analiza un archivo de geometría o una lista de coordenadas y devuelve sus geometrías con validaciones. No guarda nada |
 | `POST /productores/{id}/parcelas` | `admin_cooperativa`, `operador` | Crea una parcela, con geometría dibujada o con archivo e índice elegido |
 | `GET /parcelas/{id}` | `admin_cooperativa`, `operador`, `lector` | Detalle con `nivel_midagri`, `alertas` y documentos |
 | `PATCH /parcelas/{id}` | `admin_cooperativa`, `operador` | Edita datos. Cambiar la geometría exige `motivo` y repite validaciones y búsqueda de superposiciones |
@@ -1228,7 +1252,7 @@ El módulo Productores queda con tres secciones para el personal: Padrón, Mapa 
 
 | Pantalla | Ruta | Contenido |
 | --- | --- | --- |
-| Padrón | `#/productores` | Lista con DNI, nombre, número de parcelas e indicador de pendientes; buscador; botón "Nuevo productor" |
+| Padrón | `#/productores` | Lista con DNI, nombre, número de parcelas e indicador de pendientes; buscador; botón "Nuevo productor" y botón "Carga masiva", con plantilla CSV, revisión de cada fila y confirmación |
 | Ficha del productor | `#/productores/{id}` | Encabezado con nombre, DNI y pendientes. Pestañas: Datos, Parcelas, Documentos, Acceso |
 | Nueva parcela | `#/productores/{id}/parcelas/nueva` | Asistente de 3 pasos |
 | Detalle de parcela | `#/parcelas/{id}` | Mapa, datos, alertas, documentos, botón de exportar GeoJSON e historial de cambios |
@@ -1244,7 +1268,7 @@ El módulo Productores queda con tres secciones para el personal: Padrón, Mapa 
 
 ### Asistente de nueva parcela
 
-1. Geometría: el usuario elige "Dibujar en el mapa" o "Subir archivo". Los errores de validación aparecen aquí, junto al mapa, y no dejan avanzar.
+1. Geometría: el usuario elige "Dibujar", "Subir archivo" o "Coordenadas". Los errores de validación aparecen aquí, junto al mapa, y no dejan avanzar.
 2. Datos: nombre, ubicación, área declarada, área cultivada, estado en MIDAGRI, código y documento de sustento.
 3. Revisión: área calculada, alertas y superposiciones detectadas. El botón "Guardar parcela" está solo en este paso.
 
@@ -1300,6 +1324,15 @@ Los archivos de prueba viven en `backend/tests/datos/`. Claude Code los crea con
 | `admin_cooperativa` acepta sin nota | 422 |
 | Productor pide una parcela ajena en `/mi/parcelas/{id}` | 404 |
 | Productor envía `nombres` en `PATCH /mi/productor` | 422 |
+| KMZ, Shapefile en .zip, lista en .txt, .csv y .xlsx de la misma parcela | Producen la misma geometría que el GeoJSON |
+| Shapefile con `.prj` en UTM | 400 con `coordenadas_invalidas` |
+| `.shp` suelto, `.xls` o `.gpx` | 422 con `formato_no_admitido` |
+| Zip que descomprimido pasa de 50 MB | Se rechaza sin abrirlo |
+| Coordenadas en grados, minutos y segundos, sin signo o con la longitud primero | La misma geometría |
+| Coordenadas en UTM en una lista | 400 con `coordenadas_invalidas` |
+| Lista con dos vértices | Se rechaza |
+| Hoja de carga masiva con filas válidas, repetidas, ya registradas, de otra cooperativa y con errores | Se registran solo las válidas; cada otra fila dice por qué |
+| Hoja de carga masiva sin la columna de DNI | 422 con `columnas_faltantes` |
 | Archivo ejecutable con extensión `.pdf` | 422 con `formato_no_admitido` |
 | Mismo documento cargado dos veces | 409 |
 | Se anula el único documento `dni` | `nivel_identidad` vuelve a `declarado` |
@@ -1321,16 +1354,18 @@ Cada endpoint nuevo tiene además la prueba de las dos cooperativas definida en 
 9. El GeoJSON exportado se abre en una herramienta externa y cae en el lugar correcto.
 10. Todos los cambios anteriores aparecen en la auditoría.
 11. El CI está en verde, incluidas las pruebas de las Partes 1 y 2.
+12. El operador registra varios productores desde un Excel y ve, antes de confirmar, qué filas tienen problemas.
+13. El operador crea una parcela pegando sus coordenadas y otra desde un KMZ o un Shapefile.
 
 ### Decisiones pendientes del equipo
 
 - [x] Confirmar qué es el "Código productor APP" del diagrama. Confirmado el 2026-10-05: es el código que el productor tiene en su app Agro Digital del MIDAGRI (`codigo_agrodigital`).
-- [ ] Confirmar en qué formato entrega MIDAGRI o Agro Digital la parcela al productor: archivo, constancia o captura.
-- [ ] Confirmar si se rechazan los polígonos con huecos.
-- [ ] Confirmar el tope de 100 ha por parcela.
-- [ ] Confirmar el umbral de superposición: 5 % o 0.05 ha.
+- [x] Confirmar en qué formato entrega MIDAGRI o Agro Digital la parcela al productor: archivo, constancia o captura. Respuesta del 2026-10-05: no se sabe con certeza, probablemente coordenadas; por eso se aceptan GeoJSON, KML, KMZ, Shapefile y listas de coordenadas.
+- [x] Confirmar si se rechazan los polígonos con huecos. Confirmado el 2026-10-05: se rechazan.
+- [x] Confirmar el tope de 100 ha por parcela. Confirmado el 2026-10-05.
+- [x] Confirmar el umbral de superposición: 5 % o 0.05 ha. Confirmado el 2026-10-05.
 - [x] Decidir si departamento, provincia y distrito se eligen de un catálogo oficial o se escriben. Decidido el 2026-10-05: se eligen del catálogo oficial del INEI (UBIGEO 2022, 1891 distritos, de datosabiertos.gob.pe) y se guardan con los nombres del INEI.
-- [ ] Decidir si se agrega la carga masiva de productores desde una hoja de cálculo.
+- [x] Decidir si se agrega la carga masiva de productores desde una hoja de cálculo. Decidido el 2026-10-05: sí, desde Excel o CSV.
 
 ## Parte 4 — Habilitación de la parcela
 

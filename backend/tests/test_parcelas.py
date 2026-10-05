@@ -125,14 +125,6 @@ def test_archivo_con_tres_geometrias_indice_1(api, sesion, operador, productor, 
     assert storage_falso.archivos[documento.ruta] == (DATOS / "tres_parcelas.geojson").read_bytes()
 
 
-def test_kmz_y_shapefile_no_se_aceptan(api, operador):
-    respuesta = api.como(operador).post(
-        "/parcelas/analizar-archivo", files={"archivo": ("parcela.kmz", b"PK\x03\x04")}
-    )
-    assert respuesta.status_code == 422
-    assert "KML o GeoJSON" in respuesta.json()["error"]["mensaje"]
-
-
 def test_alerta_area_discrepante(api, operador, productor):
     lado = math.sqrt(12000)  # 1.2 ha
     respuesta = crear_parcela(

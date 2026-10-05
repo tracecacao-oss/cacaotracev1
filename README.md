@@ -97,6 +97,13 @@ ArcGIS Location Platform. La crea una persona del equipo:
 Condiciones de uso: mostrar la atribución de Esri (el mapa ya la muestra), no descargar teselas
 para uso sin conexión, y no usar el servicio sin clave (`server.arcgisonline.com`).
 
+## Parcelas y carga masiva
+
+La parcela se dibuja en el mapa, se sube como archivo (GeoJSON, KML, KMZ o Shapefile comprimido en
+.zip) o se escribe como lista de coordenadas en grados (también en .txt, .csv o .xlsx). Todo en
+WGS 84: UTM se rechaza con un mensaje que pide grados. El padrón de productores se puede cargar
+desde un Excel o CSV en Productores → Carga masiva, que revisa cada fila antes de guardar.
+
 ## Catálogo de ubicaciones
 
 Departamento, provincia y distrito se eligen de listas encadenadas con el catálogo oficial del

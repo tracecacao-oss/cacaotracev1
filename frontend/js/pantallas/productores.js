@@ -167,6 +167,157 @@ function abrirAlta(navegar) {
   });
 }
 
+// ---------- Carga masiva ----------
+
+const PLANTILLA = [
+  "dni",
+  "nombres",
+  "apellidos",
+  "direccion_postal",
+  "telefono",
+  "correo",
+  "ruc",
+  "ppa_registrado",
+  "ppa_codigo",
+  "codigo_agrodigital",
+  "codigo_socio",
+];
+const ESTADOS_CARGA = {
+  lista: ["ok", "Lista"],
+  creada: ["ok", "Registrada"],
+  error: ["bad", "Con errores"],
+  repetida: ["warn", "Repetida"],
+  ya_registrado: ["info", "Ya registrado"],
+  otra_cooperativa: ["warn", "En otra cooperativa"],
+};
+
+/** Plantilla con solo los encabezados; el BOM hace que Excel muestre bien las tildes. */
+function descargarPlantilla() {
+  const enlace = h("a", {
+    href: URL.createObjectURL(new Blob([`﻿${PLANTILLA.join(",")}\r\n`], { type: "text/csv" })),
+    download: "plantilla-productores.csv",
+  });
+  enlace.click();
+  setTimeout(() => URL.revokeObjectURL(enlace.href), 1000);
+}
+
+function tablaCarga(carga) {
+  const problemas = carga.filas.filter((f) => !["lista", "creada"].includes(f.estado));
+  const filas = [...problemas, ...carga.filas.filter((f) => ["lista", "creada"].includes(f.estado))];
+  return h(
+    "div",
+    { class: "tabla-caja carga-tabla" },
+    h(
+      "table",
+      { class: "tabla" },
+      h("thead", {}, h("tr", {}, h("th", {}, "Fila"), h("th", {}, "DNI"), h("th", {}, "Productor"), h("th", {}, "Estado"))),
+      h(
+        "tbody",
+        {},
+        filas.map((f) => {
+          const [tono, texto] = ESTADOS_CARGA[f.estado];
+          return h(
+            "tr",
+            {},
+            h("td", { class: "mono" }, String(f.fila)),
+            h("td", { class: "mono" }, f.dni ?? "—"),
+            h("td", {}, [f.apellidos, f.nombres].filter(Boolean).join(", ") || "—"),
+            h("td", {}, h("span", { class: `badge ${tono}` }, texto), f.mensajes.map((m) => h("span", { class: "sec" }, m))),
+          );
+        }),
+      ),
+    ),
+  );
+}
+
+function abrirCargaMasiva(alTerminar) {
+  const archivo = h("input", { class: "input", type: "file", id: "c-carga", accept: ".xlsx,.csv", required: true });
+  const resultado = h("div", { class: "form" });
+  const mensaje = h("p", { class: "alerta bad", role: "alert", hidden: true });
+  const revisar = h("button", { class: "btn", type: "button" }, "Revisar archivo");
+  const registrar = h("button", { class: "btn btn-primary", type: "button", hidden: true }, "Registrar");
+  let revisado = null;
+
+  const contenido = h(
+    "div",
+    { class: "form" },
+    h(
+      "p",
+      { class: "panel-sub" },
+      "Sube un Excel (.xlsx) o CSV con una fila por productor. Son obligatorias las columnas DNI, nombres, apellidos y dirección; las demás son opcionales. Primero se revisa cada fila y nada se guarda hasta que confirmes.",
+    ),
+    h("button", { class: "btn btn-sm", type: "button", onclick: descargarPlantilla }, "Descargar plantilla (CSV)"),
+    h("label", { class: "field", for: "c-carga" }, "Archivo (hasta 2 MB y 1,000 productores)", archivo),
+    mensaje,
+    resultado,
+  );
+  const { cerrar } = abrirModal({
+    titulo: "Carga masiva de productores",
+    contenido,
+    pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cerrar"), revisar, registrar],
+  });
+
+  async function enviar(ruta, boton) {
+    if (!archivo.files[0]) return archivo.reportValidity();
+    const formulario = new FormData();
+    formulario.append("archivo", archivo.files[0]);
+    mensaje.hidden = true;
+    boton.classList.add("is-loading");
+    boton.disabled = true;
+    try {
+      return await llamarApi(ruta, { metodo: "POST", formulario });
+    } catch (error) {
+      mensaje.textContent = error.message;
+      mensaje.hidden = false;
+      return null;
+    } finally {
+      boton.classList.remove("is-loading");
+      boton.disabled = false;
+    }
+  }
+
+  archivo.addEventListener("change", () => {
+    revisado = null;
+    registrar.hidden = true;
+    resultado.replaceChildren();
+  });
+
+  revisar.addEventListener("click", async () => {
+    const carga = await enviar("/productores/carga-masiva/analizar", revisar);
+    if (!carga) return;
+    revisado = archivo.files[0];
+    registrar.hidden = carga.listas === 0;
+    registrar.textContent = `Registrar ${carga.listas} ${carga.listas === 1 ? "productor" : "productores"}`;
+    reemplazar(
+      resultado,
+      h(
+        "p",
+        { class: `alerta ${carga.con_problemas ? "warn" : "info"}` },
+        `${carga.total} filas: ${carga.listas} listas para registrarse` +
+          (carga.con_problemas ? ` y ${carga.con_problemas} con problemas, que no se guardarán. Corrígelas en el archivo y vuelve a subirlo si quieres incluirlas.` : "."),
+      ),
+      carga.columnas_ignoradas.length > 0 && h("p", { class: "panel-sub" }, `Columnas que no se usan: ${carga.columnas_ignoradas.join(", ")}.`),
+      tablaCarga(carga),
+    );
+  });
+
+  registrar.addEventListener("click", async () => {
+    if (archivo.files[0] !== revisado) return;
+    const carga = await enviar("/productores/carga-masiva", registrar);
+    if (!carga) return;
+    registrar.hidden = true;
+    revisar.hidden = true;
+    archivo.disabled = true;
+    reemplazar(
+      resultado,
+      h("p", { class: "alerta info" }, `Se registraron ${carga.creadas} ${carga.creadas === 1 ? "productor" : "productores"}.`),
+      tablaCarga(carga),
+    );
+    toast(`Se registraron ${carga.creadas} productores.`);
+    alTerminar();
+  });
+}
+
 export default async function productores({ navegar }) {
   const lista = h("div", {}, cargando());
   let busqueda = "";
@@ -252,6 +403,7 @@ export default async function productores({ navegar }) {
           "aria-label": "Buscar productores",
           oninput: (e) => buscar(e.target.value),
         }),
+        puedeRegistrar && h("button", { class: "btn", type: "button", onclick: () => abrirCargaMasiva(cargar) }, "Carga masiva"),
       ),
       lista,
     ),

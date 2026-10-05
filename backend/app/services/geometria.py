@@ -1,10 +1,14 @@
-"""Geometría de la parcela: lectura de GeoJSON y KML y validaciones automáticas.
+"""Geometría de la parcela: lectura de archivos y validaciones automáticas.
+
+Formatos: GeoJSON, KML, KMZ, Shapefile comprimido en .zip y listas de coordenadas (texto, CSV o
+Excel, ver coordenadas.py). Todo se lee en WGS 84; UTM y otras proyecciones se rechazan.
 
 Las validaciones se ejecutan en el orden de la especificación y se detienen en la primera que
 falla. Una geometría que falla se rechaza: el sistema nunca la corrige por su cuenta. La única
 modificación es cerrar un anillo que no repite su primer vértice.
 """
 
+import io
 import json
 import math
 from dataclasses import dataclass, field
@@ -12,12 +16,16 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import PurePath
 from typing import Any
 
+import shapefile
 from defusedxml import DTDForbidden, EntitiesForbidden, ExternalReferenceForbidden
 from defusedxml import ElementTree as XML
 from shapely.geometry import Point, Polygon, mapping
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+from app.services import coordenadas
+from app.services.tablas import ErrorTabla, comprobar_zip
 
 TAMANO_MAXIMO_ARCHIVO = 2 * 1024 * 1024
 MAXIMO_VERTICES = 2000
@@ -101,31 +109,130 @@ def a_geojson(geometria: BaseGeometry, decimales: int = 8) -> dict:
 # ---------- Lectura de archivos ----------
 
 
+TIPOS_MIME = {
+    ".geojson": "application/geo+json",
+    ".json": "application/geo+json",
+    ".kml": "application/vnd.google-earth.kml+xml",
+    ".kmz": "application/vnd.google-earth.kmz",
+    ".zip": "application/zip",
+    ".csv": "text/csv",
+    ".txt": "text/plain",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+FORMATOS = "GeoJSON, KML, KMZ, Shapefile comprimido en .zip, o una lista de coordenadas en .txt, .csv o .xlsx"
+
+
 def leer_archivo(nombre: str, contenido: bytes) -> list[tuple[str | None, dict]]:
     """Devuelve (nombre, geometría GeoJSON) por cada entidad del archivo. No valida."""
     extension = PurePath(nombre or "").suffix.lower()
-    if extension in (".kmz", ".shp", ".shx", ".dbf", ".prj", ".zip", ".gpx", ".csv"):
+    if extension in (".shp", ".shx", ".dbf", ".prj"):
         raise ErrorArchivo(
             "formato_no_admitido",
-            "Ese formato no se acepta. Exporta la parcela como KML o GeoJSON y vuelve a cargarla.",
+            "Sube el Shapefile comprimido en un .zip con sus archivos .shp, .shx, .dbf y .prj.",
         )
-    if extension not in (".geojson", ".json", ".kml"):
+    if extension == ".xls":
         raise ErrorArchivo(
-            "formato_no_admitido", "Solo se aceptan archivos GeoJSON (.geojson, .json) o KML (.kml)."
+            "formato_no_admitido", "Guarda el Excel como .xlsx o como .csv y vuelve a cargarlo."
         )
+    if extension not in TIPOS_MIME:
+        raise ErrorArchivo("formato_no_admitido", f"Ese formato no se acepta. Sube un archivo {FORMATOS}.")
     if not contenido:
         raise ErrorArchivo("archivo_vacio", "El archivo está vacío.")
     if len(contenido) > TAMANO_MAXIMO_ARCHIVO:
         raise ErrorArchivo("archivo_muy_grande", "El archivo supera el máximo de 2 MB.")
-    if extension == ".kml":
-        return _leer_kml(contenido)
+    try:
+        if extension == ".kml":
+            return _leer_kml(contenido)
+        if extension == ".kmz":
+            return _leer_kmz(contenido)
+        if extension == ".zip":
+            return _leer_shapefile(contenido)
+        if extension == ".txt":
+            return coordenadas.leer_texto(contenido)
+        if extension in (".csv", ".xlsx"):
+            return coordenadas.leer_tabla_de_coordenadas(extension, contenido)
+    except ErrorTabla as exc:
+        raise ErrorArchivo("archivo_invalido", exc.mensaje) from exc
+    except coordenadas.ErrorCoordenadas as exc:
+        raise ErrorArchivo(exc.codigo, exc.mensaje) from exc
     return _leer_geojson(contenido)
 
 
 def tipo_mime_de(nombre: str) -> str:
-    if PurePath(nombre).suffix.lower() == ".kml":
-        return "application/vnd.google-earth.kml+xml"
-    return "application/geo+json"
+    return TIPOS_MIME.get(PurePath(nombre).suffix.lower(), "application/octet-stream")
+
+
+def _entradas(archivo, extension: str) -> list:
+    """Entradas del zip con esa extensión, sin las carpetas ocultas que agrega macOS."""
+    return [
+        e
+        for e in archivo.infolist()
+        if e.filename.lower().endswith(extension) and "__MACOSX" not in e.filename and not e.is_dir()
+    ]
+
+
+def _leer_kmz(contenido: bytes) -> list[tuple[str | None, dict]]:
+    """Un KMZ es un zip con el KML adentro: doc.kml, o el primero que haya."""
+    archivo = comprobar_zip(contenido)
+    kmls = _entradas(archivo, ".kml")
+    if not kmls:
+        raise ErrorArchivo("archivo_invalido", "El KMZ no contiene ningún archivo KML.")
+    principal = next((e for e in kmls if PurePath(e.filename).name.lower() == "doc.kml"), kmls[0])
+    return _leer_kml(archivo.read(principal))
+
+
+def _prj_en_wgs84(prj: str) -> bool:
+    """El .prj debe ser geográfico (sin proyección) y con datum WGS 84."""
+    texto = prj.upper().replace(" ", "_")
+    proyectado = "PROJCS" in texto or "PROJCRS" in texto
+    return not proyectado and ("WGS_1984" in texto or "WGS_84" in texto)
+
+
+def _companero(archivo, base: str, extension: str):
+    objetivo = (base + extension).lower()
+    return next((e for e in archivo.infolist() if e.filename.lower() == objetivo), None)
+
+
+def _nombre_de_registro(datos: dict) -> str | None:
+    for clave, valor in datos.items():
+        if clave.lower() in ("nombre", "name", "parcela") and valor:
+            return str(valor).strip()
+    return None
+
+
+def _leer_shapefile(contenido: bytes) -> list[tuple[str | None, dict]]:
+    archivo = comprobar_zip(contenido)
+    capas = _entradas(archivo, ".shp")
+    if not capas:
+        raise ErrorArchivo(
+            "archivo_invalido", "El .zip no contiene un Shapefile (.shp). Revisa que sea el archivo correcto."
+        )
+    resultado = []
+    for capa in capas:
+        base = capa.filename[:-4]
+        shx, dbf, prj = (_companero(archivo, base, ext) for ext in (".shx", ".dbf", ".prj"))
+        # Sin .prj se confía en los rangos: una proyección en metros no pasa la validación de coordenadas.
+        if prj is not None and not _prj_en_wgs84(archivo.read(prj).decode("latin-1")):
+            raise ErrorArchivo("coordenadas_invalidas", MENSAJES["coordenadas_invalidas"])
+        try:
+            lector = shapefile.Reader(
+                shp=io.BytesIO(archivo.read(capa)),
+                shx=io.BytesIO(archivo.read(shx)) if shx else None,
+                dbf=io.BytesIO(archivo.read(dbf)) if dbf else None,
+            )
+            for registro in lector.iterShapeRecords():
+                if registro.shape.shapeType == shapefile.NULL:
+                    continue
+                nombre = _nombre_de_registro(registro.record.as_dict()) if dbf else None
+                # Ida y vuelta por JSON: las tuplas pasan a listas, como en un GeoJSON.
+                resultado.append((nombre, json.loads(json.dumps(registro.shape.__geo_interface__))))
+        except shapefile.ShapefileException as exc:
+            raise ErrorArchivo(
+                "archivo_invalido", "No se pudo leer el Shapefile. Revisa que esté completo."
+            ) from exc
+    if not resultado:
+        raise ErrorArchivo("sin_geometrias", "El Shapefile no contiene ninguna geometría.")
+    return resultado
 
 
 def _leer_geojson(contenido: bytes) -> list[tuple[str | None, dict]]:

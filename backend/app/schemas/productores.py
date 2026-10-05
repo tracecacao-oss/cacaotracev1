@@ -102,3 +102,25 @@ class MisCambios(Entrada):
 
 class CierreAfiliacion(Entrada):
     motivo: TextoOpcional | None = None
+
+
+class FilaCarga(BaseModel):
+    """Una fila de la hoja de carga masiva. `fila` es su número en la hoja (la 1 son los títulos)."""
+
+    fila: int
+    dni: str | None
+    nombres: str | None
+    apellidos: str | None
+    estado: Literal["lista", "creada", "error", "repetida", "ya_registrado", "otra_cooperativa"]
+    mensajes: list[str]
+    productor_id: uuid.UUID | None = None
+
+
+class CargaMasiva(BaseModel):
+    archivo: str
+    total: int
+    listas: int
+    creadas: int
+    con_problemas: int
+    columnas_ignoradas: list[str]
+    filas: list[FilaCarga]
