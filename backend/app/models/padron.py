@@ -43,8 +43,11 @@ TIPOS_DOCUMENTO = (
     *TIPOS_LEGALES,
     "foto_visita",
     "respuesta_analisis",
+    # Parte 5
+    "guia_remision",
+    "dop_pdf",
 )
-ENTIDADES_DOCUMENTO = ("productor", "parcela", "visita", "analisis")
+ENTIDADES_DOCUMENTO = ("productor", "parcela", "visita", "analisis", "tanda", "dop")
 ESTADOS_HABILITACION = ("pendiente", "habilitada", "observada", "excluida")
 ESTADOS_MIDAGRI = ("no_registrada", "sin_observacion", "en_revision", "validado")
 ESTADOS_PARCELA = ("activa", "inactiva")

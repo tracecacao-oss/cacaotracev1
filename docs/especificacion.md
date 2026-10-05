@@ -1643,6 +1643,7 @@ Tomadas de la documentación oficial de cada servicio, consultada el 2026-10-05.
 4. La respuesta completa se guarda en Storage antes de interpretarla. Si no tiene la forma esperada, el análisis queda `completado` sin resultado, con el motivo en `error_detalle`, y pide revisión en campo: una columna que falta nunca se lee como cero.
 5. Capas WMS: Geobosques `gis.bosques.gob.pe/server/services/Interoperabilidad/bosque_humedo_2025/MapServer/WMSServer` (capas 0, 2, 3 y 5), GeoSERFOR `geo.serfor.gob.pe/geoservicios/services/Servicios_OGC/Zonificacion_Forestal/MapServer/WMSServer` (capa 0) y JRC `ies-ows.jrc.ec.europa.eu/iforce/gfc2020/wms.py` (capa `gfc2020_v4`, cita Bourgoin et al. 2026, doi:10.2905/JRC.3KATEH8).
 6. La clave de GFW (alias `cacaotrace`) se creó el 2026-10-05 y vence el 2027-10-05, porque GFW la da por un año. La fecha está anotada en el `README.md`.
+7. Decisión del equipo del 2026-10-05: la sección Cobertura forestal se lee de un vistazo. Arriba, una línea dice qué fuentes y conjuntos de datos piden revisión, o que ninguno la pide. Cada tarjeta muestra fuente, fecha, versión, resultado y si pide revisión; si la pide, se ven solo las cifras que la piden. Los indicadores, el detalle por capa, el historial de MapBiomas y la descarga de la respuesta completa quedan plegados en "Ver indicadores y detalle". De la tabla de convergencia se ven la frase de conteo y las filas que registran bosque en 2020 o cambios; la tabla completa queda plegada. La API dice en cada análisis si pide revisión (`requiere_revision`), con la regla de su fuente.
 
 ### Pruebas automáticas mínimas
 
@@ -2301,6 +2302,23 @@ Si hay alertas, el paso 4 muestra el campo de nota antes de permitir validar. Al
 2. El botón de validar dice lo que hace: "Validar y emitir DOP". Tras emitir, ya no existe ningún botón de edición.
 3. Los pesos se muestran con dos decimales y su unidad. Los códigos de tanda y de DOP van en tipografía monoespaciada.
 4. La página pública no enlaza al resto de la aplicación ni revela si existen otros códigos.
+
+### Notas de implementación (2026-10-05)
+
+Tomadas de la documentación oficial de cada servicio o librería, consultada el 2026-10-05.
+
+1. Guía de remisión, formato (punto 4 de la guía): la serie es `T` o `V` más 3 caracteres alfanuméricos (guía electrónica del remitente o del transportista), `EG01` a `EG04` o `EG07` (emitida desde SUNAT), `G` más 3 dígitos, o 3 o 4 dígitos (guía impresa); el número tiene de 1 a 8 dígitos y no es cero. Fuentes: RS 000123-2022/SUNAT y sus anexos 12, 13 y 28; Reglas de validación de SUNAT del 26.08.2026; Reglamento de Comprobantes de Pago, art. 9.4. Se guarda como `SERIE-NÚMERO` (serie numérica con 4 dígitos, número sin ceros a la izquierda) y un formato distinto responde 422 `guia_numero_invalido`. Está en `backend/app/catalogos/guia_remision.py`.
+2. Guía de remisión, cotejo (punto 6 y decisión pendiente): la guía general no tiene un registro público consultable; SUNAT solo la muestra, con Clave SOL, al remitente, al transportista o al destinatario. Por eso queda en `documentado` y el bloque "No verificado" del DOP lo dice. Investigado por Claude Code; el equipo lo confirma.
+3. Código de la cooperativa: es obligatorio al crear una cooperativa, pero la columna admite vacío para las creadas antes de esta parte. El `superadmin` lo fija una sola vez en "Editar datos" (`PATCH /admin/cooperativas/{id}` con `codigo`); si ya tiene, responde 400 `codigo_inmutable`, y si otra lo usa, 409 `codigo_en_uso`. Sin código, `POST /tandas` responde 400 `configuracion_incompleta`, igual que sin tope.
+4. Variedad "otra": su nombre va en la columna `variedad_otra`, obligatoria solo con esa variedad.
+5. Estados: se observa solo una tanda `registrada` y se anula una `registrada` u `observada`, las cinco transiciones del diagrama.
+6. Volumen acumulado: cuentan las tandas de la parcela recibidas en los 365 días previos a la recepción de la tanda evaluada, incluida ella; no cuentan las anuladas ni las validadas con su DOP anulado. La alerta `guia_usada_por_otro_productor` busca en toda la plataforma y no dice en qué cooperativa. `parcela_con_alertas` guarda en su detalle cuáles son.
+7. Sello: la forma canónica es `json.dumps(contenido, sort_keys=True, ensure_ascii=False, separators=(",", ":"))` en UTF-8, con decimales y fechas como texto; la huella es su SHA-256. Solo `backend/app/services/sello.py` la produce. El trigger `dops_sellados` rechaza además el `DELETE`, y `decisiones_tanda_inmutables` protege las decisiones.
+8. PDF: fpdf2 2.8.9, escrito solo en Python (depende de Pillow, fontTools y defusedxml, que también lo son o traen ruedas para Linux). El código QR lo calcula segno 1.6.6 y se dibuja con rectángulos. Las tipografías son las del diseño, Plus Jakarta Sans y JetBrains Mono, con licencia OFL, en `backend/app/recursos/fuentes/`. La leyenda contiene "certificado" para negarlo: la prueba de frases prohibidas exceptúa solo esa leyenda, con su texto exacto.
+9. Variable nueva `URL_INTERFAZ` (por defecto `https://cacaotrace.pages.dev`): la dirección a la que lleva el código QR, `{URL_INTERFAZ}/#/verificar/dop/{codigo}`.
+10. Límite público: vive en la memoria del proceso, porque Render corre una sola instancia, y se reinicia con cada deploy. La IP sale de `CF-Connecting-IP`, que escribe Cloudflare; el primer valor de `X-Forwarded-For` lo puede inventar quien llama.
+11. CORS: la API admite ahora `PUT`, que usa `PUT /configuracion`.
+12. Configuración y Lugares los ve todo el personal y el `superadmin` en modo consulta; solo el `admin_cooperativa` los cambia.
 
 ## Pruebas y aceptación de la Parte 5
 

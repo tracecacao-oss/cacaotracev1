@@ -1493,7 +1493,9 @@ a.kpi:hover {
 }
 .meta dd.meta-extra {
   margin-top: 6px;
+  font-size: 12.5px;
   font-weight: 500;
+  color: var(--ink-2);
 }
 .kv {
   display: grid;
@@ -2209,4 +2211,293 @@ button.kpi[aria-pressed="true"] {
   border-left: 3px solid var(--line-strong);
   background: var(--surface-2);
   font-size: 13px;
+}
+
+/* ---------- Parte 5: recepción de la tanda y DOP ---------- */
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.hintbox {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.hintbox.warn {
+  background: var(--amber-tint);
+  border-color: color-mix(in srgb, var(--amber) 30%, var(--line));
+}
+.hintbox .ic {
+  margin-top: 2px;
+  color: var(--ink-3);
+}
+.hintbox.warn .ic {
+  color: var(--amber-ink);
+}
+.hintbox b {
+  color: var(--ink);
+  font-weight: 600;
+}
+/* Pasos numerados con estado, como los del diseño (requisitos de la tanda). */
+.steps {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.stp {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+}
+.stp:first-child {
+  border-top: 0;
+}
+.stp-n {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+.stp.ok .stp-n {
+  background: var(--emerald-soft);
+  color: var(--emerald-ink);
+}
+.stp.bad .stp-n {
+  background: var(--rose-soft);
+  color: var(--rose-ink);
+}
+.stp b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+.stp div span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.hash {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.hash .mono {
+  overflow-wrap: anywhere;
+}
+.hash button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--ink-4);
+}
+.hash button:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+/* El código QR siempre en negro sobre blanco, también en el tema oscuro, para que se pueda escanear. */
+.qr-big {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+.qr-big svg {
+  width: 200px;
+  height: 200px;
+  background: #fff;
+  padding: 10px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+}
+.qr-big .mono {
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+  word-break: break-all;
+}
+.sello {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+/* Asistente de nueva tanda: una columna, pensada para el celular en cancha. */
+.asistente-tanda {
+  max-width: 760px;
+}
+.asistente-tanda .panel-b {
+  display: grid;
+  gap: 14px;
+}
+.opciones {
+  display: grid;
+  gap: 8px;
+}
+.opcion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+}
+.opcion:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+.opcion[aria-pressed="true"] {
+  border-color: var(--emerald);
+  background: var(--emerald-tint);
+}
+.opcion:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: var(--surface-3);
+}
+.opcion > span:nth-child(2) {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.opcion .sec {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.opcion .motivo {
+  font-size: 12px;
+  color: var(--amber-ink);
+}
+.resultado-dop {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.resultado-dop .codigo-dop {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+}
+.equivalente {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.croquis {
+  width: 180px;
+  height: 180px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+}
+/* Página pública de verificación: sin barra lateral ni enlaces al resto de la aplicación. */
+.verificacion {
+  width: min(560px, 100%);
+}
+.verificacion .meta {
+  margin-top: 12px;
+}
+@media (max-width: 620px) {
+  .grid3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sello {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* En el celular, los botones del asistente quedan al alcance del pulgar. */
+  .asistente-tanda .modal-f {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    z-index: 2;
+  }
+}
+/* Tarjetas de estado: de dos en dos en el celular, para que la lista quede a la vista. */
+.kpis-estados {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+@media (max-width: 620px) {
+  .kpis-estados .kpi {
+    padding: 10px 12px;
+  }
+  .kpis-estados .kpi-ic {
+    width: 30px;
+    height: 30px;
+  }
+}
+.chev-derecha {
+  transform: rotate(-90deg);
+}
+@media (max-width: 620px) {
+  /* En el celular solo el paso actual lleva su nombre. */
+  .asistente-tanda .pasos span[aria-current="false"] .paso-t {
+    display: none;
+  }
+}
+@media (max-width: 620px) {
+  /* Pie del asistente: el botón principal arriba, a todo el ancho; los demás de dos en dos. */
+  .asistente-tanda .modal-f {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .asistente-tanda .modal-f .btn-primary {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+}
+/* Cobertura forestal: cada tarjeta en pocas líneas; el detalle se pliega. */
+.fuente-atencion {
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+}
+.motivos-revision {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 10px 8px 26px;
+  border-radius: var(--r-md);
+  background: var(--amber-tint);
+  color: var(--amber-ink);
+  font-size: 12.5px;
+}
+.fuente-detalle > summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.fuente-detalle[open] {
+  display: grid;
+  gap: 10px;
+}
+.verif .linea {
+  display: block;
 }

@@ -262,6 +262,15 @@ def test_alertas_de_revision_y_error(api, sesion, operador, productor):
     }
     assert tarjetas["whisp"]["resultado_texto"] == "Whisp: requiere más información"
     assert tarjetas["gfw"]["resultado_texto"] == "GFW: 3 alertas y 0.25 ha de pérdida desde 2021"
+    assert tarjetas["whisp"]["requiere_revision"] and tarjetas["gfw"]["requiere_revision"]
+
+
+def test_cada_analisis_dice_si_pide_revision(api, sesion, operador, productor):
+    parcela = _parcela(api, sesion, operador, productor)
+    analisis_completado(sesion, parcela, "whisp", resultado="low")
+    analisis_completado(sesion, parcela, "gfw", indicadores={"alertas_desde_2021": 0, "perdida_ha_total": 0})
+    tarjetas = api.get(f"/parcelas/{parcela.id}/analisis").json()
+    assert all(not a["requiere_revision"] for a in tarjetas)
 
 
 def test_respuesta_que_no_se_puede_interpretar(
@@ -312,6 +321,19 @@ PROHIBIDAS = re.compile(
 )
 
 
+def _sin_leyenda_del_dop(texto: str) -> str:
+    """La leyenda que la Parte 5 manda poner en el DOP niega serlo ("No es una constancia ni un
+    certificado"): es la única excepción, y solo con su texto exacto."""
+    from app.services.dops import LEYENDA
+
+    # En el código fuente la leyenda va partida en tres literales; en el PDF, entera.
+    primero = LEYENDA.index("emitirse.")
+    ultimo = LEYENDA.index("2023/1115")
+    for parte in (LEYENDA[:primero], LEYENDA[primero:ultimo], LEYENDA[ultimo:]):
+        texto = texto.replace(f'"{parte}"', "")
+    return texto.replace(LEYENDA, "")
+
+
 def test_ninguna_frase_prohibida_en_el_codigo():
     archivos = [
         *(RAIZ / "frontend").rglob("*.js"),
@@ -322,7 +344,7 @@ def test_ninguna_frase_prohibida_en_el_codigo():
     encontradas = [
         f"{a.relative_to(RAIZ)}: {m.group(0)}"
         for a in archivos
-        for m in PROHIBIDAS.finditer(a.read_text(encoding="utf-8", errors="ignore"))
+        for m in PROHIBIDAS.finditer(_sin_leyenda_del_dop(a.read_text(encoding="utf-8", errors="ignore")))
     ]
     assert encontradas == []
 

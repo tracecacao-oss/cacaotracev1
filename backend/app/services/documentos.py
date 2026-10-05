@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.catalogos import documentos_legales
 from app.contexto import Contexto
 from app.errores import error_api, no_encontrado
-from app.models import Afiliacion, AnalisisCobertura, Documento, Parcela, Perfil, VisitaCampo
+from app.models import Afiliacion, AnalisisCobertura, Documento, Dop, Parcela, Perfil, Tanda, VisitaCampo
 from app.services.auditoria import registrar_auditoria
 from app.services.geometria import ErrorArchivo
 from app.storage import (
@@ -36,6 +36,8 @@ TIPOS_POR_ENTIDAD = {
     "parcela": ("sustento_midagri", "archivo_geometria", *documentos_legales.CODIGOS),
     "visita": ("foto_visita",),
     "analisis": ("respuesta_analisis",),
+    "tanda": ("guia_remision",),
+    "dop": ("dop_pdf",),
 }
 NOMBRES_TIPO = {
     "dni": "copia del DNI",
@@ -44,10 +46,12 @@ NOMBRES_TIPO = {
     "archivo_geometria": "archivo de geometría",
     "foto_visita": "foto de la visita",
     "respuesta_analisis": "respuesta completa del análisis",
+    "guia_remision": "guía de remisión",
+    "dop_pdf": "PDF del DOP",
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
 }
 # Los genera el sistema o forman parte de un registro que no se edita: no se anulan a mano.
-NO_ANULABLES = ("respuesta_analisis", "foto_visita")
+NO_ANULABLES = ("respuesta_analisis", "foto_visita", "dop_pdf")
 
 
 @dataclass(frozen=True)
@@ -202,6 +206,10 @@ def _parcela_del_documento(sesion: Session, documento: Documento) -> uuid.UUID |
         return sesion.scalar(
             select(AnalisisCobertura.parcela_id).where(AnalisisCobertura.id == documento.entidad_id)
         )
+    if documento.entidad == "tanda":
+        return sesion.scalar(select(Tanda.parcela_id).where(Tanda.id == documento.entidad_id))
+    if documento.entidad == "dop":
+        return sesion.scalar(select(Dop.parcela_id).where(Dop.id == documento.entidad_id))
     return None
 
 
@@ -254,7 +262,12 @@ def anular(contexto: Contexto, documento_id: uuid.UUID, motivo: str) -> Document
         raise error_api(
             400, "documento_no_anulable", f"La {NOMBRES_TIPO[documento.tipo]} no se anula a mano."
         )
-    parcela_id = _parcela_del_documento(contexto.sesion, documento)
+    if documento.entidad == "tanda":
+        # La guía de una tanda validada respalda su DOP: ya no se anula.
+        tanda = contexto.sesion.get(Tanda, documento.entidad_id)
+        if tanda.estado not in ("registrada", "observada"):
+            raise error_api(400, "tanda_cerrada", "La tanda ya está validada o anulada: su guía no se anula.")
+    parcela_id = _parcela_del_documento(contexto.sesion, documento) if documento.entidad != "tanda" else None
     if parcela_id is not None:
         from app.services.expediente import no_excluida  # evita importación circular
 

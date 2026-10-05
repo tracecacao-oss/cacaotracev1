@@ -134,3 +134,73 @@ export function hectareas(valor) {
   if (valor === null || valor === undefined) return "—";
   return `${Number(valor).toLocaleString("es-PE", { maximumFractionDigits: 4 })} ha`;
 }
+
+// ---------- Parte 5: recepción de la tanda y DOP ----------
+
+export const ESTADOS_TANDA = {
+  registrada: ["info", "Registrada"],
+  observada: ["warn", "Observada"],
+  validada: ["ok", "Validada"],
+  anulada: ["", "Anulada"],
+};
+
+export function insigniaTanda(estadoTanda) {
+  const [clase, texto] = ESTADOS_TANDA[estadoTanda] ?? ["", estadoTanda];
+  return h("span", { class: `badge ${clase}` }, h("span", { class: "dot" }), texto);
+}
+
+export function insigniaDop(estadoDop) {
+  return estadoDop === "vigente"
+    ? h("span", { class: "badge ok" }, h("span", { class: "dot" }), "DOP vigente")
+    : h("span", { class: "badge bad" }, h("span", { class: "dot" }), "DOP anulado");
+}
+
+export const REQUISITOS_TANDA = {
+  parcela_habilitada: "Parcela habilitada",
+  productor_afiliado: "Productor afiliado y con consentimiento",
+  datos_completos: "Pesaje y cosecha completos",
+  guia_completa: "Guía de remisión completa",
+  configuracion_lista: "Tope de kilos por hectárea configurado",
+};
+
+export const ALERTAS_TANDA = {
+  volumen_acumulado_excede_tope: "El volumen de la parcela en 365 días supera el tope por hectárea",
+  dias_cosecha_entrega_altos: "Pasaron más días de los configurados entre la cosecha y la entrega",
+  peso_difiere_de_guia: "El peso de la guía difiere del peso en balanza más que la tolerancia",
+  guia_usada_por_otro_productor: "La misma guía aparece en una tanda de otro productor",
+  parcela_con_alertas: "La parcela está habilitada pero tiene alertas vigentes",
+};
+
+export function insigniaAlertaTanda(codigo) {
+  return h("span", { class: "badge warn", title: ALERTAS_TANDA[codigo] }, h("span", { class: "dot" }), ALERTAS_TANDA[codigo] ?? codigo);
+}
+
+// El mismo catálogo que backend/app/catalogos/variedades.py.
+export const VARIEDADES = [
+  ["ccn_51", "CCN-51"],
+  ["ics_95", "ICS-95"],
+  ["imc_67", "IMC-67"],
+  ["tsh_565", "TSH-565"],
+  ["trinitario", "Trinitario"],
+  ["chuncho", "Chuncho"],
+  ["sin_variedad", "Sin variedad específica"],
+  ["otra", "Otra"],
+];
+
+export const TIPOS_LUGAR = [
+  ["cancha_acopio", "Cancha de acopio"],
+  ["planta", "Planta"],
+  ["almacen", "Almacén"],
+  ["otro", "Otro"],
+];
+
+export const PRODUCTO = { baba: "Cacao en baba", seco: "Cacao seco" };
+
+TIPOS_DOCUMENTO.guia_remision = "Guía de remisión";
+TIPOS_DOCUMENTO.dop_pdf = "PDF del DOP";
+
+/** Pesos siempre con dos decimales y su unidad. */
+export function kilos(valor) {
+  if (valor === null || valor === undefined || valor === "") return "—";
+  return `${Number(valor).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
+}

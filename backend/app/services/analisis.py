@@ -328,6 +328,11 @@ def salidas(
                 error_detalle=a.error_detalle,
                 obsoleto=obsoleto(a, actual),
                 vigente=vigente(a, actual),
+                requiere_revision=bool(
+                    fuente
+                    and a.estado == "completado"
+                    and fuente.requiere_revision(a.resultado_fuente, a.indicadores or {})
+                ),
                 respuesta_documento_id=a.respuesta_documento_id if con_respuesta else None,
             )
         )

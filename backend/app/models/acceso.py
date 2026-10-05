@@ -43,6 +43,7 @@ class Cooperativa(ConFechas, Base):
     __table_args__ = (
         CheckConstraint("ruc ~ '^[0-9]{11}$'", name="ruc_11_digitos"),
         CheckConstraint(f"estado IN ({_en(ESTADOS_COOPERATIVA)})", name="estado_valido"),
+        CheckConstraint("codigo IS NULL OR codigo ~ '^[A-Z]{3,6}$'", name="codigo_3_a_6_letras"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -55,6 +56,9 @@ class Cooperativa(ConFechas, Base):
     estado: Mapped[str] = mapped_column(Text, server_default="activa")
     # Parte 10: la fija el superadmin al crear la cooperativa y no cambia después.
     es_demo: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    # Parte 5: forma parte del código de cada DOP. La fija el superadmin y no cambia después. Las
+    # cooperativas creadas antes de la Parte 5 la reciben una sola vez.
+    codigo: Mapped[str | None] = mapped_column(String(6), unique=True)
 
 
 class Productor(ConFechas, Base):

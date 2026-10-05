@@ -14,6 +14,7 @@ from app.auth import VerificadorJWT
 from app.auth_admin import ClienteAuthAdmin, crear_auth_admin
 from app.config import Settings, get_settings
 from app.contexto import CABECERA_COOPERATIVA
+from app.limite import LimitePorIp
 from app.routers import (
     auditoria,
     documentos,
@@ -23,6 +24,8 @@ from app.routers import (
     parcelas,
     plataforma,
     productores,
+    publico,
+    recepcion,
     sesion,
     superposiciones,
     ubigeos,
@@ -91,12 +94,13 @@ def crear_app(
     app.state.storage = storage or crear_storage(settings)
     app.state.fuentes = fuentes if fuentes is not None else registro.construir(settings)
     registro.fijar(app.state.fuentes)
+    app.state.limite_publico = LimitePorIp()
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.lista_cors,
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type", CABECERA_COOPERATIVA],
         max_age=600,
     )
@@ -144,6 +148,8 @@ def crear_app(
         auditoria,
         ubigeos,
         habilitacion,
+        recepcion,
+        publico,
     ):
         app.include_router(modulo.router)
     return app

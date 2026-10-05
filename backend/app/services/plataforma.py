@@ -71,6 +71,11 @@ def obtener(contexto: Contexto, cooperativa_id: uuid.UUID) -> CooperativaSalida:
     return _salida(*fila)
 
 
+def _comprobar_codigo_libre(contexto: Contexto, codigo: str) -> None:
+    if contexto.sesion.scalar(select(Cooperativa.id).where(Cooperativa.codigo == codigo)) is not None:
+        raise error_api(409, "codigo_en_uso", "Ya existe una cooperativa con ese código.")
+
+
 def _comprobar_ruc_libre(contexto: Contexto, ruc: str, excepto: uuid.UUID | None = None) -> None:
     consulta = select(Cooperativa.id).where(Cooperativa.ruc == ruc)
     if excepto:
@@ -90,6 +95,7 @@ def _datos_administrador(datos: AdministradorNuevo) -> dict:
 
 def crear(contexto: Contexto, auth: ClienteAuthAdmin, datos: CooperativaNueva):
     _comprobar_ruc_libre(contexto, datos.ruc)
+    _comprobar_codigo_libre(contexto, datos.codigo)
     cuentas.comprobar_correo_libre(contexto.sesion, datos.administrador.correo)
 
     valores = datos.model_dump(exclude={"administrador"})
@@ -123,6 +129,15 @@ def editar(contexto: Contexto, cooperativa_id: uuid.UUID, datos: CooperativaCamb
     nuevo_estado = valores.pop("estado", None)
     if "ruc" in valores:
         _comprobar_ruc_libre(contexto, valores["ruc"], excepto=cooperativa.id)
+    if valores.get("codigo") is not None and valores["codigo"] != cooperativa.codigo:
+        # El código forma parte de cada DOP: se fija una sola vez y no cambia después.
+        if cooperativa.codigo:
+            raise error_api(
+                400, "codigo_inmutable", "El código de la cooperativa ya está fijado y no cambia."
+            )
+        _comprobar_codigo_libre(contexto, valores["codigo"])
+    elif "codigo" in valores:
+        valores.pop("codigo")
     # Los campos obligatorios no se vacían con null.
     valores = {k: v for k, v in valores.items() if v is not None or k == "nombre_comercial"}
     ubigeo.normalizar(valores, cooperativa)

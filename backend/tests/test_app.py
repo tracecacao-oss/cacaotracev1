@@ -22,6 +22,22 @@ def test_cors_permite_origen_configurado(cliente):
     assert respuesta.headers.get("access-control-allow-origin") == "https://cacaotrace.pages.dev"
 
 
+def test_cors_permite_todos_los_metodos_de_la_api(cliente):
+    # PUT /configuracion (Parte 5) falló en el navegador porque el preflight no admitía PUT.
+    metodos = {
+        metodo
+        for ruta in cliente.app.routes
+        for metodo in getattr(ruta, "methods", set())
+        if metodo not in ("HEAD", "OPTIONS")
+    }
+    for metodo in metodos:
+        respuesta = cliente.options(
+            "/configuracion",
+            headers={"Origin": "https://cacaotrace.pages.dev", "Access-Control-Request-Method": metodo},
+        )
+        assert respuesta.status_code == 200, metodo
+
+
 def test_cors_no_permite_origen_ajeno(cliente):
     respuesta = _preflight(cliente, "https://sitio-ajeno.com")
     assert "access-control-allow-origin" not in respuesta.headers

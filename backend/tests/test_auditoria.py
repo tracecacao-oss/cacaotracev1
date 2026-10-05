@@ -43,6 +43,7 @@ def test_cada_accion_auditable_crea_su_fila_sin_contrasenas(api, sesion, auth_fa
         "/admin/cooperativas",
         json={
             "razon_social": "Coop Auditada",
+            "codigo": "CAU",
             "ruc": "20999999902",
             "departamento": "SAN MARTIN",
             "provincia": "PICOTA",
