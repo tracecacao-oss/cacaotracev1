@@ -1942,7 +1942,7 @@ Se suman a las pruebas del análisis y de las visitas listadas más arriba.
 ### Decisiones pendientes del equipo
 
 - [x] Crear las claves de Whisp y GFW. Creadas y cargadas en Render el 2026-10-05.
-- [ ] Guardar una respuesta real de cada fuente para las pruebas.
+- [x] Guardar una respuesta real de cada fuente para las pruebas. Guardadas el 2026-10-05 en `backend/tests/datos/whisp_respuesta_real.json` y `gfw_respuesta_real.json`, de una parcela ficticia en producción.
 - [ ] Confirmar el recorte de fuentes: Geobosques, GeoSERFOR y JRC como capas visuales; Sentinel, Hansen y MapBiomas fuera de la primera versión.
 - [x] Definir qué documento concreto se pide como sustento de SUNAFIL para un productor. Definido el 2026-10-05; ver "Los 7 documentos".
 - [x] Confirmar qué tipos de documento tienen registro público consultable. Confirmado el 2026-10-05 con fuentes oficiales.
