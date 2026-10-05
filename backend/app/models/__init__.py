@@ -55,8 +55,22 @@ from app.models.padron import (  # noqa: E402
     Parcela,
     Superposicion,
 )
+from app.models.recepcion import (  # noqa: E402
+    ConfiguracionCooperativa,
+    Correlativo,
+    DecisionTanda,
+    Dop,
+    Lugar,
+    Tanda,
+)
 
 __all__ = [
+    "ConfiguracionCooperativa",
+    "Correlativo",
+    "DecisionTanda",
+    "Dop",
+    "Lugar",
+    "Tanda",
     "ESTADOS_HABILITACION",
     "ESTADOS_MIDAGRI",
     "TIPOS_DOCUMENTO",

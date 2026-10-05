@@ -10,6 +10,7 @@ from tests import factorias
 def _nueva(ruc="20999999901", correo="admin.nueva@prueba.test", **cambios):
     return {
         "razon_social": "Coop Nueva Prueba",
+        "codigo": "CNP",
         "ruc": ruc,
         "departamento": "SAN MARTIN",
         "provincia": "PICOTA",

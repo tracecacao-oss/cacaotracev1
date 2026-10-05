@@ -312,6 +312,19 @@ PROHIBIDAS = re.compile(
 )
 
 
+def _sin_leyenda_del_dop(texto: str) -> str:
+    """La leyenda que la Parte 5 manda poner en el DOP niega serlo ("No es una constancia ni un
+    certificado"): es la única excepción, y solo con su texto exacto."""
+    from app.services.dops import LEYENDA
+
+    # En el código fuente la leyenda va partida en tres literales; en el PDF, entera.
+    primero = LEYENDA.index("emitirse.")
+    ultimo = LEYENDA.index("2023/1115")
+    for parte in (LEYENDA[:primero], LEYENDA[primero:ultimo], LEYENDA[ultimo:]):
+        texto = texto.replace(f'"{parte}"', "")
+    return texto.replace(LEYENDA, "")
+
+
 def test_ninguna_frase_prohibida_en_el_codigo():
     archivos = [
         *(RAIZ / "frontend").rglob("*.js"),
@@ -322,7 +335,7 @@ def test_ninguna_frase_prohibida_en_el_codigo():
     encontradas = [
         f"{a.relative_to(RAIZ)}: {m.group(0)}"
         for a in archivos
-        for m in PROHIBIDAS.finditer(a.read_text(encoding="utf-8", errors="ignore"))
+        for m in PROHIBIDAS.finditer(_sin_leyenda_del_dop(a.read_text(encoding="utf-8", errors="ignore")))
     ]
     assert encontradas == []
 

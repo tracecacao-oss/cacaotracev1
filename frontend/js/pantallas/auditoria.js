@@ -16,6 +16,10 @@ const ACCIONES = [
   ["analisis.", "Análisis de cobertura"],
   ["visita.", "Visitas de campo"],
   ["exencion.", "Exenciones"],
+  ["configuracion.", "Configuración"],
+  ["lugar.", "Lugares"],
+  ["tanda.", "Tandas"],
+  ["dop.", "DOP"],
   ["superadmin.", "Consultas de soporte"],
 ];
 
@@ -54,6 +58,16 @@ const TEXTO_ACCION = {
   "parcela.observar": "Pasó una parcela a observada (sistema)",
   "parcela.excluir": "Excluyó una parcela",
   "superadmin.consultar_cooperativa": "Consultó la cooperativa (soporte)",
+  "configuracion.cambiar": "Cambió la configuración de la recepción",
+  "lugar.crear": "Creó un lugar",
+  "lugar.editar": "Editó un lugar",
+  "tanda.registrar": "Registró una tanda",
+  "tanda.editar": "Corrigió una tanda",
+  "tanda.validar": "Validó una tanda",
+  "tanda.observar": "Observó una tanda",
+  "tanda.anular": "Anuló una tanda",
+  "dop.emitir": "Emitió un DOP",
+  "dop.anular": "Anuló un DOP",
 };
 
 function resumen(detalle) {

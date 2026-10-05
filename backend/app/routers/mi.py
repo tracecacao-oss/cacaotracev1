@@ -17,13 +17,14 @@ from app.schemas.habilitacion import (
     HabilitacionSalida,
     VisitaSalida,
 )
-from app.schemas.parcelas import DocumentoSalida, ParcelaCambios, ParcelaDetalle, ParcelaSalida
+from app.schemas.parcelas import DocumentoSalida, ParcelaCambios, ParcelaDetalle, ParcelaSalida, UrlDescarga
 from app.schemas.productores import MisCambios, ProductorDetalle
-from app.services import analisis, documentos, expediente, habilitacion, parcelas, visitas
+from app.schemas.recepcion import DopDetalle, DopSalida, TandaSalida
+from app.services import analisis, documentos, dops, expediente, habilitacion, parcelas, tandas, visitas
 from app.services import productores as servicio
 from app.services.fuentes import registro
 from app.services.productores import documento_salida
-from app.storage import ClienteStorage, obtener_storage
+from app.storage import VIGENCIA_URL_FIRMADA, ClienteStorage, obtener_storage
 
 router = APIRouter(prefix="/mi", tags=["productor"])
 Productor = Annotated[Contexto, Depends(requiere_rol("productor"))]
@@ -136,3 +137,26 @@ def expediente_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
 @router.get("/parcelas/{parcela_id}/habilitacion", response_model=HabilitacionSalida)
 def habilitacion_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
     return habilitacion.obtener(contexto, parcelas.parcela_visible(contexto, parcela_id))
+
+
+# ---------- Parte 5: mis entregas y mis DOP, solo lectura ----------
+
+
+@router.get("/tandas", response_model=list[TandaSalida])
+def mis_tandas(contexto: Productor):
+    return tandas.listar(contexto)
+
+
+@router.get("/dops", response_model=list[DopSalida])
+def mis_dops(contexto: Productor):
+    return dops.listar(contexto)
+
+
+@router.get("/dops/{dop_id}", response_model=DopDetalle)
+def mi_dop(dop_id: uuid.UUID, contexto: Productor):
+    return dops.obtener(contexto, dop_id)
+
+
+@router.get("/dops/{dop_id}/pdf", response_model=UrlDescarga)
+def pdf_de_mi_dop(dop_id: uuid.UUID, contexto: Productor, storage: Storage):
+    return UrlDescarga(url=dops.url_pdf(contexto, storage, dop_id), vence_en_segundos=VIGENCIA_URL_FIRMADA)

@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     mapbiomas_anio_inicial: int = Field(2015, ge=1985)
     mapbiomas_anio_final: int = Field(2024, ge=1985)
     umbral_bosque_2020_pct: float = Field(10, gt=0, le=100)
+    # Parte 5: el código QR del DOP lleva a la verificación pública de esta interfaz.
+    url_interfaz: str = "https://cacaotrace.pages.dev"
 
     @field_validator(
         "supabase_secret_key", "supabase_jwt_secret", "whisp_api_key", "gfw_api_key", mode="before"

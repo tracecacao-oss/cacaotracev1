@@ -41,6 +41,19 @@ function abrirEdicion(c, alGuardar) {
       provincia,
     ),
     distrito,
+    // Solo las cooperativas creadas antes de la Parte 5 llegan sin código; se fija una sola vez.
+    !c.codigo &&
+      campo({
+        etiqueta: "Código de la cooperativa",
+        name: "codigo",
+        pattern: "[A-Za-z]{3,6}",
+        minlength: 3,
+        maxlength: 6,
+        title: "De 3 a 6 letras",
+        class: "input mono",
+        autocomplete: "off",
+        ayuda: "De 3 a 6 letras. Va en el código de cada DOP y no cambia después.",
+      }),
   );
   const { cerrar } = abrirModal({
     titulo: "Editar cooperativa",
@@ -50,6 +63,7 @@ function abrirEdicion(c, alGuardar) {
   enviarCon(formulario, boton, async (datos) => {
     const cuerpo = sinVacios(datos);
     if (!datos.nombre_comercial) cuerpo.nombre_comercial = null;
+    if (cuerpo.codigo) cuerpo.codigo = cuerpo.codigo.trim().toUpperCase();
     await llamarApi(`/admin/cooperativas/${c.id}`, { metodo: "PATCH", cuerpo });
     cerrar();
     toast("Cooperativa actualizada.");
@@ -183,6 +197,12 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
           { etiqueta: "Razón social", valor: c.razon_social },
           { etiqueta: "Nombre comercial", valor: c.nombre_comercial },
           { etiqueta: "RUC", valor: c.ruc, mono: true },
+          {
+            etiqueta: "Código de la cooperativa",
+            valor: c.codigo,
+            mono: true,
+            extra: !c.codigo && "Falta: sin código la cooperativa no recibe tandas. Fíjalo en Editar datos.",
+          },
           { etiqueta: "Ubicación", valor: `${c.distrito}, ${c.provincia}, ${c.departamento}` },
           { etiqueta: "Usuarios del personal", valor: String(c.usuarios), mono: true },
           { etiqueta: "Productores afiliados", valor: String(c.productores), mono: true },

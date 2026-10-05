@@ -155,6 +155,26 @@ persona del equipo corre `python scripts/muestras_cobertura.py` desde `backend/`
 cuando se las pide (no se guardan en ningún archivo). También sirve descargar, desde la pestaña
 Cobertura forestal de una parcela ficticia en producción, "Descargar la respuesta completa".
 
+## Recepción de la tanda y DOP
+
+- Antes de recibir tandas, cada cooperativa necesita su **código** (de 3 a 6 letras, va en cada DOP), su
+  **tope de kilos por hectárea** (Cooperativa → Configuración) y una **cancha de acopio** activa
+  (Cooperativa → Lugares). El código lo fija el superadministrador al crear la cooperativa o, para las
+  creadas antes, una sola vez en Plataforma → cooperativa → Editar datos.
+- El PDF del DOP se arma con **fpdf2** (solo Python, sin nada instalado en el sistema) y el código QR con
+  **segno**. Las tipografías Plus Jakarta Sans y JetBrains Mono (licencia OFL) están en
+  `backend/app/recursos/fuentes/`.
+- El código QR lleva a `{URL_INTERFAZ}/#/verificar/dop/{codigo}`, una página sin inicio de sesión que pide
+  `GET /publico/dops/{codigo}`: solo código, estado, fecha, huella y cooperativa, con un límite de 30
+  consultas por minuto por IP.
+- La huella es el SHA-256 del contenido sellado en forma canónica. Para recalcularla con el contenido
+  de `GET /dops/{id}`:
+
+  ```python
+  import hashlib, json
+  hashlib.sha256(json.dumps(contenido, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+  ```
+
 ## Deploy
 
 Cada merge a `main` se publica solo: Render reconstruye la API desde `render.yaml` y Cloudflare

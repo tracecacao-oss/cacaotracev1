@@ -4,20 +4,15 @@ import { rolEfectivo } from "../estado.js";
 import { h, vacio } from "../ui.js";
 
 const MODULOS = {
-  "#/lotes": ["Lotes y proceso", "Partes 5 y 6"],
   "#/trazabilidad": ["Trazabilidad", "Parte 7"],
   "#/exportacion": ["Exportación", "Partes 8 y 9"],
-  "#/cooperativa/configuracion": ["Configuración", "Partes 5 y 8"],
-  "#/mis-entregas": ["Mis entregas", "Parte 5"],
 };
 
 export default function pantallaVacia({ hash }) {
   const [titulo, parte] = MODULOS[hash] ?? ["Módulo", ""];
-  const configuracion = hash === "#/cooperativa/configuracion";
   return {
     titulo,
-    migas: configuracion ? [["Cooperativa", "#/cooperativa"], ["Configuración"]] : [[titulo]],
-    secciones: configuracion ? seccionesCooperativa() : null,
+    migas: [[titulo]],
     contenido: h(
       "section",
       { class: "panel" },
@@ -26,21 +21,17 @@ export default function pantallaVacia({ hash }) {
   };
 }
 
-/** Usuarios, Auditoría y Configuración son solo del administrador; el superadmin consulta las dos primeras. */
+/**
+ * Usuarios y Auditoría son del administrador (el superadmin los consulta). Configuración y Lugares los
+ * ve todo el personal; solo el administrador los cambia.
+ */
 export function seccionesCooperativa() {
-  const rol = rolEfectivo();
-  if (rol === "admin_cooperativa") {
-    return [
-      ["Usuarios", "#/cooperativa/usuarios"],
-      ["Auditoría", "#/cooperativa/auditoria"],
-      ["Configuración", "#/cooperativa/configuracion"],
-    ];
+  const comunes = [
+    ["Configuración", "#/cooperativa/configuracion"],
+    ["Lugares", "#/cooperativa/lugares"],
+  ];
+  if (["admin_cooperativa", "consulta"].includes(rolEfectivo())) {
+    return [["Usuarios", "#/cooperativa/usuarios"], ["Auditoría", "#/cooperativa/auditoria"], ...comunes];
   }
-  if (rol === "consulta") {
-    return [
-      ["Usuarios", "#/cooperativa/usuarios"],
-      ["Auditoría", "#/cooperativa/auditoria"],
-    ];
-  }
-  return [];
+  return comunes;
 }

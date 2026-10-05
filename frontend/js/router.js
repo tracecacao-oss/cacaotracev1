@@ -23,11 +23,17 @@ const RUTAS = [
   { patron: /^#\/productores\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/productor.js") },
   { patron: /^#\/productores\/([0-9a-f-]{36})\/parcelas\/nueva$/, roles: ["admin_cooperativa", "operador"], cargar: () => import("./pantallas/parcela-nueva.js") },
   { patron: /^#\/parcelas\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/parcela.js") },
-  { patron: /^#\/(lotes|trazabilidad|exportacion)$/, roles: PERSONAL, cargar: vacia },
+  { patron: /^#\/lotes(\/recepcion)?$/, roles: PERSONAL, cargar: () => import("./pantallas/recepcion.js") },
+  { patron: /^#\/lotes\/recepcion\/nueva$/, roles: ["admin_cooperativa", "operador"], cargar: () => import("./pantallas/tanda-nueva.js") },
+  { patron: /^#\/lotes\/dop$/, roles: PERSONAL, cargar: () => import("./pantallas/dops.js") },
+  { patron: /^#\/tandas\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/tanda.js") },
+  { patron: /^#\/dops\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/dop.js") },
+  { patron: /^#\/(trazabilidad|exportacion)$/, roles: PERSONAL, cargar: vacia },
   { patron: /^#\/cooperativa$/, roles: PERSONAL, cargar: () => import("./pantallas/cooperativa.js") },
   { patron: /^#\/cooperativa\/usuarios$/, roles: ["admin_cooperativa", "consulta"], cargar: () => import("./pantallas/usuarios.js") },
   { patron: /^#\/cooperativa\/auditoria$/, roles: ["admin_cooperativa", "consulta"], cargar: () => import("./pantallas/auditoria.js") },
-  { patron: /^#\/cooperativa\/configuracion$/, roles: ["admin_cooperativa"], cargar: vacia },
+  { patron: /^#\/cooperativa\/configuracion$/, roles: PERSONAL, cargar: () => import("./pantallas/configuracion.js") },
+  { patron: /^#\/cooperativa\/lugares$/, roles: PERSONAL, cargar: () => import("./pantallas/lugares.js") },
   { patron: /^#\/plataforma(\/cooperativas)?$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/cooperativas.js") },
   { patron: /^#\/plataforma\/superposiciones$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/superposiciones-plataforma.js") },
   { patron: /^#\/plataforma\/cooperativas\/([0-9a-f-]{36})$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/cooperativa-detalle.js") },
@@ -35,8 +41,11 @@ const RUTAS = [
   { patron: /^#\/mis-parcelas$/, roles: ["productor"], cargar: () => import("./pantallas/mis-parcelas.js") },
   { patron: /^#\/mis-parcelas\/nueva$/, roles: ["productor"], cargar: () => import("./pantallas/parcela-nueva.js") },
   { patron: /^#\/mis-parcelas\/([0-9a-f-]{36})$/, roles: ["productor"], cargar: () => import("./pantallas/parcela.js") },
-  { patron: /^#\/mis-entregas$/, roles: ["productor"], cargar: vacia },
+  { patron: /^#\/mis-entregas$/, roles: ["productor"], cargar: () => import("./pantallas/mis-entregas.js") },
 ];
+
+// Verificación pública del DOP: no pide sesión, no lleva barra lateral y no enlaza al resto.
+const VERIFICACION = { patron: /^#\/verificar\/dop\/([^/?#]{1,40})$/, cargar: () => import("./pantallas/verificar-dop.js") };
 
 const raiz = document.getElementById("app");
 let avisoIngreso = null;
@@ -90,6 +99,19 @@ export async function mostrar() {
   const miTurno = ++turno;
   const vigente = () => miTurno === turno;
   const hash = location.hash || "#/ingreso";
+
+  const publica = hash.match(VERIFICACION.patron);
+  if (publica) {
+    try {
+      const vista = await (await VERIFICACION.cargar()).default({ parametros: publica.slice(1) });
+      if (!vigente()) return;
+      document.title = vista.titulo ? `${vista.titulo} · CacaoTrace` : "CacaoTrace";
+      raiz.replaceChildren(vista.contenido);
+    } catch (error) {
+      if (vigente()) raiz.replaceChildren(pantallaDeError(error, mostrar));
+    }
+    return;
+  }
 
   const token = configurado ? await tokenActual() : null;
   if (!vigente()) return;
