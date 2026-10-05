@@ -2,7 +2,7 @@
 
 **Especificación:** `docs/especificacion.md` es la única fuente de verdad. Lo que no está ahí no se construye sin preguntar.
 
-**Parte en curso:** 3 — Productor y parcela.
+**Parte en curso:** 4 — Habilitación de la parcela. Antes de integrar Whisp y GFW, una persona del equipo crea las claves (`WHISP_API_KEY`, `GFW_API_KEY`, solo en Render) y guarda en `backend/tests/datos/` las respuestas reales de una parcela ficticia; Claude Code no inventa sus formatos.
 
 **Diseño:** la interfaz debe parecerse en su mayoría a `legacy/diseno/` (decisión del 2026-10-05): sus colores, tipografías, componentes y composición (barra superior con la ruta, inspector en las fichas, tarjetas, tablas, modo oscuro). Si choca con la especificación en navegación, nombres de módulos, una tarea por pantalla o un botón principal, manda la especificación. Del diseño nunca se copian textos, datos de ejemplo ni lógica.
 
@@ -62,4 +62,5 @@ La base `cacaotrace-db` de Render es del MVP anterior: no se usa y el equipo la 
 | --- | --- |
 | 1 Infraestructura y despliegue | Cerrada el 2026-10-04: diez criterios de aceptación verificados en producción |
 | 2 Acceso y base | Cerrada el 2026-10-05: criterios 1-11 probados por el equipo en producción; 12 (CI) con este cierre |
-| 3 Productor y parcela | En producción desde el 2026-10-05 (PR #7); criterios en prueba por el equipo. Decisiones del 2026-10-05: ubicación del catálogo INEI; "Código productor APP" = código en Agro Digital; huecos, 100 ha y umbral confirmados; se agregan carga masiva de productores, KMZ, Shapefile y listas de coordenadas (sin UTM ni GPX) |
+| 3 Productor y parcela | Cerrada el 2026-10-05: criterios 1-13 probados por el equipo en producción; CI en verde (PRs #7, #8 y #9). Decisiones del 2026-10-05: ubicación del catálogo INEI; "Código productor APP" = código en Agro Digital; huecos, 100 ha y umbral confirmados; carga masiva de productores, KMZ, Shapefile y listas de coordenadas (sin UTM ni GPX); la interfaz toma el aspecto de `legacy/diseno` |
+| 4 Habilitación de la parcela | Por empezar: faltan las claves de Whisp y GFW y sus respuestas de ejemplo |
