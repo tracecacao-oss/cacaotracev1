@@ -2501,3 +2501,26 @@ button.kpi[aria-pressed="true"] {
 .verif .linea {
   display: block;
 }
+.hallazgos {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.hallazgos ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.hallazgos ol b {
+  display: inline;
+  font-size: 13px;
+}
+.hallazgos p {
+  margin: 0;
+  color: var(--ink-2);
+}
+.hallazgos .hallazgos-accion {
+  font-weight: 600;
+  color: var(--ink);
+}

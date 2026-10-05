@@ -330,6 +330,13 @@ function fechasDe(fila) {
   return fila.vias.map((v, i) => h("span", { class: "sec" }, `${v}: ${dias[i]}`));
 }
 
+// La fecha de corte del Reglamento (UE) 2023/1115: lo que importa es si había bosque ese día y si
+// cambió desde el 1 de enero de 2021. Lo de 2020 o antes no cuenta como cambio.
+const CORTE = "31/12/2020";
+const ALERTAS_SATELITE = new Set(["gfw_integrated_alerts", "umd_glad_dist", "umd_glad_l", "umd_glad_s2", "wur_radd"]);
+const AREA_QUEMADA = new Set(["esa_firecci", "modis_fire"]);
+const VIA = { whisp: "Whisp", gfw: "GFW", mapbiomas: "MapBiomas" };
+
 function tablaDeFilas(filas) {
   return h(
     "div",
@@ -348,8 +355,8 @@ function tablaDeFilas(filas) {
             h("td", {}, f.nombre),
             h("td", {}, f.vias.join(" y ")),
             h("td", { class: "fecha" }, fechasDe(f)),
-            h("td", {}, medidas(f.al_2020), f.registra_bosque_2020 && insignia("warn", "Registra bosque en 2020")),
-            h("td", {}, medidas(f.despues_2020), f.registra_cambio && insignia("warn", "Registra cambios")),
+            h("td", {}, medidas(f.al_2020), f.registra_bosque_2020 && insignia("warn", `Bosque el ${CORTE}`)),
+            h("td", {}, medidas(f.despues_2020), f.registra_cambio && insignia("warn", "Cambios desde 2021")),
           ),
         ),
       ),
@@ -359,7 +366,7 @@ function tablaDeFilas(filas) {
 
 /**
  * Tabla de convergencia (adenda): una fila por conjunto de datos y una frase que solo cuenta. A la vista,
- * la frase y solo las filas que registran bosque en 2020 o cambios; la tabla completa queda plegada.
+ * la frase y solo las filas que registran algo; la tabla completa queda plegada.
  */
 function tablaConvergencia(tabla) {
   if (!tabla?.filas.length) return null;
@@ -369,10 +376,12 @@ function tablaConvergencia(tabla) {
     { class: "convergencia" },
     h("h4", {}, "Conjuntos de datos y las dos preguntas del Reglamento"),
     h("p", { class: "frase-conteo" }, tabla.frase),
-    marcadas.length > 0 && [
-      h("p", { class: "panel-sub" }, `Conjuntos que registran bosque en 2020 (desde el ${tabla.umbral_bosque_2020_pct} % del área de la parcela) o cambios después de 2020:`),
-      tablaDeFilas(marcadas),
-    ],
+    h(
+      "p",
+      { class: "panel-sub" },
+      `"Registran bosque en 2020" quiere decir que el mapa vio bosque en la parcela el ${CORTE}, la fecha de corte: es la foto de ese día, no una pérdida. Los cambios cuentan solo desde el 1 de enero de 2021.`,
+    ),
+    marcadas.length > 0 && tablaDeFilas(marcadas),
     h(
       "details",
       { class: "capas-detalle" },
@@ -380,29 +389,76 @@ function tablaConvergencia(tabla) {
       h(
         "p",
         { class: "panel-sub" },
-        `Un conjunto registra bosque en 2020 si su medida de bosque alcanza el ${tabla.umbral_bosque_2020_pct} % del área de la parcela, y registra cambios si alguna de sus medidas posteriores a 2020 es mayor que cero.`,
+        `Un conjunto registra bosque en 2020 si su medida de bosque alcanza el ${tabla.umbral_bosque_2020_pct} % del área de la parcela, y registra cambios si alguna de sus medidas desde 2021 es mayor que cero.`,
       ),
       tablaDeFilas(tabla.filas),
     ),
   );
 }
 
-/** Una línea arriba de las tarjetas: qué fuentes y conjuntos piden revisión, o que ninguno lo pide. */
-function resumenCobertura(codigos, analisis, tabla) {
+const numeros = (lista) => lista.filter((m) => !m.serie && typeof m.valor === "number");
+
+/** Una cifra en palabras: hectáreas con su parte de la parcela, porcentaje o número de alertas. */
+function cifra(m, areaHa) {
+  if (m.unidad === "alertas") return m.valor === 1 ? "1 alerta" : `${numero(m.valor)} alertas`;
+  if (m.unidad === "ha") {
+    // La fuente mide sobre su propia lectura del polígono: si supera el área calculada, no se da la parte.
+    const pct = areaHa ? Math.round((m.valor / areaHa) * 100) : null;
+    const parte = pct != null && pct <= 100 ? ` (${pct} % de la parcela)` : "";
+    return `${numero(m.valor)} ha${parte}`;
+  }
+  if (m.unidad === "%") return `${numero(m.valor)} % de la parcela`;
+  return conUnidad(m.valor, m.unidad);
+}
+
+/** Lo que hay que revisar, conjunto por conjunto, en palabras. Cada punto dice qué vio, cuánto y cuándo. */
+function hallazgos(ultimos, tabla) {
+  const areaHa = tabla?.area_ha;
+  const puntos = [];
+  const whisp = ultimos.find((a) => a.fuente === "whisp" && a.estado === "completado" && a.requiere_revision && !a.error_detalle);
+  if (whisp) {
+    const riesgo = (whisp.resultado_texto ?? "").replace(/^Whisp: /, "") || "sin valor";
+    puntos.push([FUENTES.whisp, `Calificó el riesgo para cultivos permanentes, como el cacao, como "${riesgo}". Cuando no da "riesgo bajo", pide que alguien mire la parcela.`]);
+  }
+  for (const f of tabla?.filas ?? []) {
+    if (f.registra_bosque_2020) {
+      const bosque = numeros(f.al_2020 ?? []).filter((m) => m.mide_bosque);
+      const mayor = bosque.sort((a, b) => (b.unidad === a.unidad ? b.valor - a.valor : 0))[0];
+      puntos.push([f.nombre, `Vio bosque o árboles el ${CORTE}${mayor ? `: ${cifra(mayor, areaHa)}` : ""}.`]);
+    }
+    if (f.registra_cambio) {
+      const cambios = numeros(f.despues_2020 ?? []).filter((m) => m.valor > 0);
+      const que = ALERTAS_SATELITE.has(f.conjunto)
+        ? "Son avisos del satélite de que la vegetación cambió; no dicen la causa."
+        : AREA_QUEMADA.has(f.conjunto)
+          ? "Marca área quemada."
+          : "Marca pérdida o cambio de la cobertura.";
+      puntos.push([f.nombre, `Registró ${cambios.map((m) => cifra(m, areaHa)).join(" y ") || "cambios"} desde el 1 de enero de 2021. ${que}`]);
+    }
+  }
+  for (const a of ultimos) {
+    if (a.estado === "error") puntos.push([FUENTES[a.fuente], 'La consulta falló. Prueba con "Repetir análisis".']);
+    else if (a.estado === "completado" && a.error_detalle) puntos.push([FUENTES[a.fuente], "Su respuesta no trae las cifras esperadas; quedó guardada para revisarla."]);
+  }
+  return puntos;
+}
+
+/** Arriba de las tarjetas: qué revisar, en palabras, o que nada pide revisión. */
+function resumenCobertura(codigos, analisis, tabla, ctx) {
   const ultimos = codigos.map((c) => analisis.find((a) => a.fuente === c)).filter(Boolean);
   if (!ultimos.length) return null;
   const enCurso = ultimos.filter((a) => a.estado === "pendiente" || a.estado === "en_proceso");
-  const conError = ultimos.filter((a) => a.estado === "error");
-  const piden = ultimos.filter((a) => a.estado === "completado" && a.requiere_revision);
-  const conjuntos = (tabla?.filas ?? []).filter((f) => f.registra_bosque_2020 || f.registra_cambio);
-  const nombres = (lista) => lista.map((a) => FUENTES[a.fuente]).join(", ");
-  const partes = [
-    piden.length > 0 && `Piden revisión en campo: ${nombres(piden)}.`,
-    conjuntos.length > 0 && `${conjuntos.length === 1 ? "1 conjunto de datos registra" : `${conjuntos.length} conjuntos de datos registran`} bosque en 2020 o cambios después de 2020.`,
-    conError.length > 0 && `Falló: ${nombres(conError)}.`,
-    enCurso.length > 0 && `En proceso: ${nombres(enCurso)}.`,
-  ].filter(Boolean);
-  if (!partes.length) {
+  const puntos = hallazgos(ultimos, tabla);
+  // Una fuente que pide revisión sin cifra en la tabla (por ejemplo, una cifra que no llegó).
+  for (const a of ultimos) {
+    if (a.estado === "completado" && a.requiere_revision && !puntos.some(([t]) => t === FUENTES[a.fuente]) && a.fuente !== "whisp" && !(tabla?.filas ?? []).some((f) => (f.registra_cambio || f.registra_bosque_2020) && f.vias.includes(VIA[a.fuente]))) {
+      puntos.push([FUENTES[a.fuente], "Pide revisión: mira el detalle en su tarjeta."]);
+    }
+  }
+  if (!puntos.length) {
+    if (enCurso.length) {
+      return h("div", { class: "verif neutro" }, icono("clock"), h("div", {}, h("b", {}, "Análisis en curso"), h("span", {}, `Consultando a ${enCurso.map((a) => FUENTES[a.fuente]).join(", ")}.`)));
+    }
     return h(
       "div",
       { class: "verif" },
@@ -410,12 +466,33 @@ function resumenCobertura(codigos, analisis, tabla) {
       h("div", {}, h("b", {}, "Ninguna fuente ni conjunto de datos pide revisión en campo"), h("span", {}, "El detalle de cada fuente queda plegado en su tarjeta.")),
     );
   }
-  const atencion = piden.length > 0 || conjuntos.length > 0 || conError.length > 0;
+  const hayBosque = (tabla?.filas ?? []).some((f) => f.registra_bosque_2020);
+  const hayCambios = (tabla?.filas ?? []).some((f) => f.registra_cambio);
   return h(
     "div",
-    { class: `verif ${atencion ? "warn" : "neutro"}` },
-    icono(atencion ? "alert" : "clock"),
-    h("div", {}, h("b", {}, atencion ? "Hay algo que revisar" : "Análisis en curso"), partes.map((t) => h("span", { class: "linea" }, t))),
+    { class: "verif warn" },
+    icono("alert"),
+    h(
+      "div",
+      { class: "hallazgos" },
+      h("b", {}, "Qué revisar en esta parcela"),
+      h("ol", {}, puntos.map(([titulo, texto]) => h("li", {}, h("b", {}, `${titulo}: `), texto))),
+      hayBosque &&
+        h(
+          "p",
+          {},
+          `Por qué importa el ${CORTE}: es la fecha de corte del Reglamento (UE) 2023/1115. Que hubiera bosque ese día no es una pérdida; es la foto de cómo estaba la parcela. Si ese día había bosque y hoy hay cacao, hay que confirmar en campo que no se taló después. El cacao bajo sombra suele verse como bosque desde el satélite.`,
+        ),
+      hayCambios && h("p", {}, "Los cambios cuentan solo desde el 1 de enero de 2021, después de la fecha de corte; lo ocurrido en 2020 o antes no se cuenta aquí."),
+      enCurso.length > 0 && h("p", {}, `Todavía se consulta a ${enCurso.map((a) => FUENTES[a.fuente]).join(", ")}.`),
+      h(
+        "p",
+        { class: "hallazgos-accion" },
+        ctx.delProductor
+          ? "La cooperativa revisará tu parcela en campo."
+          : 'Qué hacer: un técnico visita la parcela y registra lo que ve en la pestaña Visitas (motivo "Una fuente pidió revisión"). Con esa visita, el administrador decide en Habilitación.',
+      ),
+    ),
   );
 }
 
@@ -460,7 +537,7 @@ export async function pestanaCobertura(ctx) {
     sub: "Lo que dice cada fuente sobre la parcela, con su fecha y su versión. CacaoTrace no emite veredictos ni combina fuentes.",
     acciones: repetir,
     contenido: [
-      resumenCobertura(codigos, analisis, tabla),
+      resumenCobertura(codigos, analisis, tabla, ctx),
       h("div", { class: "fuentes" }, codigos.map((c) => tarjetaFuente(c, analisis, configurada[c], ctx))),
       tablaConvergencia(tabla),
       analisis.length > 0 &&
