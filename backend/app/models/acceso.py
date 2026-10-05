@@ -65,6 +65,8 @@ class Productor(ConFechas, Base):
             f"consentimiento_origen IS NULL OR consentimiento_origen IN ({_en(ORIGENES_CONSENTIMIENTO)})",
             name="consentimiento_origen_valido",
         ),
+        CheckConstraint("ruc IS NULL OR ruc ~ '^[0-9]{11}$'", name="ruc_11_digitos"),
+        CheckConstraint("ppa_registrado OR ppa_codigo IS NULL", name="ppa_codigo_solo_si_registrado"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -75,6 +77,13 @@ class Productor(ConFechas, Base):
     consentimiento_datos_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     consentimiento_origen: Mapped[str | None] = mapped_column(Text)
     es_demo: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    # Parte 3: ficha completa. La dirección es obligatoria en la API; nula solo en altas de la Parte 2.
+    ruc: Mapped[str | None] = mapped_column(String(11))
+    direccion_postal: Mapped[str | None] = mapped_column(Text)
+    correo_contacto: Mapped[str | None] = mapped_column(Text)
+    ppa_registrado: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    ppa_codigo: Mapped[str | None] = mapped_column(Text)
+    codigo_agrodigital: Mapped[str | None] = mapped_column(Text)
 
 
 class Perfil(ConFechas, Base):

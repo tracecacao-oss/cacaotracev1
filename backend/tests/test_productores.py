@@ -20,7 +20,13 @@ def operador(sesion, coop):
 
 
 def _nuevo(dni="90000001", **cambios):
-    return {"dni": dni, "nombres": "Demo", "apellidos": "Uno", **cambios}
+    return {
+        "dni": dni,
+        "nombres": "Demo",
+        "apellidos": "Uno",
+        "direccion_postal": "Caserío Demo s/n",
+        **cambios,
+    }
 
 
 def _codigo(respuesta):

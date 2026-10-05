@@ -180,7 +180,8 @@ def test_superadmin_sin_cooperativa_elegida(api, superadmin):
 def test_superadmin_no_escribe_datos_de_negocio(api, sesion, superadmin):
     coop = factorias.cooperativa(sesion)
     respuesta = api.como(superadmin, cooperativa_id=coop.id).post(
-        "/productores", json={"dni": "90000001", "nombres": "Demo", "apellidos": "Uno"}
+        "/productores",
+        json={"dni": "90000001", "nombres": "Demo", "apellidos": "Uno", "direccion_postal": "Caserío Demo"},
     )
     assert respuesta.status_code == 403
 

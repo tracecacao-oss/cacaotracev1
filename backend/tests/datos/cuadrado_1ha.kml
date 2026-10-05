@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>Parcela Demo Uno</name>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>-76.5500000000,-6.9500000000,250 -76.5490950795,-6.9500000000,250 -76.5490950795,-6.9490957637,250 -76.5500000000,-6.9490957637,250 -76.5500000000,-6.9500000000,250</coordinates></LinearRing></outerBoundaryIs></Polygon>
+    </Placemark>
+  </Document>
+</kml>

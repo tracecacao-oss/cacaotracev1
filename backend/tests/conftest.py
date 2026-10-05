@@ -35,6 +35,7 @@ from app.config import get_settings  # noqa: E402
 from app.contexto import CABECERA_COOPERATIVA  # noqa: E402
 from app.db import engine, obtener_sesion  # noqa: E402
 from app.main import crear_app  # noqa: E402
+from app.storage import ClienteStorage  # noqa: E402
 
 KID = "clave-prueba"
 URL_JWKS = "https://proyecto-prueba.supabase.co/auth/v1/.well-known/jwks.json"
@@ -115,6 +116,10 @@ class AuthFalso(ClienteAuthAdmin):
         self._registrar("cambiar_clave", usuario_id)
         self.usuarios.setdefault(usuario_id, {"correo": None, "bloqueado": False})["clave"] = clave
 
+    def cambiar_correo(self, usuario_id, correo):
+        self._registrar("cambiar_correo", usuario_id, correo)
+        self.usuarios[usuario_id]["correo"] = correo
+
     def bloquear(self, usuario_id):
         self._registrar("bloquear", usuario_id)
         self.usuarios.setdefault(usuario_id, {"correo": None})["bloqueado"] = True
@@ -133,9 +138,33 @@ def auth_falso() -> AuthFalso:
     return AuthFalso()
 
 
+class StorageFalso(ClienteStorage):
+    """Supabase Storage simulado: guarda los archivos en memoria."""
+
+    def __init__(self):
+        self.archivos: dict[str, bytes] = {}
+        self.borrados: list[str] = []
+        self.bucket = "documentos"
+
+    def subir(self, ruta, contenido, tipo_mime):
+        self.archivos[ruta] = contenido
+
+    def url_firmada(self, ruta, segundos=300):
+        return f"https://storage.prueba/firmada/{ruta}?vence={segundos}"
+
+    def borrar(self, ruta):
+        self.borrados.append(ruta)
+        self.archivos.pop(ruta, None)
+
+
 @pytest.fixture
-def cliente(verificador, auth_falso) -> TestClient:
-    app = crear_app(get_settings(), verificador=verificador, auth_admin=auth_falso)
+def storage_falso() -> StorageFalso:
+    return StorageFalso()
+
+
+@pytest.fixture
+def cliente(verificador, auth_falso, storage_falso) -> TestClient:
+    app = crear_app(get_settings(), verificador=verificador, auth_admin=auth_falso, storage=storage_falso)
     with TestClient(app) as c:
         yield c
 
@@ -177,8 +206,8 @@ class ClienteAPI(TestClient):
 
 
 @pytest.fixture
-def api(sesion, verificador, auth_falso) -> ClienteAPI:
-    app = crear_app(get_settings(), verificador=verificador, auth_admin=auth_falso)
+def api(sesion, verificador, auth_falso, storage_falso) -> ClienteAPI:
+    app = crear_app(get_settings(), verificador=verificador, auth_admin=auth_falso, storage=storage_falso)
     app.dependency_overrides[obtener_sesion] = lambda: sesion
     with ClienteAPI(app, raise_server_exceptions=False) as c:
         yield c

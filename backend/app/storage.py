@@ -9,8 +9,10 @@ import uuid
 from urllib.parse import quote
 
 import httpx
+from fastapi import Request
 
-from app.config import get_settings
+from app.config import Settings
+from app.errores import error_api
 
 TAMANO_MAXIMO_DOCUMENTO = 10 * 1024 * 1024
 VIGENCIA_URL_FIRMADA = 300
@@ -102,12 +104,19 @@ class ClienteStorage:
         self._comprobar(respuesta, "borrar")
 
 
-def obtener_storage() -> ClienteStorage:
-    settings = get_settings()
+def crear_storage(settings: Settings) -> ClienteStorage | None:
     if settings.supabase_secret_key is None:
-        raise ErrorStorage("Falta SUPABASE_SECRET_KEY")
+        return None
     return ClienteStorage(
         settings.supabase_url,
         settings.supabase_secret_key.get_secret_value(),
         settings.storage_bucket,
     )
+
+
+def obtener_storage(request: Request) -> ClienteStorage:
+    """Dependencia de FastAPI; las pruebas la reemplazan por un Storage simulado."""
+    cliente = request.app.state.storage
+    if cliente is None:
+        raise error_api(503, "archivos_no_disponibles", "La carga de archivos no está disponible.")
+    return cliente

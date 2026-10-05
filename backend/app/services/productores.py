@@ -1,56 +1,126 @@
-"""Productores, versión mínima: padrón, alta con afiliación y acceso con DNI.
+"""Productores: padrón, ficha con niveles de verificación, afiliación y acceso con DNI.
 
 El productor es único en toda la plataforma y se alcanza a través de su afiliación activa.
-La Parte 3 agrega la ficha completa y las parcelas.
+Los niveles de verificación y los pendientes no se guardan: se calculan al responder,
+según existan documentos vigentes, para que nunca queden desactualizados.
 """
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.auth_admin import ClienteAuthAdmin, ErrorAuthAdmin
 from app.contexto import Contexto, cooperativa_del_contexto
 from app.errores import error_api, no_encontrado
-from app.models import Afiliacion, Cooperativa, Perfil, Productor
-from app.schemas.productores import AccesoProductor, ProductorNuevo, ProductorSalida
-from app.services import cuentas
-from app.services.auditoria import registrar_auditoria
+from app.models import Afiliacion, Cooperativa, Parcela, Perfil, Productor
+from app.schemas.parcelas import DocumentoSalida
+from app.schemas.productores import (
+    AccesoProductor,
+    ProductorCambios,
+    ProductorDetalle,
+    ProductorNuevo,
+    ProductorSalida,
+    ResumenParcelas,
+)
+from app.services import cuentas, documentos
+from app.services.auditoria import aplicar_cambios, registrar_auditoria
 from app.services.paginacion import Paginacion, paginar
 
 LIMA = ZoneInfo("America/Lima")
+# Campos que se pueden vaciar con null; los demás son obligatorios.
+OPCIONALES = {"ruc", "correo_contacto", "telefono", "ppa_codigo", "codigo_agrodigital", "codigo_socio"}
+_AUSENTE = object()
 
 
 def _consulta(cooperativa_id: uuid.UUID) -> Select:
+    activas = (Parcela.productor_id == Productor.id, Parcela.estado == "activa")
+    parcelas_activas = select(func.count(Parcela.id)).where(*activas).scalar_subquery()
+    area_total = (
+        select(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Parcela.tipo_geometria == "poligono", Parcela.area_calculada_ha),
+                        else_=Parcela.area_declarada_ha,
+                    )
+                ),
+                0,
+            )
+        )
+        .where(*activas)
+        .scalar_subquery()
+    )
     return (
-        select(Afiliacion, Perfil)
+        select(
+            Afiliacion,
+            Perfil,
+            parcelas_activas.label("parcelas_activas"),
+            area_total.label("area_total"),
+            documentos.vigente("productor", Productor.id, "dni").label("tiene_dni"),
+            documentos.vigente("productor", Productor.id, "constancia_ppa").label("tiene_ppa"),
+        )
         .join(Productor, Productor.id == Afiliacion.productor_id)
         .outerjoin(Perfil, Perfil.productor_id == Productor.id)
         .where(Afiliacion.cooperativa_id == cooperativa_id, Afiliacion.estado == "activa")
     )
 
 
-def _salida(afiliacion: Afiliacion, perfil: Perfil | None) -> ProductorSalida:
-    productor = afiliacion.productor
-    return ProductorSalida(
-        id=productor.id,
-        dni=productor.dni,
-        nombres=productor.nombres,
-        apellidos=productor.apellidos,
-        telefono=productor.telefono,
+def pendientes_de(productor: Productor, tiene_dni: bool, parcelas_activas: int) -> list[str]:
+    pendientes = []
+    if not tiene_dni:
+        pendientes.append("sin_documento_dni")
+    if productor.consentimiento_datos_en is None:
+        pendientes.append("sin_consentimiento")
+    if parcelas_activas == 0:
+        pendientes.append("sin_parcelas")
+    return pendientes
+
+
+def _salida(fila, modelo=ProductorSalida, **extra) -> ProductorSalida:
+    afiliacion, perfil, parcelas_activas, area_total, tiene_dni, tiene_ppa = fila
+    p = afiliacion.productor
+    if not p.ppa_registrado:
+        nivel_ppa = "no_registrado"
+    else:
+        nivel_ppa = "documentado" if tiene_ppa else "declarado"
+    return modelo(
+        id=p.id,
+        dni=p.dni,
+        nombres=p.nombres,
+        apellidos=p.apellidos,
+        ruc=p.ruc,
+        direccion_postal=p.direccion_postal,
+        correo_contacto=p.correo_contacto,
+        telefono=p.telefono,
+        ppa_registrado=p.ppa_registrado,
+        ppa_codigo=p.ppa_codigo,
+        codigo_agrodigital=p.codigo_agrodigital,
         codigo_socio=afiliacion.codigo_socio,
         afiliado_desde=afiliacion.desde,
-        consentimiento_datos_en=productor.consentimiento_datos_en,
-        consentimiento_origen=productor.consentimiento_origen,
-        es_demo=productor.es_demo,
+        consentimiento_datos_en=p.consentimiento_datos_en,
+        consentimiento_origen=p.consentimiento_origen,
+        es_demo=p.es_demo,
         acceso=AccesoProductor(
             existe=perfil is not None,
             activo=bool(perfil and perfil.activo),
             debe_cambiar_clave=bool(perfil and perfil.debe_cambiar_clave),
             ultimo_acceso_en=perfil.ultimo_acceso_en if perfil else None,
         ),
+        nivel_identidad="documentado" if tiene_dni else "declarado",
+        nivel_ppa=nivel_ppa,
+        pendientes=pendientes_de(p, tiene_dni, parcelas_activas),
+        parcelas=ResumenParcelas(activas=parcelas_activas, area_total_ha=Decimal(area_total or 0)),
+        **extra,
+    )
+
+
+def documento_salida(documento, subido_por_nombre) -> DocumentoSalida:
+    return DocumentoSalida.model_validate(documento).model_copy(
+        update={"subido_por_nombre": subido_por_nombre, "vigente": documento.anulado_en is None}
     )
 
 
@@ -68,24 +138,34 @@ def listar(contexto: Contexto, busqueda: str | None, paginacion: Paginacion):
     filas, total = paginar(
         contexto.sesion, consulta.order_by(Productor.apellidos, Productor.nombres), paginacion
     )
-    return [_salida(*fila) for fila in filas], total
+    return [_salida(fila) for fila in filas], total
 
 
-def _afiliacion_activa(contexto: Contexto, productor_id: uuid.UUID) -> tuple[Afiliacion, Perfil | None]:
+def _fila_activa(contexto: Contexto, productor_id: uuid.UUID):
     """Un productor sin afiliación activa en la cooperativa del contexto responde 404."""
     fila = contexto.sesion.execute(
         _consulta(cooperativa_del_contexto(contexto)).where(Afiliacion.productor_id == productor_id)
     ).first()
     if fila is None:
         raise no_encontrado("El productor no existe.")
+    return fila
+
+
+def _afiliacion_activa(contexto: Contexto, productor_id: uuid.UUID) -> tuple[Afiliacion, Perfil | None]:
+    fila = _fila_activa(contexto, productor_id)
     return fila[0], fila[1]
 
 
-def obtener(contexto: Contexto, productor_id: uuid.UUID) -> ProductorSalida:
-    return _salida(*_afiliacion_activa(contexto, productor_id))
+def obtener(contexto: Contexto, productor_id: uuid.UUID) -> ProductorDetalle:
+    fila = _fila_activa(contexto, productor_id)
+    docs = [
+        documento_salida(d, n)
+        for d, n in documentos.documentos_de(contexto.sesion, "productor", productor_id)
+    ]
+    return _salida(fila, ProductorDetalle, documentos=docs)
 
 
-def crear(contexto: Contexto, datos: ProductorNuevo) -> ProductorSalida:
+def crear(contexto: Contexto, datos: ProductorNuevo) -> ProductorDetalle:
     sesion = contexto.sesion
     cooperativa = sesion.get(Cooperativa, contexto.cooperativa_id)
     productor = sesion.scalar(select(Productor).where(Productor.dni == datos.dni))
@@ -104,13 +184,12 @@ def crear(contexto: Contexto, datos: ProductorNuevo) -> ProductorSalida:
                 409, "dni_afiliado_otra_cooperativa", "Este DNI ya está afiliado a otra cooperativa"
             )
     else:
-        productor = Productor(
-            dni=datos.dni,
-            nombres=datos.nombres,
-            apellidos=datos.apellidos,
-            telefono=datos.telefono or None,
-            es_demo=cooperativa.es_demo,
+        ficha = datos.model_dump(
+            exclude={"codigo_socio", "consentimiento_cooperativa", "version_consentimiento"}
         )
+        if not ficha["ppa_registrado"]:
+            ficha["ppa_codigo"] = None
+        productor = Productor(**ficha, es_demo=cooperativa.es_demo)
         sesion.add(productor)
         sesion.flush()
 
@@ -153,6 +232,88 @@ def crear(contexto: Contexto, datos: ProductorNuevo) -> ProductorSalida:
             409, "dni_afiliado_otra_cooperativa", "Este DNI ya está afiliado a otra cooperativa"
         ) from exc
     return obtener(contexto, productor.id)
+
+
+def editar(
+    contexto: Contexto, auth: ClienteAuthAdmin, productor_id: uuid.UUID, datos: ProductorCambios
+) -> ProductorDetalle:
+    afiliacion, perfil = _afiliacion_activa(contexto, productor_id)
+    productor = afiliacion.productor
+    valores = {
+        k: v for k, v in datos.model_dump(exclude_unset=True).items() if v is not None or k in OPCIONALES
+    }
+    motivo = valores.pop("motivo", None)
+    codigo_socio = valores.pop("codigo_socio", _AUSENTE)
+
+    cambia_dni = "dni" in valores and valores["dni"] != productor.dni
+    if cambia_dni:
+        if not motivo:
+            raise error_api(422, "motivo_requerido", "Para corregir el DNI escribe el motivo del cambio.")
+        if contexto.sesion.scalar(select(Productor.id).where(Productor.dni == valores["dni"])):
+            raise error_api(409, "dni_en_uso", "Ese DNI ya está registrado en CacaoTrace.")
+
+    registrado = valores.get("ppa_registrado", productor.ppa_registrado)
+    if not registrado:
+        valores["ppa_codigo"] = None
+
+    cambios = aplicar_cambios(productor, valores)
+    if codigo_socio is not _AUSENTE:
+        cambios |= aplicar_cambios(afiliacion, {"codigo_socio": codigo_socio})
+    if not cambios:
+        return obtener(contexto, productor_id)
+    if perfil is not None:
+        perfil.nombres, perfil.apellidos = productor.nombres, productor.apellidos
+
+    registrar_auditoria(
+        contexto,
+        "productor.editar",
+        "productor",
+        productor.id,
+        cambios | ({"motivo": motivo} if cambia_dni else {}),
+    )
+    if cambia_dni and perfil is not None:
+        # El correo técnico de acceso sigue al DNI.
+        try:
+            auth.cambiar_correo(perfil.id, cuentas.correo_tecnico(productor.dni))
+        except ErrorAuthAdmin as exc:
+            contexto.sesion.rollback()
+            raise error_api(
+                503, "autenticacion_no_disponible", "No se pudo actualizar el acceso del productor."
+            ) from exc
+    try:
+        contexto.sesion.commit()
+    except IntegrityError as exc:
+        contexto.sesion.rollback()
+        raise error_api(409, "dni_en_uso", "Ese DNI ya está registrado en CacaoTrace.") from exc
+    return obtener(contexto, productor_id)
+
+
+def editar_telefono(contexto: Contexto, telefono: str | None) -> ProductorDetalle:
+    """El productor solo edita su teléfono."""
+    afiliacion, _ = _afiliacion_activa(contexto, contexto.productor_id)
+    cambios = aplicar_cambios(afiliacion.productor, {"telefono": telefono or None})
+    if cambios:
+        registrar_auditoria(contexto, "productor.editar", "productor", contexto.productor_id, cambios)
+        contexto.sesion.commit()
+    return obtener(contexto, contexto.productor_id)
+
+
+def cerrar_afiliacion(
+    contexto: Contexto, auth: ClienteAuthAdmin, productor_id: uuid.UUID, motivo: str | None
+) -> None:
+    """Un productor no se elimina: se cierra su afiliación y se desactiva su acceso."""
+    afiliacion, perfil = _afiliacion_activa(contexto, productor_id)
+    afiliacion.estado = "inactiva"
+    afiliacion.hasta = datetime.now(LIMA).date()
+    registrar_auditoria(
+        contexto, "productor.cerrar_afiliacion", "productor", productor_id, {"motivo": motivo}
+    )
+    if perfil is not None and perfil.activo:
+        cuentas.desactivar(
+            contexto, auth, perfil, "productor.acceso_desactivar", {"productor_id": productor_id}
+        )
+    else:
+        contexto.sesion.commit()
 
 
 def crear_acceso(contexto: Contexto, auth: ClienteAuthAdmin, productor_id: uuid.UUID) -> str:

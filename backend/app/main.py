@@ -13,7 +13,19 @@ from app.auth import VerificadorJWT
 from app.auth_admin import ClienteAuthAdmin, crear_auth_admin
 from app.config import Settings, get_settings
 from app.contexto import CABECERA_COOPERATIVA
-from app.routers import auditoria, health, plataforma, productores, sesion, usuarios
+from app.routers import (
+    auditoria,
+    documentos,
+    health,
+    mi,
+    parcelas,
+    plataforma,
+    productores,
+    sesion,
+    superposiciones,
+    usuarios,
+)
+from app.storage import ClienteStorage, crear_storage
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("cacaotrace")
@@ -37,6 +49,7 @@ def crear_app(
     settings: Settings | None = None,
     verificador: VerificadorJWT | None = None,
     auth_admin: ClienteAuthAdmin | None = None,
+    storage: ClienteStorage | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     con_docs = not settings.es_produccion
@@ -54,6 +67,7 @@ def crear_app(
         verificador = VerificadorJWT(settings.supabase_url, jwt_secret=secreto)
     app.state.verificador = verificador
     app.state.auth_admin = auth_admin or crear_auth_admin(settings)
+    app.state.storage = storage or crear_storage(settings)
 
     app.add_middleware(
         CORSMiddleware,
@@ -94,7 +108,18 @@ def crear_app(
             cuerpo["error"]["detalle"] = repr(exc)
         return JSONResponse(cuerpo, status_code=500)
 
-    for modulo in (health, sesion, plataforma, usuarios, productores, auditoria):
+    for modulo in (
+        health,
+        sesion,
+        plataforma,
+        usuarios,
+        productores,
+        parcelas,
+        documentos,
+        superposiciones,
+        mi,
+        auditoria,
+    ):
         app.include_router(modulo.router)
     return app
 
