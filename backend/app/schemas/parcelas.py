@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
@@ -82,6 +82,13 @@ class DocumentoSalida(Salida):
     anulado_en: datetime | None
     motivo_anulacion: str | None
     vigente: bool = True
+    # Parte 4: datos de los documentos legales y su cotejo en fuente.
+    numero: str | None = None
+    entidad_emisora: str | None = None
+    fecha_emision: date | None = None
+    fecha_vencimiento: date | None = None
+    cotejado_en: datetime | None = None
+    cotejo_nota: str | None = None
 
 
 class ProductorDeParcela(BaseModel):
@@ -113,6 +120,9 @@ class ParcelaSalida(BaseModel):
     estado: str
     alertas: list[str]
     creado_en: datetime
+    # Parte 4: compuerta de habilitación.
+    habilitacion_estado: str = "pendiente"
+    requisitos_pendientes: list[str] = []
 
 
 class SuperposicionDeParcela(BaseModel):
@@ -133,10 +143,18 @@ class HistorialSalida(BaseModel):
     detalle: dict[str, Any]
 
 
+class ProcedenciaSalida(BaseModel):
+    origen_geometria: str
+    registrada_por_rol: str
+    recorrida_en_campo: bool
+    fecha_recorrido: date | None
+
+
 class ParcelaDetalle(ParcelaSalida):
     documentos: list[DocumentoSalida]
     superposiciones: list[SuperposicionDeParcela]
     historial: list[HistorialSalida]
+    procedencia: ProcedenciaSalida | None = None
 
 
 class Anulacion(Entrada):

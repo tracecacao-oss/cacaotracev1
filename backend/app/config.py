@@ -23,8 +23,17 @@ class Settings(BaseSettings):
     cors_origins: str = ""
     productor_email_domain: str = "productores.cacaotrace.local"
     git_sha: str = Field("dev", validation_alias=AliasChoices("GIT_SHA", "RENDER_GIT_COMMIT"))
+    # Parte 4: fuentes del análisis de cobertura forestal. Sin clave, la fuente queda "no configurada".
+    whisp_api_key: SecretStr | None = None
+    gfw_api_key: SecretStr | None = None
+    analisis_vigencia_dias: int = Field(180, ge=1)
+    aviso_vencimiento_dias: int = Field(30, ge=0)
+    # El bucle de análisis corre dentro de la API; las pruebas lo apagan y lo llaman a mano.
+    analisis_en_segundo_plano: bool = True
 
-    @field_validator("supabase_secret_key", "supabase_jwt_secret", mode="before")
+    @field_validator(
+        "supabase_secret_key", "supabase_jwt_secret", "whisp_api_key", "gfw_api_key", mode="before"
+    )
     @classmethod
     def _vacio_es_nulo(cls, valor):
         # En .env las variables opcionales quedan como "VARIABLE=": vacío equivale a no definida.

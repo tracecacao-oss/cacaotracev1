@@ -13,9 +13,10 @@ from datetime import UTC, datetime
 from sqlalchemy import and_, exists, select
 from sqlalchemy.orm import Session
 
+from app.catalogos import documentos_legales
 from app.contexto import Contexto
 from app.errores import error_api, no_encontrado
-from app.models import Afiliacion, Documento, Parcela, Perfil
+from app.models import Afiliacion, AnalisisCobertura, Documento, Parcela, Perfil, VisitaCampo
 from app.services.auditoria import registrar_auditoria
 from app.services.geometria import ErrorArchivo
 from app.storage import (
@@ -32,14 +33,21 @@ log = logging.getLogger(__name__)
 
 TIPOS_POR_ENTIDAD = {
     "productor": ("dni", "constancia_ppa"),
-    "parcela": ("sustento_midagri", "archivo_geometria"),
+    "parcela": ("sustento_midagri", "archivo_geometria", *documentos_legales.CODIGOS),
+    "visita": ("foto_visita",),
+    "analisis": ("respuesta_analisis",),
 }
 NOMBRES_TIPO = {
     "dni": "copia del DNI",
     "constancia_ppa": "constancia del PPA",
     "sustento_midagri": "sustento de MIDAGRI",
     "archivo_geometria": "archivo de geometría",
+    "foto_visita": "foto de la visita",
+    "respuesta_analisis": "respuesta completa del análisis",
+    **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
 }
+# Los genera el sistema o forman parte de un registro que no se edita: no se anulan a mano.
+NO_ANULABLES = ("respuesta_analisis", "foto_visita")
 
 
 @dataclass(frozen=True)
@@ -77,6 +85,7 @@ def guardar(
     tipo: str,
     archivo: Archivo,
     tipo_mime: str | None = None,
+    datos_legales: dict | None = None,
 ) -> tuple[Documento, str]:
     """Sube el archivo y agrega su fila a la sesión, sin confirmar. Devuelve (documento, ruta en Storage).
 
@@ -132,6 +141,7 @@ def guardar(
         tamano_bytes=len(archivo.contenido),
         sha256=huella,
         subido_por=contexto.usuario_id,
+        **(datos_legales or {}),
     )
     contexto.sesion.add(documento)
     contexto.sesion.flush()
@@ -160,9 +170,16 @@ def cargar(
     entidad_id: uuid.UUID,
     tipo: str,
     archivo: Archivo,
+    datos_legales: dict | None = None,
 ):
     documento, ruta = guardar(
-        contexto, storage, entidad=entidad, entidad_id=entidad_id, tipo=tipo, archivo=archivo
+        contexto,
+        storage,
+        entidad=entidad,
+        entidad_id=entidad_id,
+        tipo=tipo,
+        archivo=archivo,
+        datos_legales=datos_legales,
     )
     try:
         contexto.sesion.commit()
@@ -176,10 +193,23 @@ def cargar(
 # ---------- Acceso a un documento ----------
 
 
+def _parcela_del_documento(sesion: Session, documento: Documento) -> uuid.UUID | None:
+    if documento.entidad == "parcela":
+        return documento.entidad_id
+    if documento.entidad == "visita":
+        return sesion.scalar(select(VisitaCampo.parcela_id).where(VisitaCampo.id == documento.entidad_id))
+    if documento.entidad == "analisis":
+        return sesion.scalar(
+            select(AnalisisCobertura.parcela_id).where(AnalisisCobertura.id == documento.entidad_id)
+        )
+    return None
+
+
 def _productor_del_documento(sesion: Session, documento: Documento) -> uuid.UUID | None:
     if documento.entidad == "productor":
         return documento.entidad_id
-    return sesion.scalar(select(Parcela.productor_id).where(Parcela.id == documento.entidad_id))
+    parcela_id = _parcela_del_documento(sesion, documento)
+    return sesion.scalar(select(Parcela.productor_id).where(Parcela.id == parcela_id))
 
 
 def documento_visible(contexto: Contexto, documento_id: uuid.UUID) -> Documento:
@@ -189,7 +219,8 @@ def documento_visible(contexto: Contexto, documento_id: uuid.UUID) -> Documento:
         raise no_encontrado("El documento no existe.")
     productor_id = _productor_del_documento(contexto.sesion, documento)
     if contexto.rol == "productor":
-        permitido = productor_id == contexto.productor_id
+        # El productor ve el resultado del análisis, no la respuesta completa de la fuente.
+        permitido = productor_id == contexto.productor_id and documento.tipo != "respuesta_analisis"
     else:
         permitido = contexto.cooperativa_id is not None and contexto.sesion.scalar(
             select(
@@ -219,6 +250,15 @@ def url_firmada(contexto: Contexto, storage: ClienteStorage, documento_id: uuid.
 
 def anular(contexto: Contexto, documento_id: uuid.UUID, motivo: str) -> Documento:
     documento = documento_visible(contexto, documento_id)
+    if documento.tipo in NO_ANULABLES:
+        raise error_api(
+            400, "documento_no_anulable", f"La {NOMBRES_TIPO[documento.tipo]} no se anula a mano."
+        )
+    parcela_id = _parcela_del_documento(contexto.sesion, documento)
+    if parcela_id is not None:
+        from app.services.expediente import no_excluida  # evita importación circular
+
+        no_excluida(contexto.sesion.get(Parcela, parcela_id))
     if documento.anulado_en is not None:
         raise error_api(400, "documento_anulado", "El documento ya estaba anulado.")
     documento.anulado_en = datetime.now(UTC)

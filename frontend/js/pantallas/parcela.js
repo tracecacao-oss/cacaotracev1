@@ -1,14 +1,16 @@
-// Detalle de parcela, con el inspector del diseño: cabecera con código, estado y área; mapa con
-// alertas y superposiciones al lado; datos, documentos e historial de cambios.
+// Detalle de parcela, con el inspector del diseño: cabecera con código, estado y área, y pestañas.
+// General: mapa con alertas y superposiciones al lado, datos, documentos e historial de cambios.
+// Parte 4: cobertura forestal, visitas, expediente legal y habilitación (parcela-habilitacion.js).
 // El personal la ve en #/parcelas/{id}; el productor, la suya en #/mis-parcelas/{id}.
 
 import { llamarApi } from "../api.js";
 import { formularioCarga, listaDocumentos } from "../documentos.js";
 import { puede } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo } from "../mapa.js";
-import { ESTADOS_MIDAGRI, hectareas, insigniaAlerta, insigniaNivel } from "../textos.js";
+import { ESTADOS_MIDAGRI, hectareas, insigniaAlerta, insigniaHabilitacion, insigniaNivel } from "../textos.js";
 import { abrirModal, cabeceraFicha, campo, confirmar, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 import { camposUbigeo } from "../ubigeo.js";
+import { cargarPestana, pestanaCobertura, pestanaExpediente, pestanaHabilitacion, pestanaVisitas } from "./parcela-habilitacion.js";
 
 const ACCIONES = {
   "parcela.crear": "Registró la parcela",
@@ -17,7 +19,26 @@ const ACCIONES = {
   "parcela.desactivar": "Desactivó la parcela",
   "documento.cargar": "Cargó un documento",
   "documento.anular": "Anuló un documento",
+  "documento.cotejar": "Cotejó un documento en su fuente",
+  "analisis.solicitar": "Solicitó un análisis de cobertura",
+  "visita.registrar": "Registró una visita de campo",
+  "visita.anular": "Anuló una visita de campo",
+  "exencion.declarar": "Declaró que un documento no aplica",
+  "exencion.retirar": "Retiró una exención",
+  "parcela.habilitar": "Habilitó la parcela",
+  "parcela.observar": "La parcela pasó a observada",
+  "parcela.excluir": "Excluyó la parcela",
 };
+
+const PESTANAS = [
+  ["general", "General"],
+  ["cobertura", "Cobertura forestal"],
+  ["visitas", "Visitas"],
+  ["expediente", "Expediente"],
+  ["habilitacion", "Habilitación"],
+];
+// La pestaña abierta sobrevive a la recarga que sigue a guardar algo en ella.
+let recordada = { id: null, clave: "general" };
 
 function abrirEdicion(p, ruta, alGuardar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-parcela" }, "Guardar");
@@ -103,17 +124,20 @@ export default async function parcela({ hash, parametros, recargar }) {
   const delProductor = hash.startsWith("#/mis-parcelas");
   const ruta = delProductor ? `/mi/parcelas/${parametros[0]}` : `/parcelas/${parametros[0]}`;
   const p = await llamarApi(ruta);
-  const edita = (delProductor || puede("registrarProductores")) && p.estado === "activa";
+  const excluida = p.habilitacion_estado === "excluida";
+  // Una parcela excluida ya no se edita ni recibe documentos; su historial sigue visible.
+  const edita = (delProductor || puede("registrarProductores")) && p.estado === "activa" && !excluida;
 
   // ---------- Mapa ----------
   const contenedorMapa = h("div", { class: "mapa" });
-  const { L, mapa } = await crearMapa(contenedorMapa);
+  // Las capas oficiales (Geobosques, zonificación forestal, JRC) se encienden desde el control de capas.
+  const { L, mapa } = await crearMapa(contenedorMapa, { capasOficiales: true });
   const color = p.alertas.includes("superposicion") ? COLORES.superposicion : p.alertas.length ? COLORES.con_alertas : COLORES.sin_alertas;
   const capa = capaGeojson(L, p.geometria, { style: estilo(color, 0.25) }).addTo(mapa);
   encuadrar(mapa, capa);
 
   let editando = null;
-  const botonGeometria = edita && h("button", { class: "btn btn-sm", type: "button" }, icono("pin"), "Cambiar geometría");
+  const botonGeometria = edita ? h("button", { class: "btn btn-sm", type: "button" }, icono("pin"), "Cambiar geometría") : null;
   botonGeometria?.addEventListener("click", () => {
     if (!editando) {
       mapa.removeLayer(capa);
@@ -227,9 +251,9 @@ export default async function parcela({ hash, parametros, recargar }) {
 
   const documentos = seccion({
     titulo: "Documentos",
-    sub: "Sustento del estado en MIDAGRI y archivo de origen de la geometría.",
+    sub: "Sustento del estado en MIDAGRI, archivo de origen de la geometría y documentos legales. Los legales se cargan en Expediente.",
     contenido: [
-      h("div", { class: "tbl-box" }, listaDocumentos(p.documentos, { puedeAnular: !delProductor && puede("registrarProductores"), alCambiar: recargar })),
+      h("div", { class: "tbl-box" }, listaDocumentos(p.documentos, { puedeAnular: !delProductor && !excluida && puede("registrarProductores"), alCambiar: recargar })),
       edita &&
         formularioCarga({
           tipos: [["sustento_midagri", "Sustento de MIDAGRI"]],
@@ -261,6 +285,39 @@ export default async function parcela({ hash, parametros, recargar }) {
         : h("p", { class: "panel-sub" }, "Sin cambios registrados."),
     });
 
+  // ---------- Pestañas ----------
+  const general = h("div", { class: "contenido-pestana" }, geometria, datos, documentos, historial);
+  const cuerpo = h("div", { class: "contenido-pestana" });
+  const barra = h("div", { class: "seg", role: "tablist", "aria-label": "Secciones de la parcela" });
+  if (recordada.id !== p.id) recordada = { id: p.id, clave: "general" };
+  const generadores = { cobertura: pestanaCobertura, visitas: pestanaVisitas, expediente: pestanaExpediente, habilitacion: pestanaHabilitacion };
+  const ctx = {
+    p,
+    base: ruta,
+    delProductor,
+    recargar,
+    contenedor: cuerpo,
+    pestanaActual: () => recordada.clave,
+    recargarPestana: () => mostrarPestana(recordada.clave),
+  };
+
+  function mostrarPestana(clave) {
+    recordada = { id: p.id, clave };
+    for (const b of barra.children) b.setAttribute("aria-selected", String(b.dataset.clave === clave));
+    if (clave === "general") {
+      // El mapa se arma una sola vez: al volver, solo se reacomoda a su tamaño. Se pide un "turno"
+      // vacío para que una pestaña que todavía carga no pinte encima.
+      cargarPestana(cuerpo, () => Promise.resolve(general));
+      requestAnimationFrame(() => mapa.invalidateSize());
+    } else {
+      cargarPestana(cuerpo, () => generadores[clave](ctx));
+    }
+  }
+  for (const [clave, texto] of PESTANAS) {
+    barra.append(h("button", { type: "button", role: "tab", "data-clave": clave, onclick: () => mostrarPestana(clave) }, texto));
+  }
+  mostrarPestana(recordada.clave);
+
   const n = p.alertas.length;
   return {
     titulo: `${p.codigo} · ${p.nombre}`,
@@ -277,6 +334,7 @@ export default async function parcela({ hash, parametros, recargar }) {
         codigo: true,
         insignias: [
           p.estado === "activa" ? h("span", { class: "badge ok" }, h("span", { class: "dot" }), "Activa") : h("span", { class: "badge" }, h("span", { class: "dot" }), "Inactiva"),
+          insigniaHabilitacion(p.habilitacion_estado),
           n ? h("span", { class: "badge warn" }, h("span", { class: "dot" }), n === 1 ? "1 alerta" : `${n} alertas`) : null,
         ],
         detalle: [
@@ -288,10 +346,15 @@ export default async function parcela({ hash, parametros, recargar }) {
         cifra: hectareas(p.area_total_ha),
         cifraTexto: esPoligono ? "área calculada" : "área declarada (punto)",
       }),
-      geometria,
-      datos,
-      documentos,
-      historial,
+      excluida &&
+        h(
+          "div",
+          { class: "verif bad franja-excluida" },
+          icono("alert"),
+          h("div", {}, h("b", {}, "Parcela excluida"), h("span", {}, "La exclusión es definitiva. La parcela ya no se edita, no recibe documentos ni respalda tandas nuevas; su historial sigue visible.")),
+        ),
+      h("div", { class: "ins-tabs seg-scroll" }, barra),
+      cuerpo,
     ),
   };
 }

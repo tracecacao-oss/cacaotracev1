@@ -40,17 +40,31 @@ from app.models.acceso import (  # noqa: E402
     Perfil,
     Productor,
 )
+from app.models.habilitacion import (  # noqa: E402
+    AnalisisCobertura,
+    DecisionHabilitacion,
+    ExencionDocumento,
+    VisitaCampo,
+)
 from app.models.padron import (  # noqa: E402
+    ESTADOS_HABILITACION,
     ESTADOS_MIDAGRI,
     TIPOS_DOCUMENTO,
+    TIPOS_LEGALES,
     Documento,
     Parcela,
     Superposicion,
 )
 
 __all__ = [
+    "ESTADOS_HABILITACION",
     "ESTADOS_MIDAGRI",
     "TIPOS_DOCUMENTO",
+    "TIPOS_LEGALES",
+    "AnalisisCobertura",
+    "DecisionHabilitacion",
+    "ExencionDocumento",
+    "VisitaCampo",
     "Documento",
     "Parcela",
     "Superposicion",

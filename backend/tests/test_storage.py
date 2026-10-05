@@ -111,6 +111,11 @@ def test_url_firmada_vence_a_los_5_minutos():
     assert url == "https://proyecto-prueba.supabase.co/storage/v1/object/sign/documentos/a/b.pdf?token=t0k3n"
 
 
+def test_url_firmada_para_descargar_con_nombre():
+    url = _cliente(StorageSimulado()).url_firmada("a/b.json", descarga="whisp-PA-00001-20261005-1200.json")
+    assert url.endswith("?token=t0k3n&download=whisp-PA-00001-20261005-1200.json")
+
+
 def test_borrar():
     simulado = StorageSimulado()
     _cliente(simulado).borrar("a/b.pdf")

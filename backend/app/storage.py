@@ -91,12 +91,17 @@ class ClienteStorage:
         respuesta = self._http.post(self._url_objeto(ruta), content=contenido, headers=cabeceras)
         self._comprobar(respuesta, "subir")
 
-    def url_firmada(self, ruta: str, segundos: int = VIGENCIA_URL_FIRMADA) -> str:
+    def url_firmada(
+        self, ruta: str, segundos: int = VIGENCIA_URL_FIRMADA, descarga: str | None = None
+    ) -> str:
+        """Con `descarga`, el navegador guarda el archivo con ese nombre en vez de abrirlo
+        (parámetro `download` de la URL firmada de Supabase Storage)."""
         url = f"{self._base}/object/sign/{self.bucket}/{quote(ruta, safe='/')}"
         respuesta = self._http.post(url, json={"expiresIn": segundos}, headers=self._cabeceras())
         self._comprobar(respuesta, "firmar")
         relativa = respuesta.json()["signedURL"]
-        return f"{self._base}{relativa}"
+        sufijo = f"&download={quote(descarga)}" if descarga else ""
+        return f"{self._base}{relativa}{sufijo}"
 
     def borrar(self, ruta: str) -> None:
         url = f"{self._base}/object/{self.bucket}"

@@ -5,7 +5,7 @@ import { llamarApi } from "./api.js";
 import { TIPOS_DOCUMENTO } from "./textos.js";
 import { abrirModal, campo, enviarCon, fecha, h, toast, vacio } from "./ui.js";
 
-async function ver(documento) {
+export async function verDocumento(documento) {
   // La ventana se abre en el mismo clic para que el navegador no la bloquee.
   const ventana = window.open("about:blank", "_blank");
   try {
@@ -72,7 +72,7 @@ export function listaDocumentos(documentos, { puedeAnular = false, alCambiar }) 
             h(
               "td",
               { class: "acciones" },
-              h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => ver(d) }, "Ver"),
+              h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => verDocumento(d) }, "Ver"),
               puedeAnular && d.vigente && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => anular(d, alCambiar) }, "Anular"),
             ),
           ),

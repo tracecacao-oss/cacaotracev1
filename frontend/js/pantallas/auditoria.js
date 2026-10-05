@@ -13,6 +13,9 @@ const ACCIONES = [
   ["parcela.", "Parcelas"],
   ["documento.", "Documentos"],
   ["superposicion.", "Superposiciones"],
+  ["analisis.", "Análisis de cobertura"],
+  ["visita.", "Visitas de campo"],
+  ["exencion.", "Exenciones"],
   ["superadmin.", "Consultas de soporte"],
 ];
 
@@ -40,6 +43,16 @@ const TEXTO_ACCION = {
   "parcela.editar_geometria": "Cambió la geometría de una parcela",
   "parcela.desactivar": "Desactivó una parcela",
   "superposicion.aceptar": "Aceptó una superposición",
+  "productor.carga_masiva": "Cargó productores desde una hoja",
+  "analisis.solicitar": "Solicitó un análisis de cobertura",
+  "visita.registrar": "Registró una visita de campo",
+  "visita.anular": "Anuló una visita de campo",
+  "documento.cotejar": "Cotejó un documento en fuente",
+  "exencion.declarar": "Declaró que un documento no aplica",
+  "exencion.retirar": "Retiró una exención",
+  "parcela.habilitar": "Habilitó una parcela",
+  "parcela.observar": "Pasó una parcela a observada (sistema)",
+  "parcela.excluir": "Excluyó una parcela",
   "superadmin.consultar_cooperativa": "Consultó la cooperativa (soporte)",
 };
 

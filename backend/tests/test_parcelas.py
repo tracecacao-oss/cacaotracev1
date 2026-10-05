@@ -233,7 +233,10 @@ def test_mapa_en_geojson(api, operador, productor):
     crear_parcela(api, productor.id, rectangulo(100, 100))
     coleccion = api.get("/parcelas", params={"formato": "geojson"}).json()
     assert coleccion["type"] == "FeatureCollection"
-    assert coleccion["features"][0]["properties"]["estado_mapa"] == "sin_alertas"
+    propiedades = coleccion["features"][0]["properties"]
+    # Desde la Parte 4 toda parcela nueva trae expediente_incompleto hasta completar su expediente.
+    assert propiedades["estado_mapa"] == "con_alertas"
+    assert "superposicion" not in propiedades["alertas"]
 
 
 def test_desactivar(api, sesion, operador, productor):

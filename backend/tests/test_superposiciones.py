@@ -44,7 +44,7 @@ def test_solape_menor_al_umbral_no_se_registra(api, sesion, coop, operador):
     """1 % del área y 0.01 ha: imprecisión de linderos."""
     _crear(api, operador, factorias.productor(sesion, coop), rectangulo(100, 100))
     otra = _crear(api, operador, factorias.productor(sesion, coop), rectangulo(100, 100, este_m=99))
-    assert otra["alertas"] == []
+    assert "superposicion" not in otra["alertas"]
     assert sesion.query(Superposicion).count() == 0
 
 

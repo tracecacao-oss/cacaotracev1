@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from app import ubigeo
 from app.contexto import Contexto, cooperativa_del_contexto
 from app.errores import error_api, no_encontrado
+from app.fechas import ahora
 from app.models import Afiliacion, Auditoria, Documento, Parcela, Perfil, Productor
 from app.schemas.parcelas import (
     GeometriaAnalizada,
@@ -28,9 +29,11 @@ from app.schemas.parcelas import (
     SuperposicionDeParcela,
     SuperposicionPrevista,
 )
-from app.services import documentos, geometria, superposiciones
+from app.services import analisis, documentos, geometria, habilitacion, superposiciones
 from app.services.auditoria import aplicar_cambios, registrar_auditoria
 from app.services.documentos import Archivo
+from app.services.expediente import no_excluida
+from app.services.fuentes import registro
 from app.services.productores import _afiliacion_activa, documento_salida
 from app.storage import ClienteStorage
 
@@ -179,9 +182,13 @@ def salidas(contexto: Contexto, parcelas: list[Parcela]) -> list[ParcelaSalida]:
         p.id: p
         for p in sesion.scalars(select(Productor).where(Productor.id.in_({x.productor_id for x in parcelas})))
     }
+    # Parte 4: requisitos y alertas de habilitación. Una parcela habilitada que dejó de cumplir pasa
+    # aquí a observada.
+    evaluaciones = habilitacion.evaluar(sesion, parcelas)
     resultado = []
     for p in parcelas:
         prod = productores[p.productor_id]
+        evaluacion = evaluaciones[p.id]
         resultado.append(
             ParcelaSalida(
                 id=p.id,
@@ -205,8 +212,10 @@ def salidas(contexto: Contexto, parcelas: list[Parcela]) -> list[ParcelaSalida]:
                 midagri_codigo=p.midagri_codigo,
                 nivel_midagri=_nivel_midagri(p, con_sustento),
                 estado=p.estado,
-                alertas=_alertas(p, abiertas, con_sustento),
+                alertas=_alertas(p, abiertas, con_sustento) + evaluacion.alertas,
                 creado_en=p.creado_en,
+                habilitacion_estado=p.habilitacion_estado,
+                requisitos_pendientes=evaluacion.faltan,
             )
         )
     return resultado
@@ -272,11 +281,13 @@ def obtener(contexto: Contexto, parcela_id: uuid.UUID) -> ParcelaDetalle:
     docs = [
         documento_salida(d, n) for d, n in documentos.documentos_de(contexto.sesion, "parcela", parcela.id)
     ]
+    evaluacion = habilitacion.evaluar(contexto.sesion, [parcela])[parcela.id]
     return ParcelaDetalle(
         **base.model_dump(),
         documentos=docs,
         superposiciones=_superposiciones_de(contexto, parcela),
         historial=_historial(contexto, parcela) if contexto.rol != "productor" else [],
+        procedencia=evaluacion.procedencia.model_dump(),
     )
 
 
@@ -495,10 +506,13 @@ def crear(
             registrada_por=contexto.usuario_id,
             registrada_por_rol=contexto.rol,
             cooperativa_registro_id=cooperativa_id,
+            geometria_actualizada_en=ahora(),
         )
         sesion.add(parcela)
         sesion.flush()
         superposiciones.recalcular(sesion, parcela, solapes, motivo=None)
+        # Parte 4: el análisis de cobertura se lanza solo al crear la parcela.
+        analisis.solicitar(sesion, registro.actuales(), parcela)
         registrar_auditoria(
             contexto,
             "parcela.crear",
@@ -531,6 +545,7 @@ def crear(
 def editar(contexto: Contexto, parcela_id: uuid.UUID, datos: ParcelaCambios) -> ParcelaDetalle:
     sesion = contexto.sesion
     parcela = parcela_visible(contexto, parcela_id)
+    no_excluida(parcela)
     if parcela.estado != "activa":
         raise error_api(400, "parcela_inactiva", "La parcela está inactiva y no se puede editar.")
     valores = {
@@ -589,8 +604,11 @@ def editar(contexto: Contexto, parcela_id: uuid.UUID, datos: ParcelaCambios) -> 
         parcela.geometria = from_shape(resultado.geometria, srid=4326)
         parcela.tipo_geometria, parcela.area_calculada_ha = tipo, calculada
         parcela.origen_geometria, parcela.archivo_documento_id = "dibujada", None
+        parcela.geometria_actualizada_en = ahora()
         sesion.flush()
         superposiciones.recalcular(sesion, parcela, solapes, motivo="Se corrigió la geometría.")
+        # Parte 4: los análisis previos quedan obsoletos y se solicita uno nuevo.
+        analisis.solicitar(sesion, registro.actuales(), parcela)
     if cambios:
         registrar_auditoria(contexto, "parcela.editar", "parcela", parcela.id, cambios)
     sesion.commit()
@@ -600,6 +618,7 @@ def editar(contexto: Contexto, parcela_id: uuid.UUID, datos: ParcelaCambios) -> 
 def desactivar(contexto: Contexto, parcela_id: uuid.UUID) -> ParcelaDetalle:
     """Una parcela no se elimina; pasa a inactiva y sus superposiciones abiertas se cierran."""
     parcela = parcela_visible(contexto, parcela_id)
+    no_excluida(parcela)
     if parcela.estado == "inactiva":
         return obtener(contexto, parcela.id)
     parcela.estado = "inactiva"

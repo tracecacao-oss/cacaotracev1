@@ -1629,6 +1629,17 @@ Se auditan `analisis.solicitar`, `visita.registrar` y `visita.anular`. Los anál
 
 Claude Code no inventa el formato de respuesta de Whisp ni de GFW. Una persona del equipo hace una llamada real con una parcela ficticia y guarda las respuestas en `backend/tests/datos/`. Las pruebas se escriben contra esos archivos.
 
+### Notas de implementación (2026-10-05)
+
+Tomadas de la documentación oficial de cada servicio, consultada el 2026-10-05.
+
+1. Reintentos: hay 3 intentos en total por fila, con esperas de 10 segundos y 1 minuto entre ellos, para que "Whisp responde 500 tres veces" termine en `error` como pide la prueba. El equipo dejó la decisión a Claude Code el 2026-10-05. Una fila en `error` se vuelve a pedir con "Repetir análisis".
+2. Whisp: `POST /api/submit/geojson` con el encabezado `x-api-key` y `analysisOptions` `{"externalIdColumn": "id", "unitType": "ha"}`. El identificador enviado es el del análisis, nunca datos de la parcela ni del productor. `resultado_fuente` es `risk_pcrop` (`low`, `more_info_needed` o `high`), el riesgo para cultivos permanentes, que incluye cacao. Todo valor distinto de `low`, o la falta de valor, pide revisión en campo. Un 429 trae la espera en el mensaje, no en un encabezado.
+3. GFW: dos consultas por análisis, a `gfw_integrated_alerts` (alertas desde el 2021-01-01) y a `umd_tree_cover_loss` (pérdida desde 2021 con densidad de copa al 2000 mayor a 30 %, el valor por defecto de la plataforma de GFW). La versión del conjunto sale de la redirección de `latest`. GFW no entrega un veredicto, así que `resultado_fuente` queda vacío; alertas o pérdida mayores a cero piden revisión.
+4. La respuesta completa se guarda en Storage antes de interpretarla. Si no tiene la forma esperada, el análisis queda `completado` sin resultado, con el motivo en `error_detalle`, y pide revisión en campo: una columna que falta nunca se lee como cero.
+5. Capas WMS: Geobosques `gis.bosques.gob.pe/server/services/Interoperabilidad/bosque_humedo_2025/MapServer/WMSServer` (capas 0, 2, 3 y 5), GeoSERFOR `geo.serfor.gob.pe/geoservicios/services/Servicios_OGC/Zonificacion_Forestal/MapServer/WMSServer` (capa 0) y JRC `ies-ows.jrc.ec.europa.eu/iforce/gfc2020/wms.py` (capa `gfc2020_v4`, cita Bourgoin et al. 2026, doi:10.2905/JRC.3KATEH8).
+6. La clave de GFW (alias `cacaotrace`) se creó el 2026-10-05 y vence el 2027-10-05, porque GFW la da por un año. La fecha está anotada en el `README.md`.
+
 ### Pruebas automáticas mínimas
 
 | Caso | Resultado esperado |
@@ -1661,13 +1672,36 @@ Cada parcela tiene un expediente de 7 casillas, una por tipo de documento. La te
 | --- | --- | --- | --- | --- |
 | `titulo_sunarp` | Título de propiedad inscrito en SUNARP | Tenencia | Al menos uno de los dos de tenencia | Sí |
 | `constancia_posesion` | Constancia de posesión | Tenencia | Al menos uno de los dos de tenencia | No |
-| `cusaf` | Contrato de cesión en uso para sistemas agroforestales | Uso forestal | Documento o exención | No |
+| `cusaf` | Contrato de cesión en uso para sistemas agroforestales | Uso forestal | Documento o exención | Sí |
 | `autorizacion_serfor` | Autorización forestal de SERFOR o de la autoridad regional | Uso forestal | Documento o exención | No |
-| `sunafil` | Sustento laboral ante SUNAFIL | Laboral | Documento o exención | No |
+| `sunafil` | Sustento laboral ante SUNAFIL | Laboral | Documento o exención | Sí |
 | `sunat` | Ficha RUC u otro sustento de SUNAT | Tributario | Documento o exención | Sí |
 | `zonificacion` | Sustento de la zonificación forestal de la parcela | Zonificación | Documento o exención | Sí |
 
-La columna "Registro público consultable" trae valores iniciales que el equipo debe confirmar. El catálogo vive en `backend/app/catalogos/documentos_legales.py`, de modo que cambiar un valor no exige una migración.
+El catálogo vive en `backend/app/catalogos/documentos_legales.py`, de modo que cambiar un valor no exige una migración.
+
+#### Registros, vigencias y sustento de SUNAFIL (confirmados el 2026-10-05)
+
+Se revisaron fuentes oficiales: gob.pe, SUNARP, SUNAT, SUNAFIL, SERFOR y GeoSERFOR, MIDAGRI y El Peruano.
+
+| Código | Dónde se coteja | Vigencia legal |
+| --- | --- | --- |
+| `titulo_sunarp` | "Conoce Aquí" de SUNARP (conoce-aqui.sunarp.gob.pe), con el número de partida y la oficina registral. Es gratis | No vence: el asiento surte efecto mientras no se rectifique o anule (art. 2013 del Código Civil) |
+| `constancia_posesion` | No tiene registro en línea. La agencia agraria o la municipalidad que la emite lleva un registro administrativo (RM 0029-2020-MINAGRI, art. 8) | La norma no le fija plazo. Solo prueba posesión y no reconoce un derecho real (art. 3) |
+| `cusaf` | GeoSERFOR, capa "Cesiones en uso": número, inicio, término y situación del contrato | 40 años, renovables por otros 40 (D.S. 020-2015-MINAGRI, arts. 58 y 61) |
+| `autorizacion_serfor` | No tiene registro en línea completo: GeoSERFOR casi no publica las autorizaciones regionales | Ninguna norma nacional le fija plazo: lo pone cada resolución |
+| `sunafil` | Buscador de resoluciones del sistema inspectivo de SUNAFIL, por RUC o razón social. Es gratis | No vence: la consulta vale a su fecha |
+| `sunat` | Consulta RUC de SUNAT (estado y condición). La Ficha RUC electrónica trae un QR para validarla | No vence: cuenta el estado (activo) y la condición (habido) a la fecha |
+| `zonificacion` | GeoSERFOR, capa Zonificación Forestal, con la resolución que la aprueba. Al 2026-10-05 solo la tienen Amazonas, Huánuco, Junín, Loreto, Madre de Dios, San Martín y Ucayali | No vence: la aprueba una resolución ministerial (Ley 29763, art. 33, modificado por la Ley 31973) |
+
+1. **Vencimiento:** ningún tipo exige `fecha_vencimiento`. Se llena cuando el documento trae un término, como el CUSAF o una autorización con plazo.
+2. **Sustento de SUNAFIL:** SUNAFIL no emite constancias para el empleador. El sustento es la búsqueda, por el RUC del productor, en el buscador de resoluciones del sistema inspectivo, guardada como PDF o captura donde se vean la fecha y el resultado. Al productor sin RUC o sin trabajadores no le corresponde ese documento: se declara una exención con ese motivo.
+3. **Autorización forestal:** según la Ley 31973 (Única Disposición Complementaria Final), a un predio privado le corresponde la exención con ese motivo si cumple estas condiciones:
+   - Tiene título o constancia de posesión anteriores a esa ley.
+   - No tiene masa boscosa y sí tiene actividad agropecuaria.
+   - Conserva el 30 % de reserva de bosque.
+
+   Esa disposición seguiría vigente tras la sentencia del Tribunal Constitucional en el Exp. 00002-2024-AI, que no se leyó completa. La exención la decide la cooperativa caso por caso.
 
 ### Datos de cada documento legal
 
@@ -1907,11 +1941,12 @@ Se suman a las pruebas del análisis y de las visitas listadas más arriba.
 
 ### Decisiones pendientes del equipo
 
-- [ ] Crear las claves de Whisp y GFW y guardar una respuesta real de cada una para las pruebas.
+- [x] Crear las claves de Whisp y GFW. Creadas y cargadas en Render el 2026-10-05.
+- [ ] Guardar una respuesta real de cada fuente para las pruebas.
 - [ ] Confirmar el recorte de fuentes: Geobosques, GeoSERFOR y JRC como capas visuales; Sentinel, Hansen y MapBiomas fuera de la primera versión.
-- [ ] Definir qué documento concreto se pide como sustento de SUNAFIL para un productor.
-- [ ] Confirmar qué tipos de documento tienen registro público consultable.
-- [ ] Definir qué tipos de documento exigen fecha de vencimiento.
+- [x] Definir qué documento concreto se pide como sustento de SUNAFIL para un productor. Definido el 2026-10-05; ver "Los 7 documentos".
+- [x] Confirmar qué tipos de documento tienen registro público consultable. Confirmado el 2026-10-05 con fuentes oficiales.
+- [x] Definir qué tipos de documento exigen fecha de vencimiento. Ninguno la exige; ver "Los 7 documentos".
 - [ ] Confirmar los plazos: 180 días de vigencia del análisis, 30 días de aviso de vencimiento y 365 días de vigencia de la visita de campo.
 - [ ] Retirar del proyecto el diseño anterior de evaluación de riesgos, que calcula una conclusión y contradice el principio de esta parte.
 

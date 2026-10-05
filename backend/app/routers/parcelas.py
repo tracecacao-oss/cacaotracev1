@@ -1,12 +1,14 @@
 """Parcelas de la cooperativa: listado, mapa, análisis de archivos, edición y exportación."""
 
 import uuid
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from fastapi.responses import JSONResponse
 
 from app.contexto import Contexto, requiere_rol
+from app.models import Parcela
 from app.routers.comun import leer_archivo
 from app.schemas.parcelas import (
     AnalisisArchivo,
@@ -17,6 +19,7 @@ from app.schemas.parcelas import (
 )
 from app.services import documentos
 from app.services import parcelas as servicio
+from app.services.expediente import no_excluida, validar_datos_legales
 from app.services.geometria import TAMANO_MAXIMO_ARCHIVO
 from app.services.productores import documento_salida
 from app.storage import ClienteStorage, obtener_storage
@@ -27,6 +30,42 @@ Registro = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa", "operad
 Analisis = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa", "operador", "productor"))]
 Storage = Annotated[ClienteStorage, Depends(obtener_storage)]
 Alerta = Literal["area_discrepante", "diez_hectareas_o_mas", "superposicion", "sin_sustento_midagri"]
+TipoDocumentoParcela = Literal[
+    "sustento_midagri",
+    "titulo_sunarp",
+    "constancia_posesion",
+    "cusaf",
+    "autorizacion_serfor",
+    "sunafil",
+    "sunat",
+    "zonificacion",
+]
+
+
+def cargar_documento_de_parcela(
+    contexto: Contexto,
+    storage: ClienteStorage,
+    parcela: Parcela,
+    tipo: str,
+    archivo: UploadFile,
+    numero,
+    entidad_emisora,
+    fecha_emision,
+    fecha_vencimiento,
+) -> DocumentoSalida:
+    """La comparten el personal y el productor (sobre sus parcelas)."""
+    no_excluida(parcela)
+    datos_legales = validar_datos_legales(tipo, numero, entidad_emisora, fecha_emision, fecha_vencimiento)
+    documento = documentos.cargar(
+        contexto,
+        storage,
+        entidad="parcela",
+        entidad_id=parcela.id,
+        tipo=tipo,
+        archivo=leer_archivo(archivo),
+        datos_legales=datos_legales,
+    )
+    return documento_salida(documento, None)
 
 
 @router.get("", response_model=list[ParcelaSalida])
@@ -85,15 +124,19 @@ def exportar_geojson(parcela_id: uuid.UUID, contexto: Lectura):
 
 
 @router.post("/{parcela_id}/documentos", response_model=DocumentoSalida, status_code=201)
-def cargar_sustento(
+def cargar_documento(
     parcela_id: uuid.UUID,
     contexto: Registro,
     storage: Storage,
-    tipo: Annotated[Literal["sustento_midagri"], Form()],
+    tipo: Annotated[TipoDocumentoParcela, Form()],
     archivo: Annotated[UploadFile, File()],
+    numero: Annotated[str | None, Form()] = None,
+    entidad_emisora: Annotated[str | None, Form()] = None,
+    fecha_emision: Annotated[date | None, Form()] = None,
+    fecha_vencimiento: Annotated[date | None, Form()] = None,
 ):
-    servicio.parcela_visible(contexto, parcela_id)
-    documento = documentos.cargar(
-        contexto, storage, entidad="parcela", entidad_id=parcela_id, tipo=tipo, archivo=leer_archivo(archivo)
+    """Sustento de MIDAGRI o uno de los 7 documentos legales (Parte 4), con sus datos."""
+    parcela = servicio.parcela_visible(contexto, parcela_id)
+    return cargar_documento_de_parcela(
+        contexto, storage, parcela, tipo, archivo, numero, entidad_emisora, fecha_emision, fecha_vencimiento
     )
-    return documento_salida(documento, None)
