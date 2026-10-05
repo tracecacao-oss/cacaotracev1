@@ -44,9 +44,9 @@ def test_cada_accion_auditable_crea_su_fila_sin_contrasenas(api, sesion, auth_fa
         json={
             "razon_social": "Coop Auditada",
             "ruc": "20999999902",
-            "departamento": "D",
-            "provincia": "P",
-            "distrito": "X",
+            "departamento": "SAN MARTIN",
+            "provincia": "PICOTA",
+            "distrito": "PICOTA",
             "administrador": {"nombres": "A", "apellidos": "B", "correo": "aud.admin@prueba.test"},
         },
     ).json()
@@ -84,6 +84,7 @@ def test_cada_accion_auditable_crea_su_fila_sin_contrasenas(api, sesion, auth_fa
             "dni": "90000009",
             "nombres": "Demo",
             "apellidos": "Nueve",
+            "direccion_postal": "Caserío Demo",
             "consentimiento_cooperativa": True,
             "version_consentimiento": "0",
         },

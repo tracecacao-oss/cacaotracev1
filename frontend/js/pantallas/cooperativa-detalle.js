@@ -3,6 +3,7 @@
 import { llamarApi } from "../api.js";
 import { enConsulta } from "../estado.js";
 import { abrirModal, campo, confirmar, enviarCon, fecha, h, mostrarClaveTemporal, sinVacios, toast } from "../ui.js";
+import { camposUbigeo } from "../ubigeo.js";
 import { consultar, insigniaEstado } from "./cooperativas.js";
 
 function dato(etiqueta, valor, mono = false) {
@@ -11,6 +12,7 @@ function dato(etiqueta, valor, mono = false) {
 
 function abrirEdicion(c, alGuardar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-editar-coop" }, "Guardar");
+  const [departamento, provincia, distrito] = camposUbigeo(c);
   const formulario = h(
     "form",
     { class: "form", id: "form-editar-coop" },
@@ -24,10 +26,10 @@ function abrirEdicion(c, alGuardar) {
     h(
       "div",
       { class: "grid2" },
-      campo({ etiqueta: "Departamento", name: "departamento", required: true, value: c.departamento, maxlength: 200 }),
-      campo({ etiqueta: "Provincia", name: "provincia", required: true, value: c.provincia, maxlength: 200 }),
+      departamento,
+      provincia,
     ),
-    campo({ etiqueta: "Distrito", name: "distrito", required: true, value: c.distrito, maxlength: 200 }),
+    distrito,
   );
   const { cerrar } = abrirModal({
     titulo: "Editar cooperativa",

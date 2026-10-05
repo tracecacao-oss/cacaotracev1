@@ -1324,12 +1324,12 @@ Cada endpoint nuevo tiene además la prueba de las dos cooperativas definida en 
 
 ### Decisiones pendientes del equipo
 
-- [ ] Confirmar qué es el "Código productor APP" del diagrama. Se asumió que es el código del productor en Agro Digital.
+- [x] Confirmar qué es el "Código productor APP" del diagrama. Confirmado el 2026-10-05: es el código que el productor tiene en su app Agro Digital del MIDAGRI (`codigo_agrodigital`).
 - [ ] Confirmar en qué formato entrega MIDAGRI o Agro Digital la parcela al productor: archivo, constancia o captura.
 - [ ] Confirmar si se rechazan los polígonos con huecos.
 - [ ] Confirmar el tope de 100 ha por parcela.
 - [ ] Confirmar el umbral de superposición: 5 % o 0.05 ha.
-- [ ] Decidir si departamento, provincia y distrito se eligen de un catálogo oficial o se escriben.
+- [x] Decidir si departamento, provincia y distrito se eligen de un catálogo oficial o se escriben. Decidido el 2026-10-05: se eligen del catálogo oficial del INEI (UBIGEO 2022, 1891 distritos, de datosabiertos.gob.pe) y se guardan con los nombres del INEI.
 - [ ] Decidir si se agrega la carga masiva de productores desde una hoja de cálculo.
 
 ## Parte 4 — Habilitación de la parcela

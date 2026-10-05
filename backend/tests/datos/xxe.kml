@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE kml [<!ENTITY secreto SYSTEM "file:///etc/passwd">]>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Placemark><name>&secreto;</name><Point><coordinates>-76.55,-6.95</coordinates></Point></Placemark>
+</kml>

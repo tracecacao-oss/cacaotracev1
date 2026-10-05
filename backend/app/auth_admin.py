@@ -105,6 +105,11 @@ class ClienteAuthAdmin:
         """Fija la contraseña y, de paso, cierra todas las sesiones abiertas del usuario."""
         self._actualizar(usuario_id, {"password": clave}, "cambiar contraseña")
 
+    def cambiar_correo(self, usuario_id: uuid.UUID, correo: str) -> None:
+        """Se aplica al instante y sin enviar correo. Supabase no revisa duplicados al
+        actualizar: quien llama debe garantizar que el correo está libre."""
+        self._actualizar(usuario_id, {"email": correo, "email_confirm": True}, "cambiar correo")
+
     def bloquear(self, usuario_id: uuid.UUID) -> None:
         """Impide iniciar sesión y renovar el token."""
         self._actualizar(usuario_id, {"ban_duration": DURACION_BLOQUEO}, "bloquear")

@@ -16,6 +16,14 @@ import {
   sinVacios,
   vacio,
 } from "../ui.js";
+import { camposUbigeo } from "../ubigeo.js";
+
+export function seccionesPlataforma() {
+  return [
+    ["Cooperativas", "#/plataforma/cooperativas"],
+    ["Superposiciones", "#/plataforma/superposiciones"],
+  ];
+}
 
 export function insigniaEstado(cooperativa) {
   return cooperativa.estado === "activa"
@@ -31,6 +39,7 @@ export function consultar(cooperativa, navegar) {
 /** Formulario largo partido en pasos: 1) cooperativa, 2) su primer administrador. */
 function abrirAlta(navegar) {
   const pasos = h("div", { class: "pasos" }, h("span", { "aria-current": "step" }, "1. Cooperativa"), h("span", {}, "2. Administrador"));
+  const [departamento, provincia, distrito] = camposUbigeo();
   const paso1 = h(
     "div",
     { class: "form" },
@@ -44,10 +53,10 @@ function abrirAlta(navegar) {
     h(
       "div",
       { class: "grid2" },
-      campo({ etiqueta: "Departamento", name: "departamento", required: true, maxlength: 200 }),
-      campo({ etiqueta: "Provincia", name: "provincia", required: true, maxlength: 200 }),
+      departamento,
+      provincia,
     ),
-    campo({ etiqueta: "Distrito", name: "distrito", required: true, maxlength: 200 }),
+    distrito,
     h(
       "label",
       { class: "check" },
@@ -91,7 +100,7 @@ function abrirAlta(navegar) {
 
   formulario.addEventListener("submit", async (evento) => {
     evento.preventDefault();
-    const visibles = [...(paso2.hidden ? paso1 : paso2).querySelectorAll("input")];
+    const visibles = [...(paso2.hidden ? paso1 : paso2).querySelectorAll("input,select")];
     if (!visibles.every((i) => i.reportValidity())) return;
     if (paso2.hidden) return irAlPaso(2);
 
@@ -198,7 +207,7 @@ export default async function cooperativas({ navegar }) {
   return {
     titulo: "Cooperativas",
     migas: [["Plataforma"], ["Cooperativas"]],
-    secciones: [["Cooperativas", "#/plataforma/cooperativas"]],
+    secciones: seccionesPlataforma(),
     accion: h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirAlta(navegar) }, icono("mas"), "Nueva cooperativa"),
     contenido: h(
       "section",

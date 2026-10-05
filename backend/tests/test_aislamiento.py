@@ -56,7 +56,10 @@ def test_listados_solo_traen_datos_de_a(api, mundo):
 def test_productor_creado_por_a_queda_en_a(api, sesion, mundo):
     nuevo = (
         api.como(mundo["operador_a"])
-        .post("/productores", json={"dni": "90000099", "nombres": "Demo", "apellidos": "A"})
+        .post(
+            "/productores",
+            json={"dni": "90000099", "nombres": "Demo", "apellidos": "A", "direccion_postal": "Caserío Demo"},
+        )
         .json()
     )
     assert api.como(mundo["admin_b"]).get(f"/productores/{nuevo['id']}").status_code == 404
@@ -70,7 +73,8 @@ def test_operador_que_envia_cabecera_de_otra_cooperativa_la_ve_ignorada(api, mun
 
 def test_cabecera_ignorada_tambien_en_escrituras(api, mundo):
     respuesta = api.como(mundo["operador_a"], cooperativa_id=mundo["b"].id).post(
-        "/productores", json={"dni": "90000098", "nombres": "Demo", "apellidos": "A"}
+        "/productores",
+        json={"dni": "90000098", "nombres": "Demo", "apellidos": "A", "direccion_postal": "Caserío Demo"},
     )
     assert respuesta.status_code == 201
     assert api.como(mundo["admin_a"]).get(f"/productores/{respuesta.json()['id']}").status_code == 200
