@@ -3,15 +3,23 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>CacaoTrace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    />
+    <link rel="stylesheet" href="css/tokens.css" />
     <link rel="stylesheet" href="css/base.css" />
   </head>
   <body>
-    <div id="aviso-servidor" class="aviso" role="status" hidden>
+    <div id="aviso-servidor" class="aviso-servidor" role="status" hidden>
       Conectando con el servidor… puede tardar hasta un minuto.
     </div>
-    <main id="app" class="contenedor"></main>
+    <div id="app"></div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
     <script type="module" src="js/app.js"></script>
   </body>
 </html>

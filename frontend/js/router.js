@@ -1,0 +1,155 @@
+// Navegación por hash. Cada pantalla es un módulo en js/pantallas/ que devuelve su vista.
+// La interfaz oculta lo que el rol no puede usar, pero la API es la que decide.
+
+import { alPerderLaSesion, llamarApi } from "./api.js";
+import { estado, fijarConsulta, rolEfectivo } from "./estado.js";
+import { estructura } from "./layout.js";
+import { cerrarSesion, configurado, tokenActual } from "./sesion.js";
+import { errorDeCarga, h } from "./ui.js";
+
+const PERSONAL = ["admin_cooperativa", "operador", "lector", "consulta"];
+const TODOS = ["superadmin", "admin_cooperativa", "operador", "lector", "productor", "consulta"];
+const vacia = () => import("./pantallas/vacia.js");
+
+const RUTAS = [
+  { patron: /^#\/ingreso$/, publica: true, cargar: () => import("./pantallas/ingreso.js") },
+  { patron: /^#\/cambiar-clave$/, sola: true, roles: TODOS, cargar: () => import("./pantallas/cambiar-clave.js") },
+  { patron: /^#\/consentimiento$/, sola: true, roles: ["productor"], cargar: () => import("./pantallas/consentimiento.js") },
+  { patron: /^#\/inicio$/, roles: PERSONAL, cargar: () => import("./pantallas/inicio.js") },
+  { patron: /^#\/productores$/, roles: PERSONAL, cargar: () => import("./pantallas/productores.js") },
+  { patron: /^#\/productores\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/productor.js") },
+  { patron: /^#\/(lotes|trazabilidad|exportacion)$/, roles: PERSONAL, cargar: vacia },
+  { patron: /^#\/cooperativa$/, roles: PERSONAL, cargar: () => import("./pantallas/cooperativa.js") },
+  { patron: /^#\/cooperativa\/usuarios$/, roles: ["admin_cooperativa", "consulta"], cargar: () => import("./pantallas/usuarios.js") },
+  { patron: /^#\/cooperativa\/auditoria$/, roles: ["admin_cooperativa", "consulta"], cargar: () => import("./pantallas/auditoria.js") },
+  { patron: /^#\/cooperativa\/configuracion$/, roles: ["admin_cooperativa"], cargar: vacia },
+  { patron: /^#\/plataforma(\/cooperativas)?$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/cooperativas.js") },
+  { patron: /^#\/plataforma\/cooperativas\/([0-9a-f-]{36})$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/cooperativa-detalle.js") },
+  { patron: /^#\/mi-perfil$/, roles: TODOS, cargar: () => import("./pantallas/mi-perfil.js") },
+  { patron: /^#\/(mis-parcelas|mis-entregas)$/, roles: ["productor"], cargar: vacia },
+];
+
+const raiz = document.getElementById("app");
+let avisoIngreso = null;
+let turno = 0;
+
+export function navegar(hash) {
+  if (location.hash === hash) mostrar();
+  else location.hash = hash;
+}
+
+function inicioDe(usuario) {
+  if (usuario.rol === "productor") return "#/mi-perfil";
+  if (usuario.rol === "superadmin") return rolEfectivo() === "consulta" ? "#/inicio" : "#/plataforma/cooperativas";
+  return "#/inicio";
+}
+
+export async function recargarUsuario() {
+  estado.usuario = await llamarApi("/me", { sinConsulta: true });
+  if (estado.usuario.rol !== "superadmin") fijarConsulta(null);
+  return estado.usuario;
+}
+
+export async function salir(aviso = null) {
+  await cerrarSesion();
+  estado.usuario = null;
+  fijarConsulta(null);
+  avisoIngreso = aviso;
+  navegar("#/ingreso");
+}
+
+alPerderLaSesion((codigo, mensaje) => {
+  if (codigo === "cambio_clave_requerido") {
+    if (estado.usuario) estado.usuario.debe_cambiar_clave = true;
+    navegar("#/cambiar-clave");
+    return;
+  }
+  estado.usuario = null;
+  avisoIngreso = mensaje;
+  navegar("#/ingreso");
+});
+
+function pantallaDeError(error, reintentar) {
+  return h(
+    "div",
+    { class: "pantalla-sola" },
+    h("div", { class: "panel tarjeta-sola" }, errorDeCarga(error), h("button", { class: "btn btn-primary", type: "button", onclick: reintentar }, "Reintentar")),
+  );
+}
+
+export async function mostrar() {
+  const miTurno = ++turno;
+  const vigente = () => miTurno === turno;
+  const hash = location.hash || "#/ingreso";
+
+  const token = configurado ? await tokenActual() : null;
+  if (!vigente()) return;
+  if (!token) {
+    estado.usuario = null;
+    if (hash !== "#/ingreso") return navegar("#/ingreso");
+  } else if (!estado.usuario) {
+    try {
+      await recargarUsuario();
+    } catch (error) {
+      if (!vigente()) return;
+      // Cuenta desactivada, cooperativa suspendida o sin perfil: se cierra la sesión.
+      if (error.estado === 403) return salir(error.message);
+      if (error.estado === 401) return;
+      raiz.replaceChildren(pantallaDeError(error, mostrar));
+      return;
+    }
+    if (!vigente()) return;
+  }
+
+  const usuario = estado.usuario;
+  if (usuario) {
+    if (usuario.debe_cambiar_clave && hash !== "#/cambiar-clave") return navegar("#/cambiar-clave");
+    if (!usuario.debe_cambiar_clave && usuario.consentimiento_pendiente && hash !== "#/consentimiento") {
+      return navegar("#/consentimiento");
+    }
+    if (hash === "#/ingreso") return navegar(inicioDe(usuario));
+  }
+
+  let parametros = [];
+  const ruta = RUTAS.find((r) => {
+    const coincide = hash.match(r.patron);
+    if (coincide) parametros = coincide.slice(1);
+    return coincide;
+  });
+  if (!ruta || (usuario && ruta.roles && !ruta.roles.includes(rolEfectivo()))) {
+    return navegar(usuario ? inicioDe(usuario) : "#/ingreso");
+  }
+
+  const ctx = {
+    hash,
+    parametros,
+    navegar,
+    recargar: mostrar,
+    recargarUsuario,
+    salir,
+    tomarAviso: () => {
+      const aviso = avisoIngreso;
+      avisoIngreso = null;
+      return aviso;
+    },
+  };
+  let vista;
+  try {
+    const modulo = await ruta.cargar();
+    vista = await modulo.default(ctx);
+  } catch (error) {
+    if (!vigente()) return;
+    raiz.replaceChildren(pantallaDeError(error, mostrar));
+    return;
+  }
+  if (!vigente()) return;
+
+  document.title = vista.titulo ? `${vista.titulo} · CacaoTrace` : "CacaoTrace";
+  document.body.classList.remove("side-abierta");
+  if (ruta.publica || ruta.sola) {
+    raiz.replaceChildren(vista.contenido);
+  } else {
+    raiz.replaceChildren(...estructura(vista, hash, { alSalir: () => salir(), navegar }));
+  }
+  window.scrollTo(0, 0);
+}

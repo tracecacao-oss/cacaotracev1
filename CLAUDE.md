@@ -2,7 +2,7 @@
 
 **Especificación:** `docs/especificacion.md` es la única fuente de verdad. Lo que no está ahí no se construye sin preguntar.
 
-**Parte en curso:** ninguna. La Parte 1 está cerrada; la siguiente es la 2 — Acceso y base, que empieza cuando el equipo lo indique.
+**Parte en curso:** 2 — Acceso y base (rama `feat/parte-2-acceso-base`). Diseño de referencia en `legacy/diseno/`: solo colores, tipografías, espaciados y estilo de componentes; manda la especificación.
 
 ## Reglas de trabajo
 
@@ -31,6 +31,14 @@ python -m http.server 5500 --directory frontend        # interfaz (desde la raí
 ```
 
 Las pruebas que necesitan Postgres se saltan en local si Docker no está arriba; en CI son obligatorias.
+Las pruebas nunca llaman a Supabase: el Auth admin se simula con `AuthFalso` (tests/conftest.py) y cada prueba corre en una transacción que se revierte.
+
+## Convenciones del código
+
+- Permisos: `requiere_rol(...)` en el router; la cooperativa siempre de `obtener_contexto`, nunca del cuerpo, la ruta o la query.
+- Servicios en `app/services/` reciben el `Contexto` como primer parámetro y auditan con `registrar_auditoria` en la misma transacción.
+- Errores con `error_api(estado, codigo, mensaje)`; mensajes en español, listos para mostrar.
+- Interfaz: `frontend/js/api.js` es el único que llama a `fetch`; pantallas en `frontend/js/pantallas/`; textos de usuario con `textContent`, nunca HTML.
 
 ## Producción
 
@@ -47,4 +55,4 @@ La base `cacaotrace-db` de Render es del MVP anterior: no se usa y el equipo la 
 | Parte | Estado |
 | --- | --- |
 | 1 Infraestructura y despliegue | Cerrada el 2026-10-04: diez criterios de aceptación verificados en producción |
-| 2 Acceso y base | Pendiente |
+| 2 Acceso y base | En construcción |
