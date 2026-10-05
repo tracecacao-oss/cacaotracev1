@@ -19,7 +19,7 @@ class ErrorFuente(Exception):
 
 
 class Fuente(Protocol):
-    codigo: str  # "whisp" o "gfw"
+    codigo: str  # "whisp", "gfw" o "mapbiomas"
     nombre: str
     # True si la fuente solo analiza polígonos: un punto se le envía como círculo con el área declarada.
     requiere_poligono: bool

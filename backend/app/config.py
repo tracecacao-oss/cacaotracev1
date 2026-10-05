@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     aviso_vencimiento_dias: int = Field(30, ge=0)
     # El bucle de análisis corre dentro de la API; las pruebas lo apagan y lo llaman a mano.
     analisis_en_segundo_plano: bool = True
+    # Adenda de la Parte 4: MapBiomas Perú (sin clave) y el umbral de "registra bosque en 2020".
+    mapbiomas_activo: bool = False
+    mapbiomas_anio_inicial: int = Field(2015, ge=1985)
+    mapbiomas_anio_final: int = Field(2024, ge=1985)
+    umbral_bosque_2020_pct: float = Field(10, gt=0, le=100)
 
     @field_validator(
         "supabase_secret_key", "supabase_jwt_secret", "whisp_api_key", "gfw_api_key", mode="before"

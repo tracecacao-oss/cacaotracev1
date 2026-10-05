@@ -18,7 +18,7 @@ TipoExencion = Literal["cusaf", "autorizacion_serfor", "sunafil", "sunat", "zoni
 
 
 class FuenteSalida(BaseModel):
-    fuente: Literal["whisp", "gfw"]
+    fuente: Literal["whisp", "gfw", "mapbiomas"]
     nombre: str
     configurada: bool
 
@@ -50,6 +50,36 @@ class AnalisisDetalle(AnalisisSalida):
 
 class AnalisisSolicitado(BaseModel):
     analisis: list[AnalisisSalida]
+
+
+class MedidaSalida(BaseModel):
+    via: str
+    nombre: str
+    valor: Any
+    unidad: str | None
+    mide_bosque: bool
+    serie: bool
+
+
+class FilaConvergencia(BaseModel):
+    conjunto: str
+    nombre: str
+    vias: list[str]
+    fechas: dict[str, datetime]
+    # None: ese conjunto no mide esa pregunta; la celda queda vacía.
+    al_2020: list[MedidaSalida] | None
+    despues_2020: list[MedidaSalida] | None
+    registra_bosque_2020: bool | None
+    registra_cambio: bool | None
+
+
+class ConvergenciaSalida(BaseModel):
+    filas: list[FilaConvergencia]
+    frase: str
+    conteos: dict[str, int]
+    discrepan: dict[str, bool]
+    umbral_bosque_2020_pct: float
+    area_ha: float | None
 
 
 # ---------- Visitas de campo ----------

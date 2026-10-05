@@ -43,7 +43,7 @@ from app.services.auditoria import registrar_auditoria
 from app.services.fuentes import registro
 
 VIGENCIA_VISITA = timedelta(days=365)
-NOMBRE_FUENTE = {"whisp": "Whisp", "gfw": "GFW"}
+NOMBRE_FUENTE = {"whisp": "Whisp", "gfw": "GFW", "mapbiomas": "MapBiomas"}
 
 
 @dataclass
@@ -110,7 +110,14 @@ def _requisitos(
                 else f"Falta un análisis vigente de: {_lista([NOMBRE_FUENTE[c] for c in sin_vigente])}.",
             )
         )
-    revision = estado_analisis["requiere_revision"]
+    revision = [NOMBRE_FUENTE.get(c, c) for c in estado_analisis["requiere_revision"]]
+    bosque_2020 = estado_analisis.get("bosque_2020", [])
+    if bosque_2020:
+        n = len(bosque_2020)
+        revision.append(
+            f"{n} {'conjunto de datos que registra' if n == 1 else 'conjuntos de datos que registran'} "
+            "bosque en 2020"
+        )
     if not revision:
         r.append(Requisito(codigo="revision_atendida", cumple=True, detalle="Ninguna fuente pide revisión."))
     else:
@@ -124,15 +131,15 @@ def _requisitos(
             ),
             None,
         )
-        fuentes = _lista([NOMBRE_FUENTE[c] for c in revision])
+        motivos = _lista(revision)
         r.append(
             Requisito(
                 codigo="revision_atendida",
                 cumple=atendida is not None,
                 detalle=(
-                    f"{fuentes} pide revisión; la atiende la visita de campo del {atendida.fecha:%d/%m/%Y}."
+                    f"Piden revisión: {motivos}. La atiende la visita de campo del {atendida.fecha:%d/%m/%Y}."
                     if atendida
-                    else f"{fuentes} pide revisión y falta una visita de campo por ese motivo, posterior al "
+                    else f"Piden revisión: {motivos}. Falta una visita de campo por ese motivo, posterior al "
                     "último cambio de geometría y de menos de 365 días."
                 ),
             )

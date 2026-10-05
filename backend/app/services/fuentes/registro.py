@@ -17,9 +17,17 @@ def actuales() -> dict[str, Fuente]:
 def construir(settings) -> dict[str, Fuente]:
     """Las fuentes reales, con las claves de las variables de entorno."""
     from app.services.fuentes.gfw import GFW
+    from app.services.fuentes.mapbiomas import MapBiomas
     from app.services.fuentes.whisp import Whisp
 
     def clave(valor):
         return valor.get_secret_value() if valor else None
 
-    return {"whisp": Whisp(clave(settings.whisp_api_key)), "gfw": GFW(clave(settings.gfw_api_key))}
+    fuentes: dict[str, Fuente] = {
+        "whisp": Whisp(clave(settings.whisp_api_key)),
+        "gfw": GFW(clave(settings.gfw_api_key)),
+    }
+    # Con MAPBIOMAS_ACTIVO en false, MapBiomas no existe para el sistema: ni análisis ni fila en la tabla.
+    if settings.mapbiomas_activo:
+        fuentes["mapbiomas"] = MapBiomas(True, settings.mapbiomas_anio_inicial, settings.mapbiomas_anio_final)
+    return fuentes

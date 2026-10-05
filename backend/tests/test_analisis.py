@@ -271,7 +271,7 @@ def test_respuesta_que_no_se_puede_interpretar(
     parcela = _parcela(api, sesion, operador, productor)
     sesion.query(AnalisisCobertura).filter_by(fuente="whisp").delete()
     forma_inesperada = {"data": [{"otra_columna": 1}], "status": "success"}
-    simulado.gfw = [httpx.Response(200, json=forma_inesperada) for _ in range(2)]
+    simulado.gfw = [httpx.Response(200, json=forma_inesperada) for _ in range(4)]
     assert _procesar(sesion, fuentes, storage_falso)
     fila = _filas(sesion, parcela, "gfw")[0]
     assert fila.estado == "completado"
@@ -305,7 +305,9 @@ def test_otra_cooperativa_no_ve_los_analisis(api, sesion, operador, productor):
 # --- Frases prohibidas ---
 
 PROHIBIDAS = re.compile(
-    r"constancia de no deforestaci|libre de deforestaci|certificad[oa]s?\b|aprobad[oa]s?\b|\bconforme\b",
+    # La adenda de la Parte 4 suma "no deforestada" y "sin deforestación".
+    r"constancia de no deforestaci|libre de deforestaci|no deforestad|sin deforestaci"
+    r"|certificad[oa]s?\b|aprobad[oa]s?\b|\bconforme\b",
     re.IGNORECASE,
 )
 
@@ -332,12 +334,38 @@ def test_ninguna_frase_prohibida_en_el_codigo():
 DATOS = Path(__file__).parent / "datos"
 WHISP_REAL = (DATOS / "whisp_respuesta_real.json").read_bytes()
 GFW_REAL = (DATOS / "gfw_respuesta_real.json").read_bytes()
+# Las dos consultas de la adenda (refuerzo B) todavía no tienen respuesta real guardada: se arman con los
+# campos que publica la API de GFW (/dataset/{conjunto}/latest/fields) y la forma de las respuestas reales
+# de arriba. Se reemplazan por una respuesta real cuando el equipo la baje de producción.
+GFW_ADENDA = {
+    "bosque_natural": {
+        "conjunto": "sbtn_natural_forests_map",
+        "version": "v202410",
+        "respuesta": {
+            "data": [
+                {"sbtn_natural_forests_map__class": "Non-Forest", "area__ha": 3.2},
+                {"sbtn_natural_forests_map__class": "Natural Forest", "area__ha": 1.3},
+            ],
+            "status": "success",
+        },
+    },
+    "alertas_dist": {
+        "conjunto": "umd_glad_dist_alerts",
+        "version": "v20261003",
+        "respuesta": {"data": [{"count": 2}], "status": "success"},
+    },
+}
+
+
+def _gfw_completo() -> dict:
+    """La respuesta real de GFW con las dos consultas de la adenda."""
+    return json.loads(GFW_REAL) | GFW_ADENDA
 
 
 def _gfw_simulado(evidencia: dict) -> list[httpx.Response]:
     """Lo que respondió GFW, en orden: "latest" redirige a la versión concreta y esta responde."""
     respuestas = []
-    for clave in ("alertas", "perdida"):
+    for clave in ("alertas", "perdida", "bosque_natural", "alertas_dist"):
         parte = evidencia[clave]
         base = f"https://data-api.globalforestwatch.org/dataset/{parte['conjunto']}"
         respuestas.append(httpx.Response(307, headers={"location": f"{base}/{parte['version']}/query/json"}))
@@ -382,24 +410,53 @@ def test_gfw_responde_con_el_ejemplo_guardado(
 ):
     parcela = _parcela(api, sesion, operador, productor)
     sesion.query(AnalisisCobertura).filter_by(fuente="whisp").delete()
-    simulado.gfw = _gfw_simulado(json.loads(GFW_REAL))
+    simulado.gfw = _gfw_simulado(_gfw_completo())
     assert _procesar(sesion, fuentes, storage_falso)
 
     fila = _filas(sesion, parcela, "gfw")[0]
     assert fila.estado == "completado" and fila.error_detalle is None
     assert fila.resultado_fuente is None  # GFW entrega cifras, no un veredicto
-    assert fila.version_fuente == "gfw_integrated_alerts v20261005 · umd_tree_cover_loss v1.13"
+    assert fila.version_fuente == (
+        "gfw_integrated_alerts v20261005 · umd_tree_cover_loss v1.13 · sbtn_natural_forests_map v202410 · "
+        "umd_glad_dist_alerts v20261003"
+    )
     assert fila.indicadores["alertas_desde_2021"] == 0
     assert fila.indicadores["perdida_ha_por_anio"] == {}
     assert fila.indicadores["perdida_ha_total"] == 0
-    assert not fuentes["gfw"].requiere_revision(None, fila.indicadores)
+    assert fila.indicadores["bosque_natural_2020_ha"] == 1.3
+    assert fila.indicadores["alertas_dist_desde_2021"] == 2
+    assert fuentes["gfw"].requiere_revision(None, fila.indicadores)  # hay alertas DIST
     tarjeta = next(a for a in api.get(f"/parcelas/{parcela.id}/analisis").json() if a["id"] == str(fila.id))
-    assert tarjeta["resultado_texto"] == "GFW: sin alertas ni pérdida registrada desde 2021"
+    assert tarjeta["resultado_texto"] == (
+        "GFW: sin alertas ni pérdida registrada desde 2021; 1.3 ha de bosque natural en 2020; "
+        "2 alertas DIST desde 2021"
+    )
+
+
+def test_falla_una_de_las_cuatro_consultas_de_gfw(
+    api, sesion, operador, productor, simulado, fuentes, storage_falso
+):
+    """Sin la cuarta consulta no hay análisis: se reintenta completo y al tercer intento queda en error."""
+    parcela = _parcela(api, sesion, operador, productor)
+    sesion.query(AnalisisCobertura).filter_by(fuente="whisp").delete()
+    for _ in range(3):
+        simulado.gfw = _gfw_simulado(_gfw_completo())[:6] + [
+            httpx.Response(500, json={"status": "failed", "message": "Internal Server Error"})
+        ]
+        _ya(sesion)
+        assert _procesar(sesion, fuentes, storage_falso)
+    fila = _filas(sesion, parcela, "gfw")[0]
+    assert (fila.estado, fila.intentos) == ("error", 3)
+    assert "umd_glad_dist_alerts" in fila.error_detalle
+    assert fila.respuesta_documento_id is None and fila.indicadores is None
+    # Cada intento repitió las cuatro consultas desde la primera.
+    consultas = [r.url.path.split("/")[2] for r in simulado.peticiones if "latest" in r.url.path]
+    assert consultas.count("gfw_integrated_alerts") == 3
 
 
 def test_gfw_con_perdida_desde_2021():
     """Sobre la respuesta real, filas de pérdida con las columnas que documenta GFW ("area__ha")."""
-    evidencia = json.loads(GFW_REAL)
+    evidencia = _gfw_completo()
     evidencia["perdida"]["respuesta"]["data"] = [
         {"umd_tree_cover_loss__year": 2022, "area__ha": 0.12},
         {"umd_tree_cover_loss__year": 2024, "area__ha": 0.5},
@@ -409,4 +466,4 @@ def test_gfw_con_perdida_desde_2021():
     assert indicadores["perdida_ha_por_anio"] == {"2022": 0.12, "2024": 0.5}
     assert indicadores["perdida_ha_total"] == 0.62
     assert gfw.requiere_revision(resultado, indicadores)
-    assert gfw.texto(resultado, indicadores) == "GFW: 0 alertas y 0.62 ha de pérdida desde 2021"
+    assert gfw.texto(resultado, indicadores).startswith("GFW: 0 alertas y 0.62 ha de pérdida desde 2021; ")

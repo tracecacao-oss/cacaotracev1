@@ -26,7 +26,15 @@ from app.contexto import Contexto, cooperativa_del_contexto
 from app.errores import error_api, no_encontrado
 from app.fechas import LIMA, ahora
 from app.models import Afiliacion, AnalisisCobertura, Documento, Parcela, Perfil
-from app.schemas.habilitacion import AnalisisDetalle, AnalisisSalida, FuenteSalida
+from app.schemas.habilitacion import (
+    AnalisisDetalle,
+    AnalisisSalida,
+    ConvergenciaSalida,
+    FilaConvergencia,
+    FuenteSalida,
+    MedidaSalida,
+)
+from app.services import convergencia as servicio_convergencia
 from app.services import geometria
 from app.services.auditoria import registrar_auditoria
 from app.services.fuentes import ErrorFuente, Fuente
@@ -181,16 +189,13 @@ def de_parcelas(sesion: Session, parcela_ids: list[uuid.UUID]) -> dict[uuid.UUID
     return resultado
 
 
-def resumen(fuentes: dict[str, Fuente], parcela: Parcela, analisis: list[AnalisisCobertura]) -> dict:
-    """Estado del análisis de una parcela para alertas y requisitos."""
+def ultimos_completados(
+    fuentes: dict[str, Fuente], parcela: Parcela, analisis: list[AnalisisCobertura]
+) -> list[AnalisisCobertura]:
+    """El último análisis completado de cada fuente en uso, sobre la geometría actual."""
     actual = huella_parcela(parcela)
-    codigos = [f.codigo for f in configuradas(fuentes)]
-    sin_vigente = [c for c in codigos if not any(a.fuente == c and vigente(a, actual) for a in analisis)]
-    ultimo = {c: next((a for a in analisis if a.fuente == c), None) for c in fuentes}
-    con_error = [c for c, a in ultimo.items() if a is not None and a.estado == "error"]
-    # Lo que dice cada fuente en su último análisis completado sobre la geometría actual.
-    revision = []
-    for codigo, fuente in fuentes.items():
+    elegidos = []
+    for codigo in fuentes:
         completado = next(
             (
                 a
@@ -199,15 +204,77 @@ def resumen(fuentes: dict[str, Fuente], parcela: Parcela, analisis: list[Analisi
             ),
             None,
         )
-        if completado is not None and fuente.requiere_revision(
-            completado.resultado_fuente, completado.indicadores or {}
-        ):
-            revision.append(codigo)
+        if completado is not None:
+            elegidos.append(completado)
+    return elegidos
+
+
+def area_parcela(parcela: Parcela) -> float | None:
+    area = parcela.area_calculada_ha if parcela.tipo_geometria == "poligono" else parcela.area_declarada_ha
+    return float(area) if area is not None else None
+
+
+def convergencia_de(
+    fuentes: dict[str, Fuente], parcela: Parcela, analisis: list[AnalisisCobertura]
+) -> servicio_convergencia.Convergencia:
+    return servicio_convergencia.calcular(
+        ultimos_completados(fuentes, parcela, analisis),
+        area_parcela(parcela),
+        get_settings().umbral_bosque_2020_pct,
+        es_punto=parcela.tipo_geometria == "punto",
+    )
+
+
+def convergencia_salida(sesion: Session, fuentes: dict[str, Fuente], parcela: Parcela) -> ConvergenciaSalida:
+    c = convergencia_de(fuentes, parcela, de_parcelas(sesion, [parcela.id])[parcela.id])
+
+    def celda(medidas):
+        return [MedidaSalida(**vars(m)) for m in medidas] or None
+
+    return ConvergenciaSalida(
+        filas=[
+            FilaConvergencia(
+                conjunto=f.conjunto,
+                nombre=f.nombre,
+                vias=f.vias,
+                fechas=f.fechas,
+                al_2020=celda(f.al_2020),
+                despues_2020=celda(f.despues_2020),
+                registra_bosque_2020=f.registra_bosque_2020,
+                registra_cambio=f.registra_cambio,
+            )
+            for f in c.filas
+        ],
+        frase=c.frase,
+        conteos=c.conteos,
+        discrepan=c.discrepan,
+        umbral_bosque_2020_pct=c.umbral_pct,
+        area_ha=c.area_ha,
+    )
+
+
+def resumen(fuentes: dict[str, Fuente], parcela: Parcela, analisis: list[AnalisisCobertura]) -> dict:
+    """Estado del análisis de una parcela para alertas y requisitos."""
+    actual = huella_parcela(parcela)
+    codigos = [f.codigo for f in configuradas(fuentes)]
+    sin_vigente = [c for c in codigos if not any(a.fuente == c and vigente(a, actual) for a in analisis)]
+    ultimo = {c: next((a for a in analisis if a.fuente == c), None) for c in fuentes}
+    con_error = [c for c, a in ultimo.items() if a is not None and a.estado == "error"]
+    # Lo que dice cada fuente en su último análisis completado sobre la geometría actual.
+    completados = ultimos_completados(fuentes, parcela, analisis)
+    revision = [
+        a.fuente
+        for a in completados
+        if fuentes[a.fuente].requiere_revision(a.resultado_fuente, a.indicadores or {})
+    ]
+    # Adenda de la Parte 4, 7.2 regla 3: algún conjunto registra bosque en 2020 en al menos el umbral.
+    bosque_2020 = convergencia_de(fuentes, parcela, analisis).registran_bosque_2020
     return {
         "configuradas": codigos,
         "sin_vigente": sin_vigente,
         "con_error": con_error,
         "requiere_revision": revision,
+        "bosque_2020": bosque_2020,
     }
 
 
@@ -215,7 +282,7 @@ def alertas(estado: dict) -> list[str]:
     resultado = []
     if estado["sin_vigente"]:
         resultado.append("sin_analisis_vigente")
-    if estado["requiere_revision"]:
+    if estado["requiere_revision"] or estado.get("bosque_2020"):
         resultado.append("analisis_requiere_revision")
     if estado["con_error"]:
         resultado.append("analisis_con_error")

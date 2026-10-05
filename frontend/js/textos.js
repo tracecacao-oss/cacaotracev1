@@ -36,7 +36,7 @@ export const ALERTAS = {
   sin_sustento_midagri: "Falta el sustento del estado en MIDAGRI",
   // Parte 4
   sin_analisis_vigente: "Falta un análisis de cobertura vigente",
-  analisis_requiere_revision: "Una fuente pide que una persona revise la parcela",
+  analisis_requiere_revision: "Una fuente o un conjunto de datos pide que una persona revise la parcela",
   analisis_con_error: "El último análisis de una fuente falló",
   expediente_incompleto: "El expediente legal está incompleto",
   documento_por_vencer: "Un documento legal vence pronto",
@@ -101,7 +101,7 @@ export const USOS_OBSERVADOS = [
   ["mixto", "Mixto"],
 ];
 
-export const FUENTES = { whisp: "Whisp (FAO)", gfw: "Global Forest Watch" };
+export const FUENTES = { whisp: "Whisp (FAO)", gfw: "Global Forest Watch", mapbiomas: "MapBiomas Perú" };
 
 export const ESTADOS_MIDAGRI = [
   ["no_registrada", "No registrada"],

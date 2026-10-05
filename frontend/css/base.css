@@ -2130,3 +2130,83 @@ button.kpi[aria-pressed="true"] {
 .tabla td .sec {
   display: block;
 }
+
+/* ---------- Adenda de la Parte 4: detalle por capa, MapBiomas y convergencia ---------- */
+.capas-detalle {
+  display: block;
+}
+.capas-detalle > * + * {
+  margin-top: 10px;
+}
+.capas-detalle > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.capas-grupo {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.capas-grupo .tbl-box {
+  max-height: 260px;
+  overflow: auto;
+}
+.tabla-compacta th,
+.tabla-compacta td {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.tabla .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.tabla .col-2020 {
+  background: var(--surface-2);
+  font-weight: 700;
+}
+.tabla-desliza {
+  overflow-x: auto;
+  max-width: 100%;
+}
+/* En una rejilla, un hijo no se achica por debajo de su contenido sin min-width: 0. */
+.contenido-pestana > *,
+.sect > *,
+.fuentes,
+.fuentes > *,
+.convergencia,
+.capas-detalle,
+.capas-detalle > *,
+.convergencia > *,
+.fuente > * {
+  min-width: 0;
+}
+.convergencia {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+.convergencia .tabla td:first-child {
+  min-width: 180px;
+}
+.convergencia h4 {
+  font-size: 14px;
+}
+.medidas {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+}
+.medidas li {
+  display: grid;
+}
+.frase-conteo {
+  padding: 10px 12px;
+  border-left: 3px solid var(--line-strong);
+  background: var(--surface-2);
+  font-size: 13px;
+}

@@ -15,6 +15,7 @@ from app.schemas.habilitacion import (
     AnalisisSalida,
     AnalisisSolicitado,
     Anulacion,
+    ConvergenciaSalida,
     CotejoNuevo,
     ExcluirEntrada,
     ExencionNueva,
@@ -61,6 +62,13 @@ def analisis_de_parcela(parcela_id: uuid.UUID, contexto: Lectura):
     parcela = parcela_visible(contexto, parcela_id)
     filas = analisis.de_parcelas(contexto.sesion, [parcela.id])[parcela.id]
     return analisis.salidas(contexto.sesion, registro.actuales(), parcela, filas)
+
+
+@router.get("/parcelas/{parcela_id}/convergencia", response_model=ConvergenciaSalida)
+def convergencia_de_parcela(parcela_id: uuid.UUID, contexto: Lectura):
+    """Adenda de la Parte 4: una fila por conjunto de datos y la frase de conteo."""
+    parcela = parcela_visible(contexto, parcela_id)
+    return analisis.convergencia_salida(contexto.sesion, registro.actuales(), parcela)
 
 
 @router.get("/analisis/{analisis_id}", response_model=AnalisisDetalle)

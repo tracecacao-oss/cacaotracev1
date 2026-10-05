@@ -11,6 +11,7 @@ import threading
 import time
 
 from app.db import SesionLocal
+from app.scripts import reprocesar_whisp
 from app.services import analisis, habilitacion
 from app.services.fuentes import Fuente
 from app.storage import ClienteStorage
@@ -47,6 +48,14 @@ class Trabajador(threading.Thread):
                 log.info("Volvieron a la cola %s análisis que quedaron a medias", recuperados)
         except Exception:
             log.exception("No se pudo recuperar la cola de análisis")
+        try:
+            # Adenda de la Parte 4: detalle por capa para los análisis de Whisp anteriores. Idempotente.
+            with SesionLocal() as sesion:
+                reprocesados = reprocesar_whisp.reprocesar(sesion, self.storage)
+            if reprocesados:
+                log.info("Análisis de Whisp reprocesados desde su respuesta guardada: %s", reprocesados)
+        except Exception:
+            log.exception("No se pudieron reprocesar los análisis de Whisp")
         proxima_diaria = time.monotonic() + PRIMERA_TAREA_DIARIA
         while not self.detenido.is_set():
             hubo_trabajo = False

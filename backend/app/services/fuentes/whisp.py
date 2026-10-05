@@ -19,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from app.catalogos import capas_whisp
 from app.services.fuentes import ErrorFuente
 
 URL = "https://whisp.openforis.org/api/submit/geojson"
@@ -106,6 +107,9 @@ class Whisp:
         datos = json.loads(contenido)["data"]
         propiedades = datos["features"][0]["properties"]
         indicadores = {campo: propiedades[campo] for campo in CAMPOS if campo in propiedades}
+        # Detalle por capa (adenda de la Parte 4, refuerzo A): qué conjuntos vieron bosque en 2020 y cuáles
+        # vieron cambios después.
+        indicadores["capas"] = capas_whisp.capas(propiedades)
         metadatos = propiedades.get("whisp_processing_metadata") or {}
         return propiedades.get("risk_pcrop"), indicadores, metadatos.get("whisp_version")
 

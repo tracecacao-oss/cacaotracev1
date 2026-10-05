@@ -1,6 +1,6 @@
 # CacaoTrace — instrucciones para Claude Code
 
-**Especificación:** `docs/especificacion.md` es la única fuente de verdad. Lo que no está ahí no se construye sin preguntar.
+**Especificación:** `docs/especificacion.md` es la única fuente de verdad, junto con sus adendas en `docs/` (por ejemplo `docs/adenda-parte-4-fuentes.md`, que manda sobre la Parte 4 donde difiera). Lo que no está ahí no se construye sin preguntar.
 
 **Parte en curso:** 4 — Habilitación de la parcela. Las claves `WHISP_API_KEY` y `GFW_API_KEY` viven solo en Render. Las pruebas de interpretación se escriben contra respuestas reales de una parcela ficticia guardadas en `backend/tests/datos/`; Claude Code no inventa sus formatos.
 
@@ -44,7 +44,7 @@ Las pruebas nunca llaman a Supabase: el Auth admin se simula con `AuthFalso` (te
 - Piezas del diseño en `frontend/js/ui.js`: `cabeceraFicha`, `seccion` y `rejilla` para fichas (la vista pasa `cabecera: null`), `avatar`, `buscador`, `toast`; íconos del diseño en `iconos.js`. Cada vista del layout lleva `titulo`, `migas` y, si aplica, `antetitulo`, `descripcion`, `accion` y `secciones`.
 - Geometría: lectura y validaciones solo en `backend/app/services/geometria.py` (GeoJSON, KML, KMZ, Shapefile en .zip) y `coordenadas.py` (listas en texto, CSV o Excel; hojas con `tablas.py`); la interfaz valida lo dibujado enviándolo a `POST /parcelas/analizar-archivo`. Mapas con `frontend/js/mapa.js` (Leaflet + Geoman con SRI; satélite Esri solo con `ESRI_API_KEY`).
 - Archivos: siempre por la API a Storage (`documentos.cargar`), nunca directo desde el navegador.
-- Parte 4: fuentes de cobertura en `app/services/fuentes/` (protocolo `Fuente`; `registro.construir` las arma desde la configuración), cola en `analisis.procesar_siguiente` con el hilo de `app/trabajador.py`; las pruebas las simulan con `httpx.MockTransport` (`tests/habilitacion_util.py`). Fechas de Lima con `app/fechas.py`. Solo `services/habilitacion.py` cambia `habilitacion_estado`. En la interfaz, las pestañas de la parcela están en `pantallas/parcela-habilitacion.js`.
+- Parte 4: fuentes de cobertura en `app/services/fuentes/` (protocolo `Fuente`; `registro.construir` las arma desde la configuración), cola en `analisis.procesar_siguiente` con el hilo de `app/trabajador.py`; las pruebas las simulan con `httpx.MockTransport` (`tests/habilitacion_util.py`). Fechas de Lima con `app/fechas.py`. Solo `services/habilitacion.py` cambia `habilitacion_estado`. En la interfaz, las pestañas de la parcela están en `pantallas/parcela-habilitacion.js`. Adenda: catálogos de capas y conjuntos en `app/catalogos/` (`capas_whisp.py`, `conjuntos_datos.py`, `mapbiomas_peru_c3.py`); la tabla de convergencia solo cuenta, en `services/convergencia.py`; MapBiomas lee GeoTIFF por rangos con `fuentes/cog.py` (sin GDAL), y sus pruebas usan GeoTIFF sintéticos de `tests/geotiff_util.py`.
 - Ubicación (departamento, provincia, distrito): del catálogo oficial del INEI en `backend/app/datos/ubigeo_inei.csv`. Los servicios llaman `ubigeo.normalizar(valores, actual)` y guardan los nombres del INEI; la interfaz usa `camposUbigeo()` de `frontend/js/ubigeo.js`, que lee `GET /ubigeos`. Las Partes 5 en adelante (`lugares`) hacen lo mismo.
 
 ## Producción
@@ -64,4 +64,4 @@ La base `cacaotrace-db` de Render es del MVP anterior: no se usa y el equipo la 
 | 1 Infraestructura y despliegue | Cerrada el 2026-10-04: diez criterios de aceptación verificados en producción |
 | 2 Acceso y base | Cerrada el 2026-10-05: criterios 1-11 probados por el equipo en producción; 12 (CI) con este cierre |
 | 3 Productor y parcela | Cerrada el 2026-10-05: criterios 1-13 probados por el equipo en producción; CI en verde (PRs #7, #8 y #9). Decisiones del 2026-10-05: ubicación del catálogo INEI; "Código productor APP" = código en Agro Digital; huecos, 100 ha y umbral confirmados; carga masiva de productores, KMZ, Shapefile y listas de coordenadas (sin UTM ni GPX); la interfaz toma el aspecto de `legacy/diseno` |
-| 4 Habilitación de la parcela | En construcción: código en producción (PR #11); respuestas reales de Whisp y GFW guardadas en `backend/tests/datos/` con sus pruebas; faltan los criterios de aceptación probados por el equipo en producción |
+| 4 Habilitación de la parcela | En construcción: código en producción (PR #11); respuestas reales de Whisp y GFW en `backend/tests/datos/` (PR #12); adenda de fuentes del 2026-10-05 (MapBiomas pasó su comprobación de viabilidad). Faltan los criterios de aceptación probados por el equipo en producción |
