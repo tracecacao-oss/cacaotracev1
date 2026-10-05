@@ -1,0 +1,137 @@
+/* Sistema de diseño "Slate & Emerald": neutros pizarra y acento esmeralda.
+   Valores extraídos de legacy/diseno/CacaoTrace - Consola con barra lateral.html. */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #f8fafc;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --ink: #0f172a;
+  --ink-2: #475569;
+  --ink-3: #64748b;
+  --ink-4: #94a3b8;
+
+  --emerald: #059669;
+  --emerald-hover: #047857;
+  --emerald-light: #10b981;
+  --emerald-soft: #d1fae5;
+  --emerald-tint: #ecfdf5;
+  --emerald-ink: #047857;
+  --rose: #e11d48;
+  --rose-soft: #ffe4e6;
+  --rose-tint: #fff1f2;
+  --rose-ink: #be123c;
+  --amber: #d97706;
+  --amber-soft: #fef3c7;
+  --amber-tint: #fffbeb;
+  --amber-ink: #b45309;
+  --sky: #0284c7;
+  --sky-soft: #e0f2fe;
+  --sky-tint: #f0f9ff;
+  --sky-ink: #0369a1;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+
+  --toast-bg: #0f172a;
+  --toast-ink: #f8fafc;
+  --toast-sub: #cbd5e1;
+  --nav-bg: rgba(255, 255, 255, 0.86);
+  --scrim: rgba(15, 23, 42, 0.5);
+
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --nav-h: 64px;
+  --side-w: 252px;
+
+  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0b1220;
+    --surface: #111a2c;
+    --surface-2: #182338;
+    --surface-3: #0e1626;
+    --line: #22304a;
+    --line-strong: #34455f;
+    --ink: #f1f5f9;
+    --ink-2: #b8c4d6;
+    --ink-3: #8a9ab2;
+    --ink-4: #64748b;
+    --emerald: #059669;
+    --emerald-hover: #10b981;
+    --emerald-light: #34d399;
+    --emerald-soft: rgba(16, 185, 129, 0.16);
+    --emerald-tint: rgba(16, 185, 129, 0.08);
+    --emerald-ink: #34d399;
+    --rose: #f43f5e;
+    --rose-soft: rgba(244, 63, 94, 0.17);
+    --rose-tint: rgba(244, 63, 94, 0.08);
+    --rose-ink: #fda4af;
+    --amber: #f59e0b;
+    --amber-soft: rgba(245, 158, 11, 0.16);
+    --amber-tint: rgba(245, 158, 11, 0.08);
+    --amber-ink: #fcd34d;
+    --sky: #38bdf8;
+    --sky-soft: rgba(56, 189, 248, 0.15);
+    --sky-tint: rgba(56, 189, 248, 0.07);
+    --sky-ink: #7dd3fc;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 14px 30px -4px rgba(0, 0, 0, 0.6), 0 4px 8px -2px rgba(0, 0, 0, 0.4);
+    --toast-bg: #f1f5f9;
+    --toast-ink: #0f172a;
+    --toast-sub: #475569;
+    --nav-bg: rgba(17, 26, 44, 0.86);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1220;
+  --surface: #111a2c;
+  --surface-2: #182338;
+  --surface-3: #0e1626;
+  --line: #22304a;
+  --line-strong: #34455f;
+  --ink: #f1f5f9;
+  --ink-2: #b8c4d6;
+  --ink-3: #8a9ab2;
+  --ink-4: #64748b;
+  --emerald: #059669;
+  --emerald-hover: #10b981;
+  --emerald-light: #34d399;
+  --emerald-soft: rgba(16, 185, 129, 0.16);
+  --emerald-tint: rgba(16, 185, 129, 0.08);
+  --emerald-ink: #34d399;
+  --rose: #f43f5e;
+  --rose-soft: rgba(244, 63, 94, 0.17);
+  --rose-tint: rgba(244, 63, 94, 0.08);
+  --rose-ink: #fda4af;
+  --amber: #f59e0b;
+  --amber-soft: rgba(245, 158, 11, 0.16);
+  --amber-tint: rgba(245, 158, 11, 0.08);
+  --amber-ink: #fcd34d;
+  --sky: #38bdf8;
+  --sky-soft: rgba(56, 189, 248, 0.15);
+  --sky-tint: rgba(56, 189, 248, 0.07);
+  --sky-ink: #7dd3fc;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 14px 30px -4px rgba(0, 0, 0, 0.6), 0 4px 8px -2px rgba(0, 0, 0, 0.4);
+  --toast-bg: #f1f5f9;
+  --toast-ink: #0f172a;
+  --toast-sub: #475569;
+  --nav-bg: rgba(17, 26, 44, 0.86);
+}

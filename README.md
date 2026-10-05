@@ -59,6 +59,28 @@ python scripts/check_storage.py
 Sube un archivo de prueba al bucket `documentos`, lo firma, lo descarga, compara el contenido,
 comprueba que el bucket sea privado y lo borra.
 
+## Cuentas: superadministrador y diagnóstico de Supabase Auth
+
+Ninguna cuenta nace por registro abierto. El primer superadministrador lo crea una persona del
+equipo con las variables reales (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`) en su terminal:
+
+```bash
+cd backend
+python scripts/crear_superadmin.py --correo persona@dominio --nombres "Nombre" --apellidos "Apellido"
+python scripts/crear_superadmin.py --restablecer --correo persona@dominio
+```
+
+La contraseña temporal se muestra una sola vez y se cambia en el primer ingreso.
+
+Para comprobar que Supabase acepta el correo técnico del productor (`<dni>@productores.cacaotrace.local`):
+
+```bash
+cd backend
+python scripts/check_auth_admin.py
+```
+
+Crea un usuario de prueba ya confirmado, inicia sesión con él, lo bloquea, lo desbloquea y lo borra.
+
 ## Deploy
 
 Cada merge a `main` se publica solo: Render reconstruye la API desde `render.yaml` y Cloudflare

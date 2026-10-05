@@ -27,10 +27,13 @@ from cryptography.hazmat.primitives.asymmetric import ec  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.exc import OperationalError  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
 
-from app.auth import VerificadorJWT  # noqa: E402
+from app.auth import UsuarioToken, VerificadorJWT, usuario_actual  # noqa: E402
+from app.auth_admin import ClienteAuthAdmin, CorreoEnUso, ErrorAuthAdmin  # noqa: E402
 from app.config import get_settings  # noqa: E402
-from app.db import engine  # noqa: E402
+from app.contexto import CABECERA_COOPERATIVA  # noqa: E402
+from app.db import engine, obtener_sesion  # noqa: E402
 from app.main import crear_app  # noqa: E402
 
 KID = "clave-prueba"
@@ -80,16 +83,66 @@ def verificador(claves, llamadas_jwks) -> VerificadorJWT:
     return VerificadorJWT("https://proyecto-prueba.supabase.co", http=http)
 
 
+class AuthFalso(ClienteAuthAdmin):
+    """Supabase Auth simulado: las pruebas nunca llaman a la API de administración real."""
+
+    def __init__(self):
+        self.usuarios: dict[uuid.UUID, dict] = {}
+        self.llamadas: list[tuple] = []
+        self.caido = False
+
+    def _registrar(self, *llamada):
+        if self.caido:
+            raise ErrorAuthAdmin("Supabase Auth simulado no responde")
+        self.llamadas.append(llamada)
+
+    def correo_de(self, usuario_id) -> str:
+        return self.usuarios[usuario_id]["correo"]
+
+    def crear_usuario(self, correo, clave):
+        self._registrar("crear", correo)
+        if any(u["correo"] == correo for u in self.usuarios.values()):
+            raise CorreoEnUso(correo)
+        usuario_id = uuid.uuid4()
+        self.usuarios[usuario_id] = {"correo": correo, "clave": clave, "bloqueado": False}
+        return usuario_id
+
+    def borrar_usuario(self, usuario_id):
+        self._registrar("borrar", usuario_id)
+        self.usuarios.pop(usuario_id, None)
+
+    def cambiar_clave(self, usuario_id, clave):
+        self._registrar("cambiar_clave", usuario_id)
+        self.usuarios.setdefault(usuario_id, {"correo": None, "bloqueado": False})["clave"] = clave
+
+    def bloquear(self, usuario_id):
+        self._registrar("bloquear", usuario_id)
+        self.usuarios.setdefault(usuario_id, {"correo": None})["bloqueado"] = True
+
+    def desbloquear(self, usuario_id):
+        self._registrar("desbloquear", usuario_id)
+        self.usuarios.setdefault(usuario_id, {"correo": None})["bloqueado"] = False
+
+    def verificar_clave(self, correo, clave, ip=None):
+        self._registrar("verificar_clave", correo)
+        return any(u["correo"] == correo and u.get("clave") == clave for u in self.usuarios.values())
+
+
 @pytest.fixture
-def cliente(verificador) -> TestClient:
-    app = crear_app(get_settings(), verificador=verificador)
+def auth_falso() -> AuthFalso:
+    return AuthFalso()
+
+
+@pytest.fixture
+def cliente(verificador, auth_falso) -> TestClient:
+    app = crear_app(get_settings(), verificador=verificador, auth_admin=auth_falso)
     with TestClient(app) as c:
         yield c
 
 
 @pytest.fixture(scope="session")
 def base_disponible() -> None:
-    """Exige Postgres. En local se salta si Docker no está arriba; en CI falla."""
+    """Exige Postgres. En local se salta si no está arriba; en CI falla."""
     try:
         with engine.connect() as conexion:
             conexion.execute(text("SELECT 1"))
@@ -97,3 +150,35 @@ def base_disponible() -> None:
         if os.environ.get("CI"):
             raise
         pytest.skip("Postgres local no disponible: levántalo con `docker compose up -d`")
+
+
+@pytest.fixture
+def sesion(base_disponible) -> Session:
+    """Sesión dentro de una transacción que se revierte al final: cada prueba parte de cero."""
+    conexion = engine.connect()
+    transaccion = conexion.begin()
+    sesion = Session(bind=conexion, join_transaction_mode="create_savepoint", expire_on_commit=False)
+    yield sesion
+    sesion.close()
+    transaccion.rollback()
+    conexion.close()
+
+
+class ClienteAPI(TestClient):
+    """Cliente de prueba con usuario simulado por sobreescritura de dependencias."""
+
+    def como(self, perfil, cooperativa_id=None) -> "ClienteAPI":
+        token = UsuarioToken(id=str(perfil.id), email=perfil.correo)
+        self.app.dependency_overrides[usuario_actual] = lambda: token
+        self.headers.pop(CABECERA_COOPERATIVA, None)
+        if cooperativa_id is not None:
+            self.headers[CABECERA_COOPERATIVA] = str(cooperativa_id)
+        return self
+
+
+@pytest.fixture
+def api(sesion, verificador, auth_falso) -> ClienteAPI:
+    app = crear_app(get_settings(), verificador=verificador, auth_admin=auth_falso)
+    app.dependency_overrides[obtener_sesion] = lambda: sesion
+    with ClienteAPI(app, raise_server_exceptions=False) as c:
+        yield c

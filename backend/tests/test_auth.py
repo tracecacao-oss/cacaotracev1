@@ -11,6 +11,7 @@ from app.auth import (
     VerificadorJWT,
     usuario_actual,
 )
+from tests import factorias
 from tests.conftest import ParDeClaves
 
 
@@ -28,11 +29,22 @@ def test_me_sin_token_responde_401(cliente):
     assert respuesta.headers["www-authenticate"] == "Bearer"
 
 
-def test_me_con_token_valido(cliente, claves):
-    token = claves.firmar(sub="11111111-2222-3333-4444-555555555555", email="ana@cooperativa.pe")
-    respuesta = cliente.get("/me", headers=_bearer(token))
+def test_me_con_token_valido(api, sesion, claves):
+    # Token real firmado con el par de claves de la prueba: el verificador no se simula.
+    api.app.dependency_overrides.pop(usuario_actual, None)
+    coop = factorias.cooperativa(sesion)
+    perfil = factorias.perfil(sesion, "operador", coop, correo="ana@prueba.test")
+    token = claves.firmar(sub=str(perfil.id), email="ana@prueba.test")
+    respuesta = api.get("/me", headers=_bearer(token))
     assert respuesta.status_code == 200
-    assert respuesta.json() == {"id": "11111111-2222-3333-4444-555555555555", "email": "ana@cooperativa.pe"}
+    assert respuesta.json()["id"] == str(perfil.id)
+    assert respuesta.json()["correo"] == "ana@prueba.test"
+
+
+def test_me_con_token_valido_sin_perfil_responde_403(cliente, claves, base_disponible):
+    respuesta = cliente.get("/me", headers=_bearer(claves.firmar()))
+    assert respuesta.status_code == 403
+    assert respuesta.json()["error"]["codigo"] == "sin_perfil"
 
 
 def test_me_con_token_vencido_responde_401(cliente, claves):
@@ -52,13 +64,15 @@ def test_me_con_token_de_otra_clave_responde_401(cliente):
     assert cliente.get("/me", headers=_bearer(intruso.firmar())).status_code == 401
 
 
-def test_me_con_usuario_simulado(cliente):
-    cliente.app.dependency_overrides[usuario_actual] = lambda: UsuarioToken(
-        id="u-1", email="sim@cacaotrace.pe"
+def test_me_con_usuario_simulado(api, sesion):
+    coop = factorias.cooperativa(sesion)
+    perfil = factorias.perfil(sesion, "lector", coop)
+    api.app.dependency_overrides[usuario_actual] = lambda: UsuarioToken(
+        id=str(perfil.id), email=perfil.correo
     )
-    respuesta = cliente.get("/me")
+    respuesta = api.get("/me")
     assert respuesta.status_code == 200
-    assert respuesta.json() == {"id": "u-1", "email": "sim@cacaotrace.pe"}
+    assert respuesta.json()["rol"] == "lector"
 
 
 def test_me_con_cabecera_que_no_es_bearer_responde_401(cliente):
