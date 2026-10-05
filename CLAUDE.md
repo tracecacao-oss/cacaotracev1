@@ -64,4 +64,4 @@ La base `cacaotrace-db` de Render es del MVP anterior: no se usa y el equipo la 
 | 1 Infraestructura y despliegue | Cerrada el 2026-10-04: diez criterios de aceptación verificados en producción |
 | 2 Acceso y base | Cerrada el 2026-10-05: criterios 1-11 probados por el equipo en producción; 12 (CI) con este cierre |
 | 3 Productor y parcela | Cerrada el 2026-10-05: criterios 1-13 probados por el equipo en producción; CI en verde (PRs #7, #8 y #9). Decisiones del 2026-10-05: ubicación del catálogo INEI; "Código productor APP" = código en Agro Digital; huecos, 100 ha y umbral confirmados; carga masiva de productores, KMZ, Shapefile y listas de coordenadas (sin UTM ni GPX); la interfaz toma el aspecto de `legacy/diseno` |
-| 4 Habilitación de la parcela | En construcción: claves cargadas en Render el 2026-10-05; faltan las respuestas reales en `backend/tests/datos/` y las pruebas contra ellas |
+| 4 Habilitación de la parcela | En construcción: código en producción (PR #11); respuestas reales de Whisp y GFW guardadas en `backend/tests/datos/` con sus pruebas; faltan los criterios de aceptación probados por el equipo en producción |

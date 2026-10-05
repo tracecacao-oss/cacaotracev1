@@ -1,5 +1,7 @@
 """Parte 4: análisis de cobertura forestal. Ninguna prueba llama a Whisp ni a GFW: el HTTP se simula."""
 
+import hashlib
+import json
 import re
 import uuid
 from datetime import timedelta
@@ -10,7 +12,7 @@ import pytest
 from sqlalchemy import text
 
 from app.fechas import ahora
-from app.models import AnalisisCobertura, Auditoria, Parcela
+from app.models import AnalisisCobertura, Auditoria, Documento, Parcela
 from app.services import analisis
 from tests import factorias
 from tests.factorias import crear_parcela, punto, rectangulo
@@ -321,3 +323,90 @@ def test_ninguna_frase_prohibida_en_el_codigo():
         for m in PROHIBIDAS.finditer(a.read_text(encoding="utf-8", errors="ignore"))
     ]
     assert encontradas == []
+
+
+# --- Respuestas reales (backend/tests/datos/) ---
+# Las bajó el equipo el 2026-10-05 con "Descargar la respuesta completa", en producción, para una
+# parcela ficticia. En la de Whisp solo se reemplazó context.token, que CacaoTrace no usa.
+
+DATOS = Path(__file__).parent / "datos"
+WHISP_REAL = (DATOS / "whisp_respuesta_real.json").read_bytes()
+GFW_REAL = (DATOS / "gfw_respuesta_real.json").read_bytes()
+
+
+def _gfw_simulado(evidencia: dict) -> list[httpx.Response]:
+    """Lo que respondió GFW, en orden: "latest" redirige a la versión concreta y esta responde."""
+    respuestas = []
+    for clave in ("alertas", "perdida"):
+        parte = evidencia[clave]
+        base = f"https://data-api.globalforestwatch.org/dataset/{parte['conjunto']}"
+        respuestas.append(httpx.Response(307, headers={"location": f"{base}/{parte['version']}/query/json"}))
+        respuestas.append(httpx.Response(200, json=parte["respuesta"]))
+    return respuestas
+
+
+def test_whisp_responde_con_el_ejemplo_guardado(
+    api, sesion, operador, productor, simulado, fuentes, storage_falso
+):
+    parcela = _parcela(api, sesion, operador, productor)
+    sesion.query(AnalisisCobertura).filter_by(fuente="gfw").delete()
+    simulado.whisp = [httpx.Response(200, content=WHISP_REAL, headers={"content-type": "application/json"})]
+    assert _procesar(sesion, fuentes, storage_falso)
+
+    fila = _filas(sesion, parcela, "whisp")[0]
+    propiedades = json.loads(WHISP_REAL)["data"]["features"][0]["properties"]
+    assert fila.estado == "completado" and fila.error_detalle is None
+    assert fila.resultado_fuente == propiedades["risk_pcrop"] == "low"
+    assert fila.version_fuente == propiedades["whisp_processing_metadata"]["whisp_version"]
+    for campo in ("Ind_01_treecover", "Ind_02_commodities", "Ind_03_disturbance_before_2020"):
+        assert fila.indicadores[campo] == propiedades[campo]
+    assert fila.indicadores["Ind_04_disturbance_after_2020"] == "no"
+
+    # La respuesta queda guardada tal cual, como documento con su SHA-256.
+    documento = sesion.get(Documento, fila.respuesta_documento_id)
+    assert (documento.tipo, documento.entidad, documento.subido_por) == (
+        "respuesta_analisis",
+        "analisis",
+        None,
+    )
+    assert documento.sha256 == hashlib.sha256(WHISP_REAL).hexdigest()
+    assert storage_falso.archivos[documento.ruta] == WHISP_REAL
+
+    tarjeta = next(a for a in api.get(f"/parcelas/{parcela.id}/analisis").json() if a["id"] == str(fila.id))
+    assert tarjeta["resultado_texto"] == "Whisp: riesgo bajo"
+    assert tarjeta["vigente"] and not tarjeta["obsoleto"]
+
+
+def test_gfw_responde_con_el_ejemplo_guardado(
+    api, sesion, operador, productor, simulado, fuentes, storage_falso
+):
+    parcela = _parcela(api, sesion, operador, productor)
+    sesion.query(AnalisisCobertura).filter_by(fuente="whisp").delete()
+    simulado.gfw = _gfw_simulado(json.loads(GFW_REAL))
+    assert _procesar(sesion, fuentes, storage_falso)
+
+    fila = _filas(sesion, parcela, "gfw")[0]
+    assert fila.estado == "completado" and fila.error_detalle is None
+    assert fila.resultado_fuente is None  # GFW entrega cifras, no un veredicto
+    assert fila.version_fuente == "gfw_integrated_alerts v20261005 · umd_tree_cover_loss v1.13"
+    assert fila.indicadores["alertas_desde_2021"] == 0
+    assert fila.indicadores["perdida_ha_por_anio"] == {}
+    assert fila.indicadores["perdida_ha_total"] == 0
+    assert not fuentes["gfw"].requiere_revision(None, fila.indicadores)
+    tarjeta = next(a for a in api.get(f"/parcelas/{parcela.id}/analisis").json() if a["id"] == str(fila.id))
+    assert tarjeta["resultado_texto"] == "GFW: sin alertas ni pérdida registrada desde 2021"
+
+
+def test_gfw_con_perdida_desde_2021():
+    """Sobre la respuesta real, filas de pérdida con las columnas que documenta GFW ("area__ha")."""
+    evidencia = json.loads(GFW_REAL)
+    evidencia["perdida"]["respuesta"]["data"] = [
+        {"umd_tree_cover_loss__year": 2022, "area__ha": 0.12},
+        {"umd_tree_cover_loss__year": 2024, "area__ha": 0.5},
+    ]
+    gfw = fuentes_configuradas()["gfw"]
+    resultado, indicadores, _ = gfw.interpretar(json.dumps(evidencia).encode())
+    assert indicadores["perdida_ha_por_anio"] == {"2022": 0.12, "2024": 0.5}
+    assert indicadores["perdida_ha_total"] == 0.62
+    assert gfw.requiere_revision(resultado, indicadores)
+    assert gfw.texto(resultado, indicadores) == "GFW: 0 alertas y 0.62 ha de pérdida desde 2021"
