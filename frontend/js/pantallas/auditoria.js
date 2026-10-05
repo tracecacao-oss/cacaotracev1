@@ -89,9 +89,9 @@ export default async function auditoria() {
                 "tr",
                 {},
                 h("td", { class: "mono fecha" }, fecha(a.ocurrido_en, { hora: true })),
-                h("td", {}, a.usuario_nombre?.trim() || "Sistema", a.rol && h("span", { class: "sec" }, ROTULOS_ROL[a.rol] ?? a.rol)),
-                h("td", {}, TEXTO_ACCION[a.accion] ?? a.accion, h("span", { class: "sec mono" }, a.accion)),
-                h("td", { class: "ocultar-sm" }, h("span", { class: "sec" }, resumen(a.detalle))),
+                h("td", { class: "sin-corte" }, a.usuario_nombre?.trim() || "Sistema", a.rol && h("span", { class: "sec" }, ROTULOS_ROL[a.rol] ?? a.rol)),
+                h("td", { class: "sin-corte" }, TEXTO_ACCION[a.accion] ?? a.accion, h("span", { class: "sec mono" }, a.accion)),
+                h("td", { class: "ocultar-sm detalle" }, h("span", { class: "sec" }, resumen(a.detalle))),
               ),
             ),
           ),
@@ -116,6 +116,8 @@ export default async function auditoria() {
   cargar();
   return {
     titulo: "Auditoría",
+    antetitulo: "Cooperativa",
+    descripcion: "Cada acción que crea o cambia un dato, con su autor y la hora.",
     migas: [["Cooperativa", "#/cooperativa"], ["Auditoría"]],
     secciones: seccionesCooperativa(),
     contenido: h(
@@ -123,7 +125,7 @@ export default async function auditoria() {
       { class: "panel" },
       h(
         "div",
-        { class: "barra-lista" },
+        { class: "barra-lista filtros" },
         h("label", { class: "field" }, "Desde", filtro("desde", h("input", { class: "input", type: "date" }))),
         h("label", { class: "field" }, "Hasta", filtro("hasta", h("input", { class: "input", type: "date" }))),
         h(

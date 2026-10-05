@@ -16,12 +16,12 @@ export default function pantallaVacia({ hash }) {
   const configuracion = hash === "#/cooperativa/configuracion";
   return {
     titulo,
-    migas: configuracion ? [["Cooperativa", "#/cooperativa"], ["Configuración"]] : null,
+    migas: configuracion ? [["Cooperativa", "#/cooperativa"], ["Configuración"]] : [[titulo]],
     secciones: configuracion ? seccionesCooperativa() : null,
     contenido: h(
       "section",
       { class: "panel" },
-      vacio({ titulo, texto: `Este módulo todavía no está disponible. Se construye en ${parte} de CacaoTrace.` }),
+      vacio({ titulo: "Todavía no disponible", texto: `Este módulo se construye en ${parte} de CacaoTrace.` }),
     ),
   };
 }

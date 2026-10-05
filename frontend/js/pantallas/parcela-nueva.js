@@ -326,7 +326,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
       resumen,
       h(
         "dl",
-        { class: "ficha" },
+        { class: "kv" },
         h("div", {}, h("dt", {}, "Nombre"), h("dd", {}, st.datos.nombre)),
         h("div", {}, h("dt", {}, "Ubicación"), h("dd", {}, [st.datos.centro_poblado, st.datos.distrito, st.datos.provincia, st.datos.departamento].filter(Boolean).join(", "))),
         h("div", {}, h("dt", {}, "Geometría"), h("dd", {}, geo.tipo === "poligono" ? "Polígono" : "Punto", ORIGEN[st.modo])),
@@ -419,6 +419,8 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
   const nombreProductor = productor ? `${productor.nombres} ${productor.apellidos}` : null;
   return {
     titulo: "Nueva parcela",
+    antetitulo: delProductor ? "Mis parcelas" : nombreProductor,
+    descripcion: "Captura la geometría, completa los datos y revisa antes de guardar.",
     migas: delProductor ? [["Mis parcelas", "#/mis-parcelas"], ["Nueva parcela"]] : [["Productores", "#/productores"], [nombreProductor, volver], ["Nueva parcela"]],
     contenido: h(
       "div",

@@ -1,12 +1,28 @@
-// Ficha del productor: encabezado con nombre, DNI y pendientes, y pestañas Datos, Parcelas,
-// Documentos y Acceso.
+// Ficha del productor, con el inspector del diseño: cabecera con nombre, DNI, pendientes y área
+// total, y pestañas Datos, Parcelas (con mapa), Documentos y Acceso.
 
 import { llamarApi } from "../api.js";
 import { formularioCarga, listaDocumentos } from "../documentos.js";
 import { puede, rolEfectivo } from "../estado.js";
+import { COLORES, capaGeojson, crearMapa, encuadrar, estilo } from "../mapa.js";
 import { ESTADOS_MIDAGRI, PENDIENTES_PERSONAL, hectareas, insigniaAlerta, insigniaNivel } from "../textos.js";
-import { abrirModal, campo, confirmar, enviarCon, fecha, h, icono, mostrarClaveTemporal, toast, vacio } from "../ui.js";
-import { camposFicha, cuerpoFicha, insigniaAcceso, seccionesProductores } from "./productores.js";
+import {
+  abrirModal,
+  avatar,
+  cabeceraFicha,
+  campo,
+  confirmar,
+  enviarCon,
+  fecha,
+  h,
+  icono,
+  mostrarClaveTemporal,
+  rejilla,
+  seccion,
+  toast,
+  vacio,
+} from "../ui.js";
+import { camposFicha, cuerpoFicha, insigniaAcceso } from "./productores.js";
 
 const PESTANAS = [
   ["datos", "Datos"],
@@ -15,16 +31,6 @@ const PESTANAS = [
   ["acceso", "Acceso"],
 ];
 let pestanaRecordada = "datos";
-
-function dato(etiqueta, valor, { nivel, mono = false } = {}) {
-  return h(
-    "div",
-    {},
-    h("dt", {}, etiqueta),
-    h("dd", { class: mono ? "mono" : null }, valor || "—"),
-    nivel && valor ? h("dd", {}, insigniaNivel(nivel)) : null,
-  );
-}
 
 function abrirEdicion(p, alGuardar) {
   const ficha = camposFicha(p);
@@ -93,93 +99,119 @@ function cerrarAfiliacion(p, navegar) {
 
 function pestanaDatos(p, { recargar, navegar }) {
   const edita = puede("registrarProductores");
-  return h(
-    "section",
-    { class: "panel" },
-    h(
-      "div",
-      { class: "panel-h" },
-      h("div", {}, h("h2", {}, "Datos del productor"), h("p", { class: "panel-sub" }, "Cada dato muestra qué tan respaldado está.")),
-      h(
-        "div",
-        { class: "fila-acciones" },
-        edita && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirEdicion(p, recargar) }, "Editar ficha"),
-        rolEfectivo() === "admin_cooperativa" &&
-          h("button", { class: "btn btn-sm btn-danger", type: "button", onclick: () => cerrarAfiliacion(p, navegar) }, "Cerrar afiliación"),
-      ),
-    ),
-    h(
-      "dl",
-      { class: "panel-b ficha" },
-      dato("DNI", p.dni, { nivel: p.nivel_identidad, mono: true }),
-      dato("Nombres", p.nombres, { nivel: p.nivel_identidad }),
-      dato("Apellidos", p.apellidos, { nivel: p.nivel_identidad }),
-      dato("RUC", p.ruc, { nivel: "declarado", mono: true }),
-      dato("Dirección postal", p.direccion_postal, { nivel: "declarado" }),
-      dato("Correo de contacto", p.correo_contacto, { nivel: "declarado" }),
-      dato("Teléfono", p.telefono, { nivel: "declarado" }),
-      h("div", {}, h("dt", {}, "Registro en el PPA de MIDAGRI"), h("dd", {}, p.ppa_registrado ? p.ppa_codigo || "Registrado" : "No registrado"), h("dd", {}, insigniaNivel(p.nivel_ppa))),
-      dato("Código en Agro Digital (app del MIDAGRI)", p.codigo_agrodigital, { nivel: "declarado", mono: true }),
-      dato("Código de socio", p.codigo_socio, { mono: true }),
-      dato("Afiliado desde", fecha(p.afiliado_desde)),
-      dato(
-        "Consentimiento de datos",
-        p.consentimiento_datos_en
+  const nivel = (valor, n) => (valor ? insigniaNivel(n) : null);
+  return seccion({
+    titulo: "Datos del productor",
+    sub: "Cada dato muestra qué tan respaldado está.",
+    acciones: [
+      edita && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirEdicion(p, recargar) }, icono("wrench"), "Editar ficha"),
+      rolEfectivo() === "admin_cooperativa" &&
+        h("button", { class: "btn btn-sm btn-danger", type: "button", onclick: () => cerrarAfiliacion(p, navegar) }, "Cerrar afiliación"),
+    ],
+    contenido: rejilla([
+      { etiqueta: "DNI", valor: p.dni, mono: true, extra: nivel(p.dni, p.nivel_identidad) },
+      { etiqueta: "Nombres", valor: p.nombres, extra: nivel(p.nombres, p.nivel_identidad) },
+      { etiqueta: "Apellidos", valor: p.apellidos, extra: nivel(p.apellidos, p.nivel_identidad) },
+      { etiqueta: "RUC", valor: p.ruc, mono: true, extra: nivel(p.ruc, "declarado") },
+      { etiqueta: "Dirección postal", valor: p.direccion_postal, extra: nivel(p.direccion_postal, "declarado") },
+      { etiqueta: "Correo de contacto", valor: p.correo_contacto, extra: nivel(p.correo_contacto, "declarado") },
+      { etiqueta: "Teléfono", valor: p.telefono, mono: true, extra: nivel(p.telefono, "declarado") },
+      {
+        etiqueta: "Registro en el PPA de MIDAGRI",
+        valor: p.ppa_registrado ? p.ppa_codigo || "Registrado" : "No registrado",
+        mono: Boolean(p.ppa_codigo),
+        extra: insigniaNivel(p.nivel_ppa),
+      },
+      { etiqueta: "Código en Agro Digital (app del MIDAGRI)", valor: p.codigo_agrodigital, mono: true, extra: nivel(p.codigo_agrodigital, "declarado") },
+      { etiqueta: "Código de socio", valor: p.codigo_socio, mono: true },
+      { etiqueta: "Afiliado desde", valor: fecha(p.afiliado_desde) },
+      {
+        etiqueta: "Consentimiento de datos",
+        valor: p.consentimiento_datos_en
           ? `${fecha(p.consentimiento_datos_en)} · ${p.consentimiento_origen === "productor" ? "aceptado por el productor" : "firmado ante la cooperativa"}`
           : "Pendiente",
-      ),
-    ),
-  );
+      },
+    ]),
+  });
 }
 
 async function pestanaParcelas(p, { navegar }) {
   const parcelas = await llamarApi(`/productores/${p.id}/parcelas`);
   const nueva =
     puede("registrarProductores") &&
-    h("button", { class: "btn btn-primary btn-sm", type: "button", onclick: () => navegar(`#/productores/${p.id}/parcelas/nueva`) }, icono("mas"), "Nueva parcela");
-  return h(
-    "section",
-    { class: "panel" },
-    h("div", { class: "panel-h" }, h("h2", {}, "Parcelas"), nueva),
-    parcelas.length
-      ? h(
-          "div",
-          { class: "tabla-caja" },
+    h("button", { class: "btn btn-sm", type: "button", onclick: () => navegar(`#/productores/${p.id}/parcelas/nueva`) }, icono("mas"), "Nueva parcela");
+  if (!parcelas.length) {
+    return seccion({
+      titulo: "Parcelas y geolocalización",
+      contenido: vacio({ titulo: "Sin parcelas", texto: "Registra cada parcela por separado: dibujándola, subiendo un archivo o escribiendo sus coordenadas.", accion: nueva }),
+    });
+  }
+
+  // Mapa con las parcelas activas del productor, con los colores del mapa de la cooperativa.
+  const contenedor = h("div", { class: "mapa mapa-ficha" });
+  const activas = parcelas.filter((x) => x.estado === "activa");
+  if (activas.length) {
+    crearMapa(contenedor, { coordenadas: false }).then(({ L, mapa }) => {
+      const color = (x) => COLORES[x.alertas.includes("superposicion") ? "superposicion" : x.alertas.length ? "con_alertas" : "sin_alertas"];
+      const coleccion = { type: "FeatureCollection", features: activas.map((x) => ({ type: "Feature", geometry: x.geometria, properties: x })) };
+      const capa = capaGeojson(L, coleccion, {
+        style: (f) => estilo(color(f.properties), 0.3),
+        pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 8, ...estilo(color(f.properties), 0.6) }),
+        onEachFeature: (f, layer) => {
+          layer.bindTooltip(`${f.properties.codigo} · ${f.properties.nombre}`);
+          layer.on("click", () => navegar(`#/parcelas/${f.properties.id}`));
+        },
+      }).addTo(mapa);
+      encuadrar(mapa, capa);
+    });
+  }
+
+  return seccion({
+    titulo: "Parcelas y geolocalización",
+    sub: "Toca una parcela en el mapa o en la lista para ver su detalle.",
+    acciones: nueva,
+    contenido: [
+      activas.length ? contenedor : null,
+      h(
+        "div",
+        { class: "tbl-box" },
+        h(
+          "table",
+          { class: "tabla" },
+          h("thead", {}, h("tr", {}, h("th", {}, "Parcela"), h("th", {}, "Área"), h("th", { class: "ocultar-sm" }, "MIDAGRI"), h("th", {}, "Alertas"))),
           h(
-            "table",
-            { class: "tabla" },
-            h("thead", {}, h("tr", {}, h("th", {}, "Parcela"), h("th", {}, "Área"), h("th", { class: "ocultar-sm" }, "MIDAGRI"), h("th", {}, "Alertas"))),
-            h(
-              "tbody",
-              {},
-              parcelas.map((x) =>
+            "tbody",
+            {},
+            parcelas.map((x) =>
+              h(
+                "tr",
+                { class: "clic", onclick: () => navegar(`#/parcelas/${x.id}`) },
                 h(
-                  "tr",
-                  { class: "clic", onclick: () => navegar(`#/parcelas/${x.id}`) },
-                  h("td", {}, h("a", { href: `#/parcelas/${x.id}` }, x.nombre), h("span", { class: "sec mono" }, `${x.codigo} · ${x.tipo_geometria}${x.estado === "inactiva" ? " · inactiva" : ""}`)),
-                  h("td", { class: "mono" }, hectareas(x.area_total_ha)),
-                  h("td", { class: "ocultar-sm" }, ESTADOS_MIDAGRI.find(([v]) => v === x.midagri_estado)?.[1], h("span", { class: "sec" }, insigniaNivel(x.nivel_midagri))),
-                  h("td", {}, x.alertas.length ? x.alertas.map((a) => insigniaAlerta(a)) : h("span", { class: "sec" }, "Sin alertas")),
+                  "td",
+                  {},
+                  h("a", { href: `#/parcelas/${x.id}` }, x.nombre),
+                  h("span", { class: "sec mono" }, `${x.codigo} · ${x.tipo_geometria === "poligono" ? "polígono" : "punto"}${x.estado === "inactiva" ? " · inactiva" : ""}`),
                 ),
+                h("td", { class: "mono" }, hectareas(x.area_total_ha)),
+                h("td", { class: "ocultar-sm" }, ESTADOS_MIDAGRI.find(([v]) => v === x.midagri_estado)?.[1], h("span", { class: "sec" }, insigniaNivel(x.nivel_midagri))),
+                h("td", {}, x.alertas.length ? h("span", { class: "fila-acciones" }, x.alertas.map((a) => insigniaAlerta(a))) : h("span", { class: "sec" }, "Sin alertas")),
               ),
             ),
           ),
-        )
-      : vacio({ titulo: "Sin parcelas", texto: "Registra cada parcela por separado: dibujándola en el mapa o subiendo un archivo.", accion: nueva }),
-  );
+        ),
+      ),
+    ],
+  });
 }
 
 function pestanaDocumentos(p, { recargar }) {
   const gestiona = puede("registrarProductores");
-  return h(
-    "section",
-    { class: "panel" },
-    h("div", { class: "panel-h" }, h("div", {}, h("h2", {}, "Documentos"), h("p", { class: "panel-sub" }, "Respaldo de la identidad y del registro en el PPA."))),
-    listaDocumentos(p.documentos, { puedeAnular: gestiona, alCambiar: recargar }),
-    gestiona &&
-      h(
-        "div",
-        { class: "panel-b" },
+  return seccion({
+    titulo: "Documentos",
+    sub: "Respaldo de la identidad y del registro en el PPA.",
+    contenido: [
+      h("div", { class: "tbl-box" }, listaDocumentos(p.documentos, { puedeAnular: gestiona, alCambiar: recargar })),
+      gestiona &&
         formularioCarga({
           tipos: [
             ["dni", "Copia del DNI"],
@@ -188,8 +220,8 @@ function pestanaDocumentos(p, { recargar }) {
           ruta: `/productores/${p.id}/documentos`,
           alCargar: recargar,
         }),
-      ),
-  );
+    ],
+  });
 }
 
 function pestanaAcceso(p, { recargar }) {
@@ -234,26 +266,27 @@ function pestanaAcceso(p, { recargar }) {
       }),
     );
   }
-  return h(
-    "section",
-    { class: "panel" },
-    h("div", { class: "panel-h" }, h("div", {}, h("h2", {}, "Acceso a CacaoTrace"), h("p", { class: "panel-sub" }, "Ingresa desde su celular con su DNI y contraseña.")), insigniaAcceso(p.acceso)),
-    h(
-      "div",
-      { class: "panel-b form" },
+  return seccion({
+    titulo: "Acceso a CacaoTrace",
+    sub: "Ingresa desde su celular con su DNI y contraseña.",
+    acciones: insigniaAcceso(p.acceso),
+    contenido: [
       p.acceso.existe
-        ? h("dl", { class: "ficha" }, dato("Usuario", `DNI ${p.dni}`, { mono: true }), dato("Último ingreso", fecha(p.acceso.ultimo_acceso_en, { hora: true })))
+        ? rejilla([
+            { etiqueta: "Usuario", valor: `DNI ${p.dni}`, mono: true },
+            { etiqueta: "Último ingreso", valor: fecha(p.acceso.ultimo_acceso_en, { hora: true }) },
+          ])
         : h("p", { class: "panel-sub" }, "Todavía no tiene acceso. Al crearlo verás una contraseña temporal para entregarle."),
       acciones.length ? h("div", { class: "fila-acciones" }, acciones) : null,
-    ),
-  );
+    ],
+  });
 }
 
 export default async function productor(ctx) {
   const p = await llamarApi(`/productores/${ctx.parametros[0]}`);
   const nombre = `${p.nombres} ${p.apellidos}`;
   const cuerpo = h("div", { class: "contenido-pestana" });
-  const barra = h("div", { class: "pestanas", role: "tablist", "aria-label": "Secciones de la ficha" });
+  const barra = h("div", { class: "seg", role: "tablist", "aria-label": "Secciones de la ficha" });
 
   async function mostrarPestana(clave) {
     pestanaRecordada = clave;
@@ -270,22 +303,27 @@ export default async function productor(ctx) {
   }
   mostrarPestana(PESTANAS.some(([c]) => c === pestanaRecordada) ? pestanaRecordada : "datos");
 
+  const n = p.parcelas.activas;
   return {
     titulo: nombre,
-    migas: [["Productores", "#/productores"], [nombre]],
-    secciones: seccionesProductores(),
-    contenido: [
-      h(
-        "div",
-        { class: "cabecera-ficha" },
-        h("span", { class: "mono" }, `DNI ${p.dni}`),
-        p.pendientes.length
+    migas: [["Productores", "#/productores"], ["Padrón", "#/productores"], [nombre]],
+    cabecera: null,
+    contenido: h(
+      "section",
+      { class: "panel inspector" },
+      cabeceraFicha({
+        inicio: avatar(p.nombres, p.apellidos, "lg"),
+        titulo: nombre,
+        insignias: p.pendientes.length
           ? p.pendientes.map((x) => h("span", { class: "badge warn" }, h("span", { class: "dot" }), PENDIENTES_PERSONAL[x]))
           : h("span", { class: "badge ok" }, h("span", { class: "dot" }), "Sin pendientes"),
-      ),
-      barra,
+        detalle: [h("span", { class: "mono" }, `DNI ${p.dni}`), p.codigo_socio && ` · Socio ${p.codigo_socio}`, ` · Afiliado desde ${fecha(p.afiliado_desde)}`],
+        cifra: hectareas(p.parcelas.area_total_ha),
+        cifraTexto: `${n} ${n === 1 ? "parcela activa" : "parcelas activas"}`,
+      }),
+      h("div", { class: "ins-tabs seg-scroll" }, barra),
       cuerpo,
-    ],
+    ),
   };
 }
 

@@ -2,7 +2,9 @@
 
 **Especificación:** `docs/especificacion.md` es la única fuente de verdad. Lo que no está ahí no se construye sin preguntar.
 
-**Parte en curso:** 3 — Productor y parcela. Diseño de referencia en `legacy/diseno/`: solo colores, tipografías, espaciados y estilo de componentes; manda la especificación.
+**Parte en curso:** 3 — Productor y parcela.
+
+**Diseño:** la interfaz debe parecerse en su mayoría a `legacy/diseno/` (decisión del 2026-10-05): sus colores, tipografías, componentes y composición (barra superior con la ruta, inspector en las fichas, tarjetas, tablas, modo oscuro). Si choca con la especificación en navegación, nombres de módulos, una tarea por pantalla o un botón principal, manda la especificación. Del diseño nunca se copian textos, datos de ejemplo ni lógica.
 
 ## Reglas de trabajo
 
@@ -39,6 +41,7 @@ Las pruebas nunca llaman a Supabase: el Auth admin se simula con `AuthFalso` (te
 - Servicios en `app/services/` reciben el `Contexto` como primer parámetro y auditan con `registrar_auditoria` en la misma transacción.
 - Errores con `error_api(estado, codigo, mensaje)`; mensajes en español, listos para mostrar.
 - Interfaz: `frontend/js/api.js` es el único que llama a `fetch`; pantallas en `frontend/js/pantallas/`; textos de usuario con `textContent`, nunca HTML.
+- Piezas del diseño en `frontend/js/ui.js`: `cabeceraFicha`, `seccion` y `rejilla` para fichas (la vista pasa `cabecera: null`), `avatar`, `buscador`, `toast`; íconos del diseño en `iconos.js`. Cada vista del layout lleva `titulo`, `migas` y, si aplica, `antetitulo`, `descripcion`, `accion` y `secciones`.
 - Geometría: lectura y validaciones solo en `backend/app/services/geometria.py` (GeoJSON, KML, KMZ, Shapefile en .zip) y `coordenadas.py` (listas en texto, CSV o Excel; hojas con `tablas.py`); la interfaz valida lo dibujado enviándolo a `POST /parcelas/analizar-archivo`. Mapas con `frontend/js/mapa.js` (Leaflet + Geoman con SRI; satélite Esri solo con `ESRI_API_KEY`).
 - Archivos: siempre por la API a Storage (`documentos.cargar`), nunca directo desde el navegador.
 - Ubicación (departamento, provincia, distrito): del catálogo oficial del INEI en `backend/app/datos/ubigeo_inei.csv`. Los servicios llaman `ubigeo.normalizar(valores, actual)` y guardan los nombres del INEI; la interfaz usa `camposUbigeo()` de `frontend/js/ubigeo.js`, que lee `GET /ubigeos`. Las Partes 5 en adelante (`lugares`) hacen lo mismo.

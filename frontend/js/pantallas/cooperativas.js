@@ -3,8 +3,8 @@
 import { llamarApi } from "../api.js";
 import { fijarConsulta } from "../estado.js";
 import {
-  reemplazar,
   abrirModal,
+  buscador,
   campo,
   cargando,
   conRetraso,
@@ -13,6 +13,7 @@ import {
   icono,
   mostrarClaveTemporal,
   paginador,
+  reemplazar,
   sinVacios,
   vacio,
 } from "../ui.js";
@@ -206,6 +207,8 @@ export default async function cooperativas({ navegar }) {
 
   return {
     titulo: "Cooperativas",
+    antetitulo: "Plataforma",
+    descripcion: "Cooperativas que usan CacaoTrace, con su estado y sus usuarios.",
     migas: [["Plataforma"], ["Cooperativas"]],
     secciones: seccionesPlataforma(),
     accion: h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirAlta(navegar) }, icono("mas"), "Nueva cooperativa"),
@@ -215,7 +218,7 @@ export default async function cooperativas({ navegar }) {
       h(
         "div",
         { class: "barra-lista" },
-        h("input", { class: "input", type: "search", placeholder: "Buscar por nombre o RUC", "aria-label": "Buscar cooperativas", oninput: (e) => buscar(e.target.value) }),
+        buscador({ placeholder: "Buscar por nombre o RUC", etiqueta: "Buscar cooperativas", alEscribir: buscar }),
       ),
       lista,
     ),
