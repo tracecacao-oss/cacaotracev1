@@ -412,7 +412,19 @@ def test_tabla_de_convergencia_por_la_api(api, sesion, operador, productor):
         "serie": False,
     }
     assert tabla["filas"][0]["despues_2020"] is None  # no mide esa pregunta: celda vacía
-    # Regla 3 de la sección 7.2: un conjunto registra bosque en 2020, así que se pide revisión.
+    # Regla 3 de la sección 7.2, con la decisión del equipo del 2026-10-05: un solo conjunto que registra
+    # bosque en 2020 se muestra, pero no pide revisión; hacen falta 3.
+    assert tabla["mapas_minimos_bosque_2020"] == 3 and tabla["hubo_bosque_2020"] is False
+    assert "analisis_requiere_revision" not in api.get(f"/parcelas/{parcela.id}").json()["alertas"]
+
+    fila.indicadores = {
+        "risk_pcrop": "low",
+        "capas": capas_whisp.capas({"Unit": "ha", "EUFO_2020": 0.9, "TMF_undist": 0.9, "GLAD_Primary": 0.9}),
+    }
+    sesion.flush()
+    tabla = api.get(f"/parcelas/{parcela.id}/convergencia").json()
+    assert tabla["frase"].startswith("Conjuntos de datos consultados: 3. Registran bosque en 2020: 3 de 3")
+    assert tabla["hubo_bosque_2020"] is True
     assert "analisis_requiere_revision" in api.get(f"/parcelas/{parcela.id}").json()["alertas"]
 
 

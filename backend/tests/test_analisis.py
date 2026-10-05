@@ -11,6 +11,7 @@ import httpx
 import pytest
 from sqlalchemy import text
 
+from app.catalogos import capas_whisp
 from app.fechas import ahora
 from app.models import AnalisisCobertura, Auditoria, Documento, Parcela
 from app.services import analisis
@@ -294,9 +295,14 @@ def test_alertas_dist_piden_revision_solo_si_hubo_bosque_en_2020(api, sesion, op
     assert not tarjeta["requiere_revision"]
     assert "analisis_requiere_revision" not in api.get(f"/parcelas/{parcela.id}").json()["alertas"]
 
-    # Si un conjunto registra bosque natural el 31/12/2020, las mismas alertas piden revisión.
+    # Si al menos 3 conjuntos registran bosque el 31/12/2020 (aquí, bosque natural de GFW y dos capas de
+    # Whisp), las mismas alertas piden revisión.
     con_bosque = {**sin_bosque, "bosque_natural_2020_ha": 0.5}
     analisis_completado(sesion, parcela, "gfw", indicadores=con_bosque, hace=timedelta(hours=1))
+    capas = capas_whisp.capas({"Unit": "ha", "EUFO_2020": 0.5, "TMF_undist": 0.5})
+    analisis_completado(
+        sesion, parcela, "whisp", indicadores={"risk_pcrop": "low", "capas": capas}, hace=timedelta(hours=1)
+    )
     tarjeta = _gfw_completado(api, parcela)
     assert tarjeta["requiere_revision"]
     assert "analisis_requiere_revision" in api.get(f"/parcelas/{parcela.id}").json()["alertas"]

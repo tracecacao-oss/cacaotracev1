@@ -249,6 +249,8 @@ def convergencia_salida(sesion: Session, fuentes: dict[str, Fuente], parcela: Pa
         conteos=c.conteos,
         discrepan=c.discrepan,
         umbral_bosque_2020_pct=c.umbral_pct,
+        mapas_minimos_bosque_2020=servicio_convergencia.MAPAS_MINIMOS_BOSQUE_2020,
+        hubo_bosque_2020=c.hubo_bosque_2020,
         area_ha=c.area_ha,
     )
 
@@ -262,13 +264,16 @@ def resumen(fuentes: dict[str, Fuente], parcela: Parcela, analisis: list[Analisi
     con_error = [c for c, a in ultimo.items() if a is not None and a.estado == "error"]
     # Lo que dice cada fuente en su último análisis completado sobre la geometría actual.
     completados = ultimos_completados(fuentes, parcela, analisis)
-    # Adenda de la Parte 4, 7.2 regla 3: algún conjunto registra bosque en 2020 en al menos el umbral.
-    bosque_2020 = convergencia_de(fuentes, parcela, analisis).registran_bosque_2020
+    # Adenda de la Parte 4, 7.2 regla 3, con la decisión del equipo del 2026-10-05: pide revisión si al
+    # menos 3 conjuntos registran bosque en 2020 en al menos el umbral del área de la parcela.
+    convergencia = convergencia_de(fuentes, parcela, analisis)
+    hubo_bosque = convergencia.hubo_bosque_2020
+    bosque_2020 = convergencia.registran_bosque_2020 if hubo_bosque else []
     revision = [
         a.fuente
         for a in completados
         if fuentes[a.fuente].requiere_revision(
-            a.resultado_fuente, a.indicadores or {}, hubo_bosque_2020=bool(bosque_2020)
+            a.resultado_fuente, a.indicadores or {}, hubo_bosque_2020=hubo_bosque
         )
     ]
     return {
@@ -308,7 +313,7 @@ def salidas(
         ).all()
     )
     resultado = []
-    hubo_bosque = bool(convergencia_de(fuentes, parcela, analisis).registran_bosque_2020)
+    hubo_bosque = convergencia_de(fuentes, parcela, analisis).hubo_bosque_2020
     for a in analisis:
         fuente = fuentes.get(a.fuente)
         resultado.append(
