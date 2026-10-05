@@ -126,9 +126,9 @@ Siguen prohibidas las frases de la Parte 4. Se agrega a la lista "no deforestada
 
 Se activa, además de los casos ya definidos, cuando:
 
-1. GFW informa alertas DIST desde 2021 y algún conjunto registra bosque en la parcela el 31 de diciembre de 2020. Decisión del equipo del 2026-10-05: DIST marca cualquier cambio de la vegetación (poda, cosecha, renovación del cultivo) sin decir la causa; sin bosque en la fecha de corte, sus alertas se muestran como dato y no piden visita.
+1. GFW informa alertas DIST desde 2021 y hubo bosque en la parcela el 31 de diciembre de 2020 (regla 3). Decisión del equipo del 2026-10-05: DIST marca cualquier cambio de la vegetación (poda, cosecha, renovación del cultivo) sin decir la causa; sin bosque en la fecha de corte, sus alertas se muestran como dato y no piden visita.
 2. MapBiomas informa `cambio_bosque_a_no_bosque_ha` mayor que cero.
-3. Algún conjunto registra bosque en 2020 en al menos `UMBRAL_BOSQUE_2020_PCT` del área de la parcela.
+3. Al menos 3 conjuntos registran bosque en 2020, cada uno en al menos `UMBRAL_BOSQUE_2020_PCT` del área de la parcela. Decisión del equipo del 2026-10-05: un solo mapa puede ver árboles de sombra, frutales o cercos vivos (por ejemplo, la cobertura de árboles de Hansen); con 1 o 2 mapas, la pantalla lo muestra como dato y no pide visita. El mínimo vive en `MAPAS_MINIMOS_BOSQUE_2020` (`backend/app/services/convergencia.py`).
 
 La regla 3 existe porque cacao entregado desde una parcela mapeada como bosque en 2020 necesita que una persona la mire. El caso típico sigue siendo el cacao bajo sombra.
 

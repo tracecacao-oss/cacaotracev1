@@ -62,6 +62,12 @@ class Fila:
         return list(self.fechas)
 
 
+# Decisión del equipo del 2026-10-05 (adenda, 7.2 reglas 1 y 3): hubo bosque en la parcela el 31/12/2020
+# cuando al menos 3 conjuntos de datos lo registran. Un mapa solo puede ver árboles sueltos (sombra,
+# frutales, cercos vivos): se muestra como dato, pero no pide visita.
+MAPAS_MINIMOS_BOSQUE_2020 = 3
+
+
 @dataclass
 class Convergencia:
     filas: list[Fila]
@@ -98,6 +104,10 @@ class Convergencia:
     @property
     def registran_bosque_2020(self) -> list[str]:
         return [f.nombre for f in self.filas if f.registra_bosque_2020]
+
+    @property
+    def hubo_bosque_2020(self) -> bool:
+        return len(self.registran_bosque_2020) >= MAPAS_MINIMOS_BOSQUE_2020
 
     @property
     def discrepan(self) -> dict[str, bool]:

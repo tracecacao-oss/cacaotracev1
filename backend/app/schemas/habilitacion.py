@@ -82,6 +82,9 @@ class ConvergenciaSalida(BaseModel):
     conteos: dict[str, int]
     discrepan: dict[str, bool]
     umbral_bosque_2020_pct: float
+    # Cuántos conjuntos deben registrar bosque el 31/12/2020 para pedir revisión, y si se alcanzan.
+    mapas_minimos_bosque_2020: int = 3
+    hubo_bosque_2020: bool = False
     area_ha: float | None
 
 
