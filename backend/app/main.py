@@ -4,13 +4,16 @@ import logging
 from http import HTTPStatus
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.auth import VerificadorJWT
+from app.auth_admin import ClienteAuthAdmin, crear_auth_admin
 from app.config import Settings, get_settings
-from app.routers import health, sesion
+from app.contexto import CABECERA_COOPERATIVA
+from app.routers import auditoria, health, plataforma, productores, sesion, usuarios
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("cacaotrace")
@@ -30,7 +33,11 @@ def _cuerpo_error(codigo: str, mensaje: str) -> dict:
     return {"error": {"codigo": codigo, "mensaje": mensaje}}
 
 
-def crear_app(settings: Settings | None = None, verificador: VerificadorJWT | None = None) -> FastAPI:
+def crear_app(
+    settings: Settings | None = None,
+    verificador: VerificadorJWT | None = None,
+    auth_admin: ClienteAuthAdmin | None = None,
+) -> FastAPI:
     settings = settings or get_settings()
     con_docs = not settings.es_produccion
 
@@ -46,13 +53,14 @@ def crear_app(settings: Settings | None = None, verificador: VerificadorJWT | No
         secreto = settings.supabase_jwt_secret.get_secret_value() if settings.supabase_jwt_secret else None
         verificador = VerificadorJWT(settings.supabase_url, jwt_secret=secreto)
     app.state.verificador = verificador
+    app.state.auth_admin = auth_admin or crear_auth_admin(settings)
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.lista_cors,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", CABECERA_COOPERATIVA],
         max_age=600,
     )
 
@@ -68,6 +76,16 @@ def crear_app(settings: Settings | None = None, verificador: VerificadorJWT | No
             cuerpo = _cuerpo_error(codigo, mensaje)
         return JSONResponse(cuerpo, status_code=exc.status_code, headers=exc.headers)
 
+    @app.exception_handler(RequestValidationError)
+    async def _datos_invalidos(request: Request, exc: RequestValidationError) -> JSONResponse:
+        campos = sorted({str(e["loc"][-1]) for e in exc.errors() if e.get("loc") and e["loc"][0] == "body"})
+        mensaje = "Los datos enviados no son válidos."
+        if campos:
+            mensaje = f"Revisa estos campos: {', '.join(campos)}."
+        cuerpo = _cuerpo_error("datos_invalidos", mensaje)
+        cuerpo["error"]["campos"] = campos
+        return JSONResponse(cuerpo, status_code=422)
+
     @app.exception_handler(Exception)
     async def _error_inesperado(request: Request, exc: Exception) -> JSONResponse:
         log.exception("Error no controlado en %s %s", request.method, request.url.path)
@@ -76,8 +94,8 @@ def crear_app(settings: Settings | None = None, verificador: VerificadorJWT | No
             cuerpo["error"]["detalle"] = repr(exc)
         return JSONResponse(cuerpo, status_code=500)
 
-    app.include_router(health.router)
-    app.include_router(sesion.router)
+    for modulo in (health, sesion, plataforma, usuarios, productores, auditoria):
+        app.include_router(modulo.router)
     return app
 
 

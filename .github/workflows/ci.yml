@@ -56,5 +56,8 @@ jobs:
       - name: Migraciones
         run: alembic upgrade head
 
+      - name: Modelos y migraciones coinciden
+        run: alembic check
+
       - name: Pruebas
         run: pytest

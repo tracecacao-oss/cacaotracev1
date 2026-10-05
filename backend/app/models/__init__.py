@@ -1,7 +1,9 @@
 """Modelos SQLAlchemy. Cada parte agrega aquí sus tablas; Alembic las detecta desde Base.metadata."""
 
-from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeBase
+from datetime import datetime
+
+from sqlalchemy import DateTime, MetaData, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Nombres de restricciones estables para que las migraciones autogeneradas sean reproducibles.
 CONVENCION_NOMBRES = {
@@ -15,3 +17,41 @@ CONVENCION_NOMBRES = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=CONVENCION_NOMBRES)
+
+
+class ConFechas:
+    """creado_en y actualizado_en en UTC; la interfaz las muestra en hora de Lima."""
+
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    actualizado_en: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+from app.models.acceso import (  # noqa: E402
+    ESTADOS_AFILIACION,
+    ESTADOS_COOPERATIVA,
+    ORIGENES_CONSENTIMIENTO,
+    ROLES,
+    ROLES_PERSONAL,
+    Afiliacion,
+    Auditoria,
+    Cooperativa,
+    Perfil,
+    Productor,
+)
+
+__all__ = [
+    "ESTADOS_AFILIACION",
+    "ESTADOS_COOPERATIVA",
+    "ORIGENES_CONSENTIMIENTO",
+    "ROLES",
+    "ROLES_PERSONAL",
+    "Afiliacion",
+    "Auditoria",
+    "Base",
+    "ConFechas",
+    "Cooperativa",
+    "Perfil",
+    "Productor",
+]
