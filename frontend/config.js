@@ -10,3 +10,7 @@ export const SUPABASE_URL = "https://fbntvwuirklffsohrqoo.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_kW2OS1Nto6mhXsn6-c7tJg_Q2kiI8Mg";
 
 export const PRODUCTOR_EMAIL_DOMAIN = "productores.cacaotrace.local";
+
+// Capa satelital: Esri World Imagery en ArcGIS Location Platform (aprobada por el equipo).
+// Es una clave pública, restringida al dominio de la interfaz; vacía = mapa solo con calles.
+export const ESRI_API_KEY = "";

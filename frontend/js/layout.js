@@ -32,6 +32,8 @@ function gruposDeNavegacion() {
 
 function activo(ruta, hash) {
   const base = ruta === PLATAFORMA.ruta ? "#/plataforma" : ruta;
+  // El detalle de una parcela pertenece al módulo Productores.
+  if (ruta === "#/productores" && hash.startsWith("#/parcelas/")) return true;
   return hash === base || hash.startsWith(`${base}/`);
 }
 

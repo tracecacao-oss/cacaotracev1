@@ -72,10 +72,11 @@ function armarUrl(ruta, parametros) {
 /**
  * opciones: metodo, cuerpo, parametros, conToken (por defecto true),
  * sinConsulta (no enviar X-Cooperativa-Id aunque el superadmin esté consultando),
- * cooperativa (id que el superadmin lee en esta petición, sin entrar al modo consulta).
+ * cooperativa (id que el superadmin lee en esta petición, sin entrar al modo consulta),
+ * formulario (FormData con archivos; el navegador pone el Content-Type multipart).
  */
 export async function llamarApi(ruta, opciones = {}) {
-  const { metodo = "GET", cuerpo, parametros, conToken = true, sinConsulta = false, cooperativa } = opciones;
+  const { metodo = "GET", cuerpo, parametros, conToken = true, sinConsulta = false, cooperativa, formulario } = opciones;
   const cabeceras = {};
   if (conToken) {
     const token = await tokenActual();
@@ -88,7 +89,7 @@ export async function llamarApi(ruta, opciones = {}) {
   const pedido = {
     method: metodo,
     headers: cabeceras,
-    body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+    body: formulario ?? (cuerpo === undefined ? undefined : JSON.stringify(cuerpo)),
   };
 
   const inicio = Date.now();

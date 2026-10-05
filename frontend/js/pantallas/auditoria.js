@@ -10,6 +10,9 @@ const ACCIONES = [
   ["cooperativa.", "Cooperativa"],
   ["usuario.", "Usuarios"],
   ["productor.", "Productores"],
+  ["parcela.", "Parcelas"],
+  ["documento.", "Documentos"],
+  ["superposicion.", "Superposiciones"],
   ["superadmin.", "Consultas de soporte"],
 ];
 
@@ -28,13 +31,23 @@ const TEXTO_ACCION = {
   "productor.acceso_crear": "Creó el acceso de un productor",
   "productor.acceso_desactivar": "Desactivó el acceso de un productor",
   "productor.consentimiento": "Registró el consentimiento de datos",
+  "productor.editar": "Editó la ficha de un productor",
+  "productor.cerrar_afiliacion": "Cerró la afiliación de un productor",
+  "documento.cargar": "Cargó un documento",
+  "documento.anular": "Anuló un documento",
+  "parcela.crear": "Registró una parcela",
+  "parcela.editar": "Editó los datos de una parcela",
+  "parcela.editar_geometria": "Cambió la geometría de una parcela",
+  "parcela.desactivar": "Desactivó una parcela",
+  "superposicion.aceptar": "Aceptó una superposición",
   "superadmin.consultar_cooperativa": "Consultó la cooperativa (soporte)",
 };
 
 function resumen(detalle) {
   const partes = Object.entries(detalle ?? {}).map(([campo, valor]) => {
     if (valor && typeof valor === "object" && "antes" in valor) return `${campo}: ${valor.antes ?? "—"} → ${valor.despues ?? "—"}`;
-    return `${campo}: ${valor}`;
+    if (campo === "geometria_anterior") return "geometría anterior guardada";
+    return `${campo}: ${typeof valor === "object" ? JSON.stringify(valor) : valor}`;
   });
   return partes.join(" · ");
 }

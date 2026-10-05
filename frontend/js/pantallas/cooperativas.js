@@ -17,6 +17,13 @@ import {
   vacio,
 } from "../ui.js";
 
+export function seccionesPlataforma() {
+  return [
+    ["Cooperativas", "#/plataforma/cooperativas"],
+    ["Superposiciones", "#/plataforma/superposiciones"],
+  ];
+}
+
 export function insigniaEstado(cooperativa) {
   return cooperativa.estado === "activa"
     ? h("span", { class: "badge ok" }, h("span", { class: "dot" }), "Activa")
@@ -198,7 +205,7 @@ export default async function cooperativas({ navegar }) {
   return {
     titulo: "Cooperativas",
     migas: [["Plataforma"], ["Cooperativas"]],
-    secciones: [["Cooperativas", "#/plataforma/cooperativas"]],
+    secciones: seccionesPlataforma(),
     accion: h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirAlta(navegar) }, icono("mas"), "Nueva cooperativa"),
     contenido: h(
       "section",

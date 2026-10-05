@@ -182,3 +182,31 @@ def test_parcelas_de_demostracion_solo_se_comparan_entre_si(api, sesion, coop, o
         rectangulo(100, 100),
     )
     assert sesion.query(Superposicion).count() == 0
+
+
+def test_analizar_anticipa_superposiciones(api, sesion, coop, operador):
+    import json
+
+    vecino = factorias.productor(sesion, coop)
+    existente = _crear(api, operador, vecino, rectangulo(100, 100))
+    otra = factorias.cooperativa(sesion)
+    _crear(
+        api,
+        factorias.perfil(sesion, "operador", otra),
+        factorias.productor(sesion, otra),
+        rectangulo(100, 100, norte_m=60),
+    )
+    nuevo = factorias.productor(sesion, coop)
+    dibujo = json.dumps({"type": "Feature", "properties": {}, "geometry": rectangulo(100, 100, este_m=70)})
+    respuesta = api.como(operador).post(
+        "/parcelas/analizar-archivo",
+        data={"productor_id": str(nuevo.id)},
+        files={"archivo": ("dibujo.geojson", dibujo.encode())},
+    )
+    previstas = respuesta.json()["geometrias"][0]["superposiciones"]
+    assert len(previstas) == 2
+    misma = next(p for p in previstas if not p["otra_cooperativa"])
+    assert misma["codigo"] == existente["codigo"] and misma["propia"] is False
+    ajena = next(p for p in previstas if p["otra_cooperativa"])
+    assert ajena["codigo"] is None and ajena["nombre"] is None
+    assert sesion.query(Superposicion).count() == 1  # analizar no guarda nada

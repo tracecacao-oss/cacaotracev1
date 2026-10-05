@@ -45,10 +45,22 @@ def listar_parcelas(
 
 
 @router.post("/analizar-archivo", response_model=AnalisisArchivo)
-def analizar_archivo(contexto: Analisis, archivo: Annotated[UploadFile, File()]):
-    """Analiza un GeoJSON o KML y devuelve sus geometrías con validaciones. No guarda nada."""
+def analizar_archivo(
+    contexto: Analisis,
+    archivo: Annotated[UploadFile, File()],
+    productor_id: Annotated[uuid.UUID | None, Form()] = None,
+    excluir_parcela_id: Annotated[uuid.UUID | None, Form()] = None,
+):
+    """Analiza un GeoJSON o KML y devuelve sus geometrías con validaciones. No guarda nada.
+
+    La interfaz también envía aquí la geometría dibujada, como archivo GeoJSON, para validarla
+    antes de avanzar; con productor_id anticipa las superposiciones."""
+    if contexto.rol == "productor":
+        productor_id = contexto.productor_id if productor_id else None
     return AnalisisArchivo(
-        geometrias=servicio.analizar(contexto, leer_archivo(archivo, TAMANO_MAXIMO_ARCHIVO))
+        geometrias=servicio.analizar(
+            contexto, leer_archivo(archivo, TAMANO_MAXIMO_ARCHIVO), productor_id, excluir_parcela_id
+        )
     )
 
 

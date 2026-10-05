@@ -8,7 +8,6 @@ const MODULOS = {
   "#/trazabilidad": ["Trazabilidad", "Parte 7"],
   "#/exportacion": ["Exportación", "Partes 8 y 9"],
   "#/cooperativa/configuracion": ["Configuración", "Partes 5 y 8"],
-  "#/mis-parcelas": ["Mis parcelas", "Partes 3 y 4"],
   "#/mis-entregas": ["Mis entregas", "Parte 5"],
 };
 

@@ -43,6 +43,18 @@ class ErrorGeometriaSalida(BaseModel):
     mensaje: str
 
 
+class SuperposicionPrevista(BaseModel):
+    """Lo que pasaría al guardar. De otra cooperativa no se revela la parcela."""
+
+    propia: bool
+    otra_cooperativa: bool
+    codigo: str | None
+    nombre: str | None
+    tipo: str
+    area_ha: Decimal | None
+    porcentaje: Decimal | None
+
+
 class GeometriaAnalizada(BaseModel):
     indice: int
     nombre: str | None
@@ -51,6 +63,8 @@ class GeometriaAnalizada(BaseModel):
     geometria: dict[str, Any] | None
     valida: bool
     errores: list[ErrorGeometriaSalida]
+    # Solo si se indica el productor: superposiciones que se abrirían al guardar.
+    superposiciones: list[SuperposicionPrevista] = []
 
 
 class AnalisisArchivo(BaseModel):

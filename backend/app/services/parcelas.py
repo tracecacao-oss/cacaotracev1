@@ -25,6 +25,7 @@ from app.schemas.parcelas import (
     ParcelaSalida,
     ProductorDeParcela,
     SuperposicionDeParcela,
+    SuperposicionPrevista,
 )
 from app.services import documentos, geometria, superposiciones
 from app.services.auditoria import aplicar_cambios, registrar_auditoria
@@ -351,12 +352,61 @@ def exportar_geojson(contexto: Contexto, parcela_id: uuid.UUID) -> dict:
 # ---------- Archivo ----------
 
 
-def analizar(contexto: Contexto, archivo: Archivo) -> list[GeometriaAnalizada]:
-    """Devuelve las geometrías del archivo con sus validaciones. No guarda nada."""
+def _previstas(
+    contexto: Contexto, productor: Productor, r: geometria.Resultado, excluir: uuid.UUID | None
+) -> list[SuperposicionPrevista]:
+    solapes = superposiciones.detectar(
+        contexto.sesion,
+        wkt=r.geometria.wkt,
+        tipo=r.tipo,
+        area_ha=r.area_ha,
+        es_demo=productor.es_demo,
+        excluir=excluir,
+    )
+    if not solapes:
+        return []
+    de_la_cooperativa = set(
+        contexto.sesion.scalars(
+            select(Afiliacion.productor_id).where(
+                Afiliacion.productor_id.in_({s.otra_productor_id for s in solapes}),
+                Afiliacion.cooperativa_id == cooperativa_del_contexto(contexto),
+                Afiliacion.estado == "activa",
+            )
+        )
+    )
+    previstas = []
+    for s in solapes:
+        propia = s.otra_productor_id == productor.id
+        visible = s.otra_productor_id in de_la_cooperativa and (propia or contexto.rol != "productor")
+        previstas.append(
+            SuperposicionPrevista(
+                propia=propia,
+                otra_cooperativa=s.otra_productor_id not in de_la_cooperativa,
+                codigo=s.otra_codigo if visible else None,
+                nombre=s.otra_nombre if visible else None,
+                tipo=s.tipo,
+                area_ha=s.area_ha,
+                porcentaje=s.porcentaje,
+            )
+        )
+    return previstas
+
+
+def analizar(
+    contexto: Contexto,
+    archivo: Archivo,
+    productor_id: uuid.UUID | None = None,
+    excluir: uuid.UUID | None = None,
+) -> list[GeometriaAnalizada]:
+    """Devuelve las geometrías del archivo con sus validaciones. No guarda nada.
+
+    Con productor_id también anticipa las superposiciones que se abrirían al guardar
+    (excluir: la parcela que se está editando)."""
     try:
         entidades = geometria.leer_archivo(archivo.nombre, archivo.contenido)
     except geometria.ErrorArchivo as exc:
         raise documentos.error_de_archivo(exc) from exc
+    productor = _productor_visible(contexto, productor_id) if productor_id else None
     resultado = []
     for i, (nombre, geo) in enumerate(entidades):
         r = geometria.validar(contexto.sesion, geo, indice=i, nombre=nombre)
@@ -369,6 +419,7 @@ def analizar(contexto: Contexto, archivo: Archivo) -> list[GeometriaAnalizada]:
                 geometria=geometria.a_geojson(r.geometria) if r.geometria is not None else None,
                 valida=r.valida,
                 errores=r.errores,
+                superposiciones=_previstas(contexto, productor, r, excluir) if productor and r.valida else [],
             )
         )
     return resultado

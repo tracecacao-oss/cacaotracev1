@@ -39,6 +39,8 @@ Las pruebas nunca llaman a Supabase: el Auth admin se simula con `AuthFalso` (te
 - Servicios en `app/services/` reciben el `Contexto` como primer parámetro y auditan con `registrar_auditoria` en la misma transacción.
 - Errores con `error_api(estado, codigo, mensaje)`; mensajes en español, listos para mostrar.
 - Interfaz: `frontend/js/api.js` es el único que llama a `fetch`; pantallas en `frontend/js/pantallas/`; textos de usuario con `textContent`, nunca HTML.
+- Geometría: validaciones solo en `backend/app/services/geometria.py`; la interfaz valida lo dibujado enviándolo a `POST /parcelas/analizar-archivo`. Mapas con `frontend/js/mapa.js` (Leaflet + Geoman con SRI; satélite Esri solo con `ESRI_API_KEY`).
+- Archivos: siempre por la API a Storage (`documentos.cargar`), nunca directo desde el navegador.
 
 ## Producción
 
