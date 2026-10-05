@@ -1,25 +1,31 @@
-# Blueprint de Render: crea la base de datos y el servicio web y los conecta.
-# En Render: New > Blueprint > elige este repositorio.
-databases:
-  - name: cacaotrace-db
-    plan: free
-    region: oregon
-
+# Blueprint de Render: servicio de la API. Validado contra https://render.com/docs/blueprint-spec (oct. 2026).
+# Las variables con sync: false las pega una persona del equipo en el panel; nunca van en este archivo.
 services:
   - type: web
-    name: cacaotrace
+    name: cacaotrace-api
     runtime: python
     plan: free
-    region: oregon
+    region: virginia
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 60
-    healthCheckPath: /salud
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    # Reemplaza a autoDeploy: true, que Render marcó como obsoleto.
+    autoDeployTrigger: commit
     envVars:
+      - key: ENVIRONMENT
+        value: production
       - key: PYTHON_VERSION
-        value: 3.12.7
+        value: 3.12.14
+      - key: STORAGE_BUCKET
+        value: documentos
+      - key: PRODUCTOR_EMAIL_DOMAIN
+        value: productores.cacaotrace.local
       - key: DATABASE_URL
-        fromDatabase:
-          name: cacaotrace-db
-          property: connectionString
-      - key: DEMO_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: CORS_ORIGINS
         sync: false

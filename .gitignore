@@ -1,4 +1,24 @@
+# Secretos: nunca entran al repositorio
+.env
+.env.*
+!.env.example
+
+# Python
 __pycache__/
 *.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Copias de la base (pg_dump) y archivos locales
+*.dump
+*.sql.gz
 *.db
-.env
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

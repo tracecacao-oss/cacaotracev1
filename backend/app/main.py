@@ -1,0 +1,84 @@
+"""Crea la aplicación FastAPI, configura CORS y errores, y registra los routers."""
+
+import logging
+from http import HTTPStatus
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.auth import VerificadorJWT
+from app.config import Settings, get_settings
+from app.routers import health, sesion
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("cacaotrace")
+
+ERRORES_POR_ESTADO = {
+    400: ("regla_incumplida", "La solicitud no cumple una regla del sistema."),
+    401: ("no_autenticado", "Inicia sesión para continuar."),
+    403: ("sin_permiso", "No tienes permiso para esta acción."),
+    404: ("no_encontrado", "No encontrado."),
+    405: ("metodo_no_permitido", "Método no permitido."),
+    409: ("duplicado", "El registro ya existe."),
+    422: ("datos_invalidos", "Los datos enviados no son válidos."),
+}
+
+
+def _cuerpo_error(codigo: str, mensaje: str) -> dict:
+    return {"error": {"codigo": codigo, "mensaje": mensaje}}
+
+
+def crear_app(settings: Settings | None = None, verificador: VerificadorJWT | None = None) -> FastAPI:
+    settings = settings or get_settings()
+    con_docs = not settings.es_produccion
+
+    app = FastAPI(
+        title="CacaoTrace API",
+        version=settings.git_sha,
+        docs_url="/docs" if con_docs else None,
+        redoc_url=None,
+        openapi_url="/openapi.json" if con_docs else None,
+    )
+    app.state.settings = settings
+    if verificador is None:
+        secreto = settings.supabase_jwt_secret.get_secret_value() if settings.supabase_jwt_secret else None
+        verificador = VerificadorJWT(settings.supabase_url, jwt_secret=secreto)
+    app.state.verificador = verificador
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.lista_cors,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+        max_age=600,
+    )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _error_http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        if isinstance(exc.detail, dict) and "codigo" in exc.detail:
+            cuerpo = {"error": exc.detail}
+        else:
+            codigo, mensaje = ERRORES_POR_ESTADO.get(exc.status_code, ("error", "Ocurrió un error."))
+            # Los textos por defecto de Starlette vienen en inglés; se reemplazan.
+            if isinstance(exc.detail, str) and exc.detail != HTTPStatus(exc.status_code).phrase:
+                mensaje = exc.detail
+            cuerpo = _cuerpo_error(codigo, mensaje)
+        return JSONResponse(cuerpo, status_code=exc.status_code, headers=exc.headers)
+
+    @app.exception_handler(Exception)
+    async def _error_inesperado(request: Request, exc: Exception) -> JSONResponse:
+        log.exception("Error no controlado en %s %s", request.method, request.url.path)
+        cuerpo = _cuerpo_error("error_interno", "Ocurrió un error inesperado. Intenta de nuevo.")
+        if not settings.es_produccion:
+            cuerpo["error"]["detalle"] = repr(exc)
+        return JSONResponse(cuerpo, status_code=500)
+
+    app.include_router(health.router)
+    app.include_router(sesion.router)
+    return app
+
+
+app = crear_app()
