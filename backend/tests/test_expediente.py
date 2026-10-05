@@ -221,3 +221,11 @@ def test_otra_cooperativa_no_ve_ni_toca_el_expediente(api, sesion, parcela):
         == 404
     )
     assert _subir(api, f"/parcelas/{parcela.id}/documentos").status_code == 404
+
+
+def test_registros_consultables_confirmados():
+    """Confirmados con fuentes oficiales el 2026-10-05 (especificación, "Los 7 documentos")."""
+    from app.catalogos import documentos_legales as catalogo
+
+    consultables = {t.codigo for t in catalogo.TIPOS if t.registro_consultable}
+    assert consultables == {"titulo_sunarp", "cusaf", "sunafil", "sunat", "zonificacion"}

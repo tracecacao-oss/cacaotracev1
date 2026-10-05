@@ -1,7 +1,15 @@
 """Los 7 documentos del expediente legal de la parcela (Parte 4).
 
-`registro_consultable` dice si el documento tiene un registro público contra el cual cotejarlo.
-Son valores iniciales que el equipo debe confirmar; cambiar uno aquí no exige migración.
+`registro_consultable` dice si el documento tiene un registro público en línea contra el cual
+cotejarlo. Confirmado con fuentes oficiales el 2026-10-05 (ver la especificación, "Los 7 documentos"):
+- titulo_sunarp: "Conoce Aquí" de SUNARP, con el número de partida.
+- cusaf: GeoSERFOR, capa "Cesiones en uso" (número, inicio, término y situación del contrato).
+- sunafil: buscador de resoluciones del sistema inspectivo de SUNAFIL, por RUC.
+- sunat: Consulta RUC de SUNAT.
+- zonificacion: GeoSERFOR, capa Zonificación Forestal, con la resolución que la aprueba.
+Sin registro en línea: la constancia de posesión (registro administrativo de quien la emite,
+RM 0029-2020-MINAGRI) y la autorización forestal (GeoSERFOR casi no las publica).
+Cambiar un valor aquí no exige migración.
 """
 
 from dataclasses import dataclass
@@ -24,7 +32,7 @@ TIPOS = (
         "Contrato de cesión en uso para sistemas agroforestales (CUSAF)",
         "Uso forestal",
         False,
-        False,
+        True,
     ),
     TipoLegal(
         "autorizacion_serfor",
@@ -33,7 +41,7 @@ TIPOS = (
         False,
         False,
     ),
-    TipoLegal("sunafil", "Sustento laboral ante SUNAFIL", "Laboral", False, False),
+    TipoLegal("sunafil", "Sustento laboral ante SUNAFIL", "Laboral", False, True),
     TipoLegal("sunat", "Ficha RUC u otro sustento de SUNAT", "Tributario", False, True),
     TipoLegal(
         "zonificacion", "Sustento de la zonificación forestal de la parcela", "Zonificación", False, True
