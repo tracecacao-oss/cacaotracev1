@@ -1,4 +1,5 @@
-// Detalle de parcela: mapa, datos, alertas, documentos, exportar GeoJSON e historial de cambios.
+// Detalle de parcela, con el inspector del diseño: cabecera con código, estado y área; mapa con
+// alertas y superposiciones al lado; datos, documentos e historial de cambios.
 // El personal la ve en #/parcelas/{id}; el productor, la suya en #/mis-parcelas/{id}.
 
 import { llamarApi } from "../api.js";
@@ -6,9 +7,8 @@ import { formularioCarga, listaDocumentos } from "../documentos.js";
 import { puede } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo } from "../mapa.js";
 import { ESTADOS_MIDAGRI, hectareas, insigniaAlerta, insigniaNivel } from "../textos.js";
-import { abrirModal, campo, confirmar, enviarCon, fecha, h, toast } from "../ui.js";
+import { abrirModal, cabeceraFicha, campo, confirmar, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 import { camposUbigeo } from "../ubigeo.js";
-import { seccionesProductores } from "./productores.js";
 
 const ACCIONES = {
   "parcela.crear": "Registró la parcela",
@@ -18,10 +18,6 @@ const ACCIONES = {
   "documento.cargar": "Cargó un documento",
   "documento.anular": "Anuló un documento",
 };
-
-function dato(etiqueta, valor, extra = null, mono = false) {
-  return h("div", {}, h("dt", {}, etiqueta), h("dd", { class: mono ? "mono" : null }, valor ?? "—"), extra && h("dd", {}, extra));
-}
 
 function abrirEdicion(p, ruta, alGuardar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-parcela" }, "Guardar");
@@ -117,7 +113,7 @@ export default async function parcela({ hash, parametros, recargar }) {
   encuadrar(mapa, capa);
 
   let editando = null;
-  const botonGeometria = edita && h("button", { class: "btn btn-sm", type: "button" }, "Cambiar geometría");
+  const botonGeometria = edita && h("button", { class: "btn btn-sm", type: "button" }, icono("pin"), "Cambiar geometría");
   botonGeometria?.addEventListener("click", () => {
     if (!editando) {
       mapa.removeLayer(capa);
@@ -128,66 +124,78 @@ export default async function parcela({ hash, parametros, recargar }) {
     }
   });
 
-  // ---------- Paneles ----------
-  const alertas = h(
-    "section",
-    { class: "panel" },
-    h("div", { class: "panel-h" }, h("h2", {}, "Alertas")),
+  // ---------- Ficha ----------
+  const midagri = ESTADOS_MIDAGRI.find(([v]) => v === p.midagri_estado)?.[1];
+  const esPoligono = p.tipo_geometria === "poligono";
+
+  const estadoAlertas = p.alertas.length
+    ? h(
+        "div",
+        { class: "verif warn" },
+        icono("alert"),
+        h(
+          "div",
+          {},
+          h("b", {}, p.alertas.length === 1 ? "1 alerta" : `${p.alertas.length} alertas`),
+          h("span", { class: "fila-acciones alertas-lista" }, p.alertas.map((a) => insigniaAlerta(a))),
+          h("span", {}, "Las alertas no impiden guardar; se revisan al habilitar la parcela."),
+        ),
+      )
+    : h("div", { class: "verif" }, icono("shield"), h("div", {}, h("b", {}, "Sin alertas"), h("span", {}, "Geometría válida y sin superposiciones abiertas.")));
+
+  const superposiciones = p.superposiciones.map((s) =>
     h(
       "div",
-      { class: "panel-b form" },
-      p.alertas.length ? p.alertas.map((a) => h("div", {}, insigniaAlerta(a))) : h("p", { class: "panel-sub" }, "Sin alertas."),
-      p.alertas.length ? h("p", { class: "panel-sub" }, "Las alertas no impiden guardar; se revisan al habilitar la parcela.") : null,
-      p.superposiciones.map((s) =>
+      { class: `verif ${s.estado === "abierta" ? "bad" : ""}` },
+      icono("layers"),
+      h(
+        "div",
+        {},
         h(
-          "p",
-          { class: `alerta ${s.estado === "abierta" ? "bad" : "info"}` },
+          "b",
+          {},
           s.otra_cooperativa
             ? "Superposición con una parcela de otra cooperativa"
             : s.otra_parcela
               ? `Superposición con ${s.otra_parcela.codigo} «${s.otra_parcela.nombre}»`
               : "Superposición con otra parcela",
-          s.area_ha ? ` · ${hectareas(s.area_ha)} en común (${s.porcentaje} %)` : "",
-          ` · ${s.estado}`,
         ),
+        h("span", {}, [s.area_ha ? `${hectareas(s.area_ha)} en común (${s.porcentaje} %)` : null, s.estado].filter(Boolean).join(" · ")),
       ),
     ),
   );
 
-  const midagri = ESTADOS_MIDAGRI.find(([v]) => v === p.midagri_estado)?.[1];
-  const datos = h(
-    "section",
-    { class: "panel" },
-    h(
+  const geometria = seccion({
+    titulo: "Geometría",
+    sub: `${esPoligono ? "Polígono" : "Punto"} · ${p.origen_geometria === "archivo" ? "de archivo" : "dibujado"} · registrada el ${fecha(p.creado_en)}`,
+    acciones: [botonGeometria, !delProductor && h("button", { class: "btn btn-sm", type: "button", onclick: () => exportar(p) }, icono("download"), "Exportar GeoJSON")],
+    contenido: h(
       "div",
-      { class: "panel-h" },
-      h("div", {}, h("h2", {}, "Datos"), h("p", { class: "panel-sub" }, `Registrada el ${fecha(p.creado_en)} · ${p.origen_geometria === "archivo" ? "geometría de archivo" : "geometría dibujada"}`)),
+      { class: "geo" },
+      h("div", { class: "detalle-mapa" }, contenedorMapa),
       h(
         "div",
-        { class: "fila-acciones" },
-        edita && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirEdicion(p, ruta, recargar) }, "Editar datos"),
-        botonGeometria,
-        !delProductor && h("button", { class: "btn btn-sm", type: "button", onclick: () => exportar(p) }, "Exportar GeoJSON"),
+        { class: "geo-lado" },
+        estadoAlertas,
+        superposiciones,
+        h(
+          "dl",
+          { class: "kv" },
+          h("div", {}, h("dt", {}, "Área calculada"), h("dd", { class: "mono" }, esPoligono ? hectareas(p.area_calculada_ha) : "No aplica")),
+          h("div", {}, h("dt", {}, "Área declarada"), h("dd", { class: "mono" }, hectareas(p.area_declarada_ha))),
+          h("div", {}, h("dt", {}, "Área con cacao"), h("dd", { class: "mono" }, hectareas(p.area_cultivada_ha))),
+          h("div", {}, h("dt", {}, "Estado en MIDAGRI"), h("dd", {}, midagri)),
+        ),
       ),
     ),
-    h(
-      "dl",
-      { class: "panel-b ficha" },
-      dato("Productor", `${p.productor.nombres} ${p.productor.apellidos}`),
-      dato("Ubicación", [p.centro_poblado, p.distrito, p.provincia, p.departamento].filter(Boolean).join(", ")),
-      dato("Tipo de geometría", p.tipo_geometria === "poligono" ? "Polígono" : "Punto"),
-      dato("Área calculada", p.tipo_geometria === "poligono" ? hectareas(p.area_calculada_ha) : "No aplica", null, true),
-      dato("Área declarada", hectareas(p.area_declarada_ha), null, true),
-      dato("Área con cacao", hectareas(p.area_cultivada_ha), null, true),
-      dato("Estado en MIDAGRI", midagri, insigniaNivel(p.nivel_midagri)),
-      dato("Código en MIDAGRI", p.midagri_codigo, null, true),
-      dato("Estado", p.estado === "activa" ? "Activa" : "Inactiva"),
-    ),
-    edita &&
-      !delProductor &&
-      h(
-        "div",
-        { class: "panel-b" },
+  });
+
+  const datos = seccion({
+    titulo: "Datos de la parcela",
+    acciones: [
+      edita && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirEdicion(p, ruta, recargar) }, icono("wrench"), "Editar datos"),
+      edita &&
+        !delProductor &&
         h(
           "button",
           {
@@ -206,62 +214,84 @@ export default async function parcela({ hash, parametros, recargar }) {
           },
           "Desactivar parcela",
         ),
-      ),
-  );
+    ],
+    contenido: rejilla([
+      { etiqueta: "Nombre", valor: p.nombre },
+      { etiqueta: "Productor", valor: `${p.productor.nombres} ${p.productor.apellidos}` },
+      { etiqueta: "Ubicación", valor: [p.centro_poblado, p.distrito, p.provincia, p.departamento].filter(Boolean).join(", ") },
+      { etiqueta: "Estado en MIDAGRI", valor: midagri, extra: insigniaNivel(p.nivel_midagri) },
+      { etiqueta: "Código en MIDAGRI", valor: p.midagri_codigo, mono: true },
+      { etiqueta: "Estado", valor: p.estado === "activa" ? "Activa" : "Inactiva" },
+    ]),
+  });
 
-  const documentos = h(
-    "section",
-    { class: "panel" },
-    h("div", { class: "panel-h" }, h("div", {}, h("h2", {}, "Documentos"), h("p", { class: "panel-sub" }, "Sustento del estado en MIDAGRI y archivo de origen de la geometría."))),
-    listaDocumentos(p.documentos, { puedeAnular: !delProductor && puede("registrarProductores"), alCambiar: recargar }),
-    edita &&
-      h(
-        "div",
-        { class: "panel-b" },
+  const documentos = seccion({
+    titulo: "Documentos",
+    sub: "Sustento del estado en MIDAGRI y archivo de origen de la geometría.",
+    contenido: [
+      h("div", { class: "tbl-box" }, listaDocumentos(p.documentos, { puedeAnular: !delProductor && puede("registrarProductores"), alCambiar: recargar })),
+      edita &&
         formularioCarga({
           tipos: [["sustento_midagri", "Sustento de MIDAGRI"]],
           ruta: `${ruta}/documentos`,
           alCargar: recargar,
           textoBoton: "Cargar sustento de MIDAGRI",
         }),
-      ),
-  );
+    ],
+  });
 
   const historial =
     !delProductor &&
-    h(
-      "section",
-      { class: "panel" },
-      h("div", { class: "panel-h" }, h("h2", {}, "Historial de cambios")),
-      p.historial.length
+    seccion({
+      titulo: "Historial de cambios",
+      contenido: p.historial.length
         ? h(
-            "ul",
-            { class: "lista-simple panel-b" },
+            "ol",
+            { class: "linea-tiempo" },
             p.historial.map((x) =>
               h(
                 "li",
                 {},
                 h("b", {}, ACCIONES[x.accion] ?? x.accion),
-                ` · ${fecha(x.ocurrido_en, { hora: true })}`,
-                x.usuario_nombre ? ` · ${x.usuario_nombre}` : "",
+                h("span", { class: "sec" }, [fecha(x.ocurrido_en, { hora: true }), x.usuario_nombre].filter(Boolean).join(" · ")),
                 x.detalle?.motivo ? h("span", { class: "sec" }, `Motivo: ${x.detalle.motivo}`) : null,
               ),
             ),
           )
-        : h("p", { class: "panel-b panel-sub" }, "Sin cambios registrados."),
-    );
+        : h("p", { class: "panel-sub" }, "Sin cambios registrados."),
+    });
 
+  const n = p.alertas.length;
   return {
     titulo: `${p.codigo} · ${p.nombre}`,
     migas: delProductor
       ? [["Mis parcelas", "#/mis-parcelas"], [p.nombre]]
       : [["Productores", "#/productores"], [`${p.productor.nombres} ${p.productor.apellidos}`, `#/productores/${p.productor.id}`], [p.codigo]],
-    secciones: delProductor ? null : seccionesProductores(),
-    contenido: [
-      h("div", { class: "detalle-parcela" }, h("div", { class: "detalle-mapa" }, contenedorMapa), alertas),
+    cabecera: null,
+    contenido: h(
+      "section",
+      { class: "panel inspector" },
+      cabeceraFicha({
+        inicio: h("span", { class: "ins-icono" }, icono("pin")),
+        titulo: p.codigo,
+        codigo: true,
+        insignias: [
+          p.estado === "activa" ? h("span", { class: "badge ok" }, h("span", { class: "dot" }), "Activa") : h("span", { class: "badge" }, h("span", { class: "dot" }), "Inactiva"),
+          n ? h("span", { class: "badge warn" }, h("span", { class: "dot" }), n === 1 ? "1 alerta" : `${n} alertas`) : null,
+        ],
+        detalle: [
+          h("b", {}, p.nombre),
+          " · ",
+          delProductor ? `${p.productor.nombres} ${p.productor.apellidos}` : h("a", { href: `#/productores/${p.productor.id}` }, `${p.productor.nombres} ${p.productor.apellidos}`),
+          ` · ${p.distrito}, ${p.provincia}`,
+        ],
+        cifra: hectareas(p.area_total_ha),
+        cifraTexto: esPoligono ? "área calculada" : "área declarada (punto)",
+      }),
+      geometria,
       datos,
       documentos,
       historial,
-    ],
+    ),
   };
 }

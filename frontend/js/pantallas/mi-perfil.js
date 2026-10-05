@@ -1,25 +1,19 @@
-// Mi perfil: datos propios y cambio de contraseña. El productor ve además su ficha, sus
-// pendientes en lenguaje simple y carga la foto de su DNI desde el celular.
+// Mi perfil, con el inspector del diseño: datos propios y cambio de contraseña. El productor ve
+// además su ficha, sus pendientes en lenguaje simple y carga la foto de su DNI desde el celular.
 
 import { llamarApi } from "../api.js";
 import { formularioCarga, listaDocumentos } from "../documentos.js";
 import { estado, nombreCooperativa, ROTULOS_ROL } from "../estado.js";
 import { PENDIENTES_PRODUCTOR, insigniaNivel } from "../textos.js";
-import { campo, enviarCon, h, toast } from "../ui.js";
+import { avatar, cabeceraFicha, campo, enviarCon, h, rejilla, seccion, toast } from "../ui.js";
 import { formularioClave } from "./formulario-clave.js";
 
-function dato(etiqueta, valor, extra = null, mono = false) {
-  return h("div", {}, h("dt", {}, etiqueta), h("dd", { class: mono ? "mono" : null }, valor || "—"), extra && h("dd", {}, extra));
-}
-
 function seccionClave(recargarUsuario, recargar) {
-  return h(
-    "section",
-    { class: "panel" },
-    h("div", { class: "panel-h" }, h("h2", {}, "Cambiar contraseña")),
-    h(
+  return seccion({
+    titulo: "Cambiar contraseña",
+    contenido: h(
       "div",
-      { class: "panel-b" },
+      { class: "formulario-angosto" },
       formularioClave({
         alTerminar: async () => {
           await recargarUsuario();
@@ -28,58 +22,61 @@ function seccionClave(recargarUsuario, recargar) {
         },
       }),
     ),
-  );
+  });
 }
 
 async function perfilProductor({ recargarUsuario, recargar }) {
   const f = await llamarApi("/mi/productor");
   const boton = h("button", { class: "btn btn-sm", type: "submit" }, "Guardar teléfono");
-  const telefono = h("form", { class: "form fila-form" }, campo({ etiqueta: "Mi teléfono", name: "telefono", type: "tel", value: f.telefono ?? "", maxlength: 30 }), boton);
+  const telefono = h("form", { class: "form fila-form formulario-angosto" }, campo({ etiqueta: "Mi teléfono", name: "telefono", type: "tel", value: f.telefono ?? "", maxlength: 30 }), boton);
   enviarCon(telefono, boton, async ({ telefono: valor }) => {
     await llamarApi("/mi/productor", { metodo: "PATCH", cuerpo: { telefono: valor || null } });
     toast("Teléfono guardado.");
     recargar();
   });
 
-  return [
-    h(
-      "section",
-      { class: "panel" },
-      h("div", { class: "panel-h" }, h("h2", {}, "Lo que falta")),
-      h(
-        "div",
-        { class: "panel-b form" },
-        f.pendientes.length
-          ? f.pendientes.map((p) =>
+  return h(
+    "section",
+    { class: "panel inspector" },
+    cabeceraFicha({
+      inicio: avatar(f.nombres, f.apellidos, "lg"),
+      titulo: `${f.nombres} ${f.apellidos}`,
+      insignias: f.pendientes.length
+        ? h("span", { class: "badge warn" }, h("span", { class: "dot" }), f.pendientes.length === 1 ? "1 pendiente" : `${f.pendientes.length} pendientes`)
+        : h("span", { class: "badge ok" }, h("span", { class: "dot" }), "Ficha completa"),
+      detalle: [h("span", { class: "mono" }, `DNI ${f.dni}`), ` · ${nombreCooperativa()}`],
+    }),
+    seccion({
+      titulo: "Lo que falta",
+      contenido: f.pendientes.length
+        ? h(
+            "div",
+            { class: "form" },
+            f.pendientes.map((p) =>
               h("p", { class: "alerta warn" }, PENDIENTES_PRODUCTOR[p], p === "sin_parcelas" ? h("a", { href: "#/mis-parcelas/nueva", class: "enlace-accion" }, " Registrar ahora") : null),
-            )
-          : h("p", { class: "alerta info" }, "Tu ficha está completa."),
-      ),
-    ),
-    h(
-      "section",
-      { class: "panel" },
-      h("div", { class: "panel-h" }, h("h2", {}, "Mis datos")),
-      h(
-        "dl",
-        { class: "panel-b ficha" },
-        dato("DNI", f.dni, insigniaNivel(f.nivel_identidad), true),
-        dato("Nombres", f.nombres),
-        dato("Apellidos", f.apellidos),
-        dato("Dirección", f.direccion_postal),
-        dato("Registro en el PPA", f.ppa_registrado ? f.ppa_codigo || "Registrado" : "No registrado", insigniaNivel(f.nivel_ppa)),
-        dato("Cooperativa", nombreCooperativa()),
-      ),
-      h("div", { class: "panel-b" }, telefono),
-    ),
-    h(
-      "section",
-      { class: "panel" },
-      h("div", { class: "panel-h" }, h("div", {}, h("h2", {}, "Mi DNI"), h("p", { class: "panel-sub" }, "Toma una foto clara del DNI o sube un PDF."))),
-      listaDocumentos(f.documentos, { alCambiar: recargar }),
-      h(
-        "div",
-        { class: "panel-b" },
+            ),
+          )
+        : h("p", { class: "alerta info" }, "Tu ficha está completa."),
+    }),
+    seccion({
+      titulo: "Mis datos",
+      contenido: [
+        rejilla([
+          { etiqueta: "DNI", valor: f.dni, mono: true, extra: insigniaNivel(f.nivel_identidad) },
+          { etiqueta: "Nombres", valor: f.nombres },
+          { etiqueta: "Apellidos", valor: f.apellidos },
+          { etiqueta: "Dirección", valor: f.direccion_postal },
+          { etiqueta: "Registro en el PPA", valor: f.ppa_registrado ? f.ppa_codigo || "Registrado" : "No registrado", extra: insigniaNivel(f.nivel_ppa) },
+          { etiqueta: "Cooperativa", valor: nombreCooperativa() },
+        ]),
+        telefono,
+      ],
+    }),
+    seccion({
+      titulo: "Mi DNI",
+      sub: "Toma una foto clara del DNI o sube un PDF.",
+      contenido: [
+        h("div", { class: "tbl-box" }, listaDocumentos(f.documentos, { alCambiar: recargar })),
         formularioCarga({
           tipos: [
             ["dni", "Foto de mi DNI"],
@@ -89,35 +86,40 @@ async function perfilProductor({ recargarUsuario, recargar }) {
           alCargar: recargar,
           textoBoton: "Subir",
         }),
-      ),
-    ),
+      ],
+    }),
     seccionClave(recargarUsuario, recargar),
-  ];
+  );
 }
 
 export default async function miPerfil({ recargarUsuario, recargar }) {
   const u = estado.usuario;
   if (u.rol === "productor") {
-    return { titulo: "Mi perfil", contenido: await perfilProductor({ recargarUsuario, recargar }) };
+    return { titulo: "Mi perfil", cabecera: null, contenido: await perfilProductor({ recargarUsuario, recargar }) };
   }
   return {
     titulo: "Mi perfil",
-    contenido: [
-      h(
-        "section",
-        { class: "panel" },
-        h("div", { class: "panel-h" }, h("h2", {}, "Mis datos")),
-        h(
-          "dl",
-          { class: "panel-b ficha" },
-          dato("Nombres", u.nombres),
-          dato("Apellidos", u.apellidos),
-          dato("Correo", u.correo),
-          dato("Rol", ROTULOS_ROL[u.rol]),
-          u.cooperativa && dato("Cooperativa", nombreCooperativa()),
-        ),
-      ),
+    cabecera: null,
+    contenido: h(
+      "section",
+      { class: "panel inspector" },
+      cabeceraFicha({
+        inicio: avatar(u.nombres, u.apellidos, "lg"),
+        titulo: `${u.nombres} ${u.apellidos}`,
+        insignias: h("span", { class: "badge" }, ROTULOS_ROL[u.rol]),
+        detalle: [u.correo, u.cooperativa ? ` · ${nombreCooperativa()}` : ""],
+      }),
+      seccion({
+        titulo: "Mis datos",
+        contenido: rejilla([
+          { etiqueta: "Nombres", valor: u.nombres },
+          { etiqueta: "Apellidos", valor: u.apellidos },
+          { etiqueta: "Correo", valor: u.correo },
+          { etiqueta: "Rol", valor: ROTULOS_ROL[u.rol] },
+          u.cooperativa && { etiqueta: "Cooperativa", valor: nombreCooperativa() },
+        ]),
+      }),
       seccionClave(recargarUsuario, recargar),
-    ],
+    ),
   };
 }

@@ -753,11 +753,12 @@ La interfaz tiene barra lateral izquierda, una sola tarea por pantalla y cada m�
 3. La fuente de colores, espaciados y radios es el HTML del último rediseño del equipo, que debe estar en `legacy/diseno/`. Claude Code los extrae a `frontend/css/tokens.css` como variables CSS.
 4. Si ese archivo no está en el repositorio, Claude Code se detiene y lo pide. No inventa una paleta.
 5. El personal trabaja en laptop y el productor en celular. Las pantallas del productor deben funcionar a 360 px de ancho. Bajo 900 px la barra lateral se pliega en un botón de menú.
+6. Decisión del equipo del 2026-10-05: la interfaz debe parecerse en su mayoría a ese HTML, no solo en colores sino en sus componentes y su composición: barra superior con la ruta de navegación, encabezado con antetítulo y descripción, secciones como control segmentado, fichas con la cabecera del inspector (avatar o código, insignias y una cifra destacada) y rejilla de datos, tarjetas de indicadores, tablas, avisos y tema claro u oscuro. Si choca con esta especificación en navegación, nombres de módulos, una tarea por pantalla o un botón principal, manda la especificación. Del HTML no se copian textos, datos de ejemplo ni lógica.
 
 ### Estructura de toda pantalla
 
-1. Barra lateral: marca, nombre de la cooperativa, módulos y, al pie, nombre del usuario, rol y "Cerrar sesión".
-2. Encabezado: título, ruta de navegación y como máximo un botón principal.
+1. Barra lateral: marca, nombre de la cooperativa, módulos y, al pie, nombre del usuario, rol, "Cerrar sesión" y "Contraer menú", que la deja solo con íconos.
+2. Encabezado: título, ruta de navegación y como máximo un botón principal. La ruta va en una barra superior fija, junto al botón de tema claro u oscuro. Las fichas (productor, parcela, cooperativa, mi perfil) muestran el título dentro de la cabecera de su panel.
 3. Secciones: pestañas secundarias bajo el título; solo una sección visible a la vez.
 4. Los formularios largos se parten en pasos. Los listados van paginados y con buscador.
 5. Una lista vacía explica qué va ahí y ofrece la acción para crear el primer registro.

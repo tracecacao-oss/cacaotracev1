@@ -3,9 +3,11 @@
 import { llamarApi } from "../api.js";
 import { textoConsentimiento } from "../consentimiento.js";
 import { puede } from "../estado.js";
-import { PENDIENTES_PERSONAL } from "../textos.js";
+import { PENDIENTES_PERSONAL, hectareas } from "../textos.js";
 import {
   abrirModal,
+  avatar,
+  buscador,
   campo,
   cargando,
   conRetraso,
@@ -360,9 +362,22 @@ export default async function productores({ navegar }) {
               h(
                 "tr",
                 { class: "clic", onclick: () => navegar(`#/productores/${p.id}`) },
-                h("td", {}, h("a", { href: `#/productores/${p.id}` }, `${p.apellidos}, ${p.nombres}`), p.codigo_socio && h("span", { class: "sec" }, `Socio ${p.codigo_socio}`)),
+                h(
+                  "td",
+                  {},
+                  h(
+                    "span",
+                    { class: "persona" },
+                    avatar(p.nombres, p.apellidos, "sm"),
+                    h("span", {}, h("a", { href: `#/productores/${p.id}` }, `${p.apellidos}, ${p.nombres}`), p.codigo_socio && h("span", { class: "sec" }, `Socio ${p.codigo_socio}`)),
+                  ),
+                ),
                 h("td", { class: "mono" }, p.dni),
-                h("td", { class: "mono ocultar-sm" }, String(p.parcelas.activas)),
+                h(
+                  "td",
+                  { class: "mono ocultar-sm" },
+                  p.parcelas.activas ? `${p.parcelas.activas} · ${hectareas(p.parcelas.area_total_ha)}` : "—",
+                ),
                 h("td", {}, insigniaPendientes(p.pendientes)),
               ),
             ),
@@ -384,8 +399,10 @@ export default async function productores({ navegar }) {
 
   cargar();
   return {
-    titulo: "Productores",
-    migas: [["Productores"]],
+    titulo: "Padrón de productores",
+    antetitulo: "Productores",
+    descripcion: "Productores afiliados a la cooperativa, con sus parcelas y lo que les falta para respaldar un DOP.",
+    migas: [["Productores", "#/productores"], ["Padrón"]],
     secciones: seccionesProductores(),
     accion:
       puedeRegistrar &&
@@ -396,14 +413,9 @@ export default async function productores({ navegar }) {
       h(
         "div",
         { class: "barra-lista" },
-        h("input", {
-          class: "input",
-          type: "search",
-          placeholder: "Buscar por DNI, nombre o código de socio",
-          "aria-label": "Buscar productores",
-          oninput: (e) => buscar(e.target.value),
-        }),
-        puedeRegistrar && h("button", { class: "btn", type: "button", onclick: () => abrirCargaMasiva(cargar) }, "Carga masiva"),
+        buscador({ placeholder: "Buscar por DNI, nombre o código de socio", etiqueta: "Buscar productores", alEscribir: buscar }),
+        puedeRegistrar &&
+          h("div", { class: "acciones-lista" }, h("button", { class: "btn", type: "button", onclick: () => abrirCargaMasiva(cargar) }, icono("upload"), "Carga masiva")),
       ),
       lista,
     ),

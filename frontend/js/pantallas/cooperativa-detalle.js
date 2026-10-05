@@ -2,13 +2,24 @@
 
 import { llamarApi } from "../api.js";
 import { enConsulta } from "../estado.js";
-import { abrirModal, campo, confirmar, enviarCon, fecha, h, mostrarClaveTemporal, sinVacios, toast } from "../ui.js";
+import {
+  abrirModal,
+  avatar,
+  cabeceraFicha,
+  campo,
+  confirmar,
+  enviarCon,
+  fecha,
+  h,
+  icono,
+  mostrarClaveTemporal,
+  rejilla,
+  seccion,
+  sinVacios,
+  toast,
+} from "../ui.js";
 import { camposUbigeo } from "../ubigeo.js";
 import { consultar, insigniaEstado } from "./cooperativas.js";
-
-function dato(etiqueta, valor, mono = false) {
-  return h("div", {}, h("dt", {}, etiqueta), h("dd", { class: mono ? "mono" : null }, valor ?? "—"));
-}
 
 function abrirEdicion(c, alGuardar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-editar-coop" }, "Guardar");
@@ -116,7 +127,7 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
   }
 
   // Los administradores se leen con el modo consulta de esa cooperativa (queda auditado).
-  const administradores = h("div", { class: "panel-b" }, "Cargando…");
+  const administradores = h("div", { class: "tbl-box" }, h("p", { class: "panel-sub sect-espera" }, "Cargando…"));
   cargarAdministradores();
 
   async function cargarAdministradores() {
@@ -132,13 +143,13 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
                 h(
                   "tr",
                   {},
-                  h("td", {}, `${a.nombres} ${a.apellidos}`, h("span", { class: "sec" }, a.correo)),
+                  h("td", {}, h("span", { class: "persona" }, avatar(a.nombres, a.apellidos, "sm"), h("span", {}, h("b", {}, `${a.nombres} ${a.apellidos}`), h("span", { class: "sec" }, a.correo)))),
                   h("td", {}, a.activo ? "Activo" : "Desactivado"),
                   h("td", { class: "acciones" }, !soloLectura && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => restablecer(a) }, "Restablecer clave")),
                 ),
               )),
             )
-          : h("p", { class: "panel-sub" }, "Sin administradores."),
+          : h("p", { class: "panel-sub sect-espera" }, "Sin administradores."),
       );
     } catch (error) {
       administradores.replaceChildren(h("p", { class: "panel-sub" }, error.message));
@@ -148,46 +159,40 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
   return {
     titulo: nombre,
     migas: [["Plataforma"], ["Cooperativas", "#/plataforma/cooperativas"], [nombre]],
-    accion: h("button", { class: "btn btn-primary", type: "button", onclick: () => consultar(c, navegar) }, "Consultar cooperativa"),
-    contenido: [
-      h(
-        "section",
-        { class: "panel" },
-        h(
-          "div",
-          { class: "panel-h" },
-          h("div", {}, h("h2", {}, "Datos de la cooperativa"), h("p", { class: "panel-sub" }, `Creada el ${fecha(c.creado_en)}${c.es_demo ? " · demostración" : ""}`)),
-          insigniaEstado(c),
-        ),
-        h(
-          "dl",
-          { class: "panel-b ficha" },
-          dato("Razón social", c.razon_social),
-          dato("Nombre comercial", c.nombre_comercial),
-          dato("RUC", c.ruc, true),
-          dato("Ubicación", `${c.distrito}, ${c.provincia}, ${c.departamento}`),
-          dato("Usuarios del personal", String(c.usuarios), true),
-          dato("Productores afiliados", String(c.productores), true),
-        ),
-        !soloLectura &&
-          h(
-            "div",
-            { class: "panel-b fila-acciones" },
-            h("button", { class: "btn", type: "button", onclick: () => abrirEdicion(c, recargar) }, "Editar datos"),
-            h("button", { class: `btn ${c.estado === "activa" ? "btn-danger" : ""}`, type: "button", onclick: cambiarEstado }, c.estado === "activa" ? "Suspender" : "Reactivar"),
-          ),
-      ),
-      h(
-        "section",
-        { class: "panel" },
-        h(
-          "div",
-          { class: "panel-h" },
-          h("h2", {}, "Administradores"),
-          !soloLectura && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirNuevoAdmin(c, cargarAdministradores) }, "Agregar administrador"),
-        ),
-        administradores,
-      ),
-    ],
+    cabecera: null,
+    contenido: h(
+      "section",
+      { class: "panel inspector" },
+      cabeceraFicha({
+        inicio: h("span", { class: "ins-icono" }, icono("cooperativa")),
+        titulo: nombre,
+        insignias: [insigniaEstado(c), c.es_demo && h("span", { class: "badge info" }, h("span", { class: "dot" }), "Demostración")],
+        detalle: [h("span", { class: "mono" }, `RUC ${c.ruc}`), ` · ${c.distrito}, ${c.provincia}, ${c.departamento}`],
+        cifra: String(c.productores),
+        cifraTexto: c.productores === 1 ? "productor afiliado" : "productores afiliados",
+        accion: !soloLectura && h("button", { class: "btn btn-primary", type: "button", onclick: () => consultar(c, navegar) }, icono("eye"), "Consultar cooperativa"),
+      }),
+      seccion({
+        titulo: "Datos de la cooperativa",
+        sub: `Creada el ${fecha(c.creado_en)}`,
+        acciones: !soloLectura && [
+          h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirEdicion(c, recargar) }, icono("wrench"), "Editar datos"),
+          h("button", { class: `btn btn-sm ${c.estado === "activa" ? "btn-danger" : ""}`, type: "button", onclick: cambiarEstado }, c.estado === "activa" ? "Suspender" : "Reactivar"),
+        ],
+        contenido: rejilla([
+          { etiqueta: "Razón social", valor: c.razon_social },
+          { etiqueta: "Nombre comercial", valor: c.nombre_comercial },
+          { etiqueta: "RUC", valor: c.ruc, mono: true },
+          { etiqueta: "Ubicación", valor: `${c.distrito}, ${c.provincia}, ${c.departamento}` },
+          { etiqueta: "Usuarios del personal", valor: String(c.usuarios), mono: true },
+          { etiqueta: "Productores afiliados", valor: String(c.productores), mono: true },
+        ]),
+      }),
+      seccion({
+        titulo: "Administradores",
+        acciones: !soloLectura && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirNuevoAdmin(c, cargarAdministradores) }, icono("mas"), "Agregar administrador"),
+        contenido: administradores,
+      }),
+    ),
   };
 }

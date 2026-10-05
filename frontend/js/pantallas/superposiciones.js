@@ -6,7 +6,7 @@ import { llamarApi } from "../api.js";
 import { estado, rolEfectivo } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, encuadrar, estilo } from "../mapa.js";
 import { hectareas } from "../textos.js";
-import { abrirModal, campo, cargando, enviarCon, fecha, h, reemplazar, toast, vacio } from "../ui.js";
+import { abrirModal, campo, cargando, enviarCon, fecha, h, icono, reemplazar, toast, vacio } from "../ui.js";
 import { seccionesProductores } from "./productores.js";
 
 const ESTADOS = [
@@ -14,6 +14,7 @@ const ESTADOS = [
   ["aceptada", "Aceptadas"],
   ["resuelta", "Resueltas"],
 ];
+const INSIGNIA = { abierta: ["bad", "Abierta"], aceptada: ["info", "Aceptada"], resuelta: ["ok", "Resuelta"] };
 
 function aceptar(s, ruta, alAceptar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-aceptar" }, "Aceptar superposición");
@@ -36,31 +37,48 @@ function aceptar(s, ruta, alAceptar) {
   });
 }
 
+/** Tarjeta con el estilo de las observaciones del diseño: cabecera, mapa, aviso y acción. */
 export async function tarjetaSuperposicion(s, { puedeAceptar, rutaAceptar, alCambiar }) {
   const contenedor = h("div", { class: "mapa mapa-chico" });
+  const [tono, texto] = INSIGNIA[s.estado] ?? ["", s.estado];
   const tarjeta = h(
     "article",
-    { class: "panel superposicion" },
+    { class: "panel obs" },
+    h(
+      "div",
+      { class: "obs-h" },
+      h("b", { class: "mono" }, s.parcelas.map((p) => p.codigo).join(" · ")),
+      h("span", { class: `badge ${tono}` }, h("span", { class: "dot" }), texto),
+    ),
     contenedor,
     h(
       "div",
-      { class: "panel-b form" },
+      { class: "obs-b" },
       h(
         "div",
-        {},
-        h("b", {}, s.entre_cooperativas && s.aviso ? s.aviso : s.parcelas.map((p) => `${p.codigo} «${p.nombre}»`).join(" y ")),
+        { class: `alertbox ${s.estado === "abierta" ? "bad" : ""}` },
+        icono("layers"),
         h(
-          "span",
-          { class: "sec" },
-          s.tipo === "punto_en_poligono" ? "Un punto cae dentro de un polígono" : `${hectareas(s.area_ha)} en común · ${s.porcentaje} % de la parcela más pequeña`,
-          ` · detectada el ${fecha(s.creado_en)}`,
+          "div",
+          {},
+          s.entre_cooperativas && s.aviso
+            ? s.aviso
+            : s.tipo === "punto_en_poligono"
+              ? "Un punto cae dentro de un polígono"
+              : `${hectareas(s.area_ha)} en común · ${s.porcentaje} % de la parcela más pequeña`,
+          h("small", {}, `Detectada el ${fecha(s.creado_en)}`),
         ),
       ),
       h(
         "ul",
         { class: "lista-simple" },
         s.parcelas.map((p) =>
-          h("li", {}, h("a", { href: `#/parcelas/${p.id}` }, `${p.codigo} · ${p.nombre}`), ` · ${p.productor_nombre}`, p.cooperativa_nombre ? ` · ${p.cooperativa_nombre}` : ""),
+          h(
+            "li",
+            {},
+            h("a", { href: `#/parcelas/${p.id}` }, `${p.codigo} · ${p.nombre}`),
+            h("span", { class: "sec" }, [p.productor_nombre, p.cooperativa_nombre].filter(Boolean).join(" · ")),
+          ),
         ),
       ),
       s.nota && h("p", { class: "alerta info" }, `Nota: ${s.nota}`),
@@ -98,25 +116,38 @@ export default async function superposiciones() {
     }
     reemplazar(lista, tarjetas);
   }
+  // Filtro por estado con los chips del diseño.
   const selector = h(
-    "select",
-    { class: "select", "aria-label": "Estado", onchange: (e) => ((filtro = e.target.value), cargar()) },
-    ESTADOS.map(([v, t]) => h("option", { value: v }, t)),
+    "div",
+    { class: "fchips", role: "group", "aria-label": "Estado" },
+    ESTADOS.map(([v, t]) =>
+      h(
+        "button",
+        {
+          class: "fchip",
+          type: "button",
+          "aria-pressed": String(v === filtro),
+          onclick: (e) => {
+            filtro = v;
+            for (const b of selector.children) b.setAttribute("aria-pressed", String(b === e.currentTarget));
+            cargar();
+          },
+        },
+        t,
+      ),
+    ),
   );
   cargar();
 
   return {
     titulo: "Superposiciones",
+    antetitulo: "Productores",
+    descripcion:
+      estado.usuario.rol === "admin_cooperativa"
+        ? "Parcelas que se cruzan. Una superposición con otra cooperativa solo la acepta el equipo CacaoTrace."
+        : "Parcelas que se cruzan. Solo el administrador de la cooperativa acepta superposiciones.",
     migas: [["Productores", "#/productores"], ["Superposiciones"]],
     secciones: seccionesProductores(),
-    contenido: [
-      h(
-        "div",
-        { class: "barra-lista panel" },
-        selector,
-        h("span", { class: "panel-sub" }, estado.usuario.rol === "admin_cooperativa" ? "Una superposición con otra cooperativa solo la acepta el equipo CacaoTrace." : "Solo el administrador de la cooperativa acepta superposiciones."),
-      ),
-      lista,
-    ],
+    contenido: [h("div", {}, selector), lista],
   };
 }

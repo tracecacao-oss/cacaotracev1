@@ -1,5 +1,7 @@
 // Piezas de interfaz reutilizables. Ningún texto se inserta como HTML: todo va por textContent.
 
+import { ICONOS } from "./iconos.js";
+
 /** Crea un elemento: h("button", { class: "btn", onclick }, "Texto", otroNodo). */
 export function h(etiqueta, atributos = {}, ...hijos) {
   const elemento = document.createElement(etiqueta);
@@ -32,36 +34,40 @@ function agregar(elemento, hijos) {
   }
 }
 
-// Íconos de trazo, 24x24.
-const TRAZOS = {
-  inicio: ["M3 11l9-7 9 7", "M5 10v10h14V10", "M10 20v-6h4v6"],
-  productores: ["M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1", "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8", "M22 20v-1a4 4 0 0 0-3-3.9", "M16 3.1a4 4 0 0 1 0 7.8"],
-  lotes: ["M21 8l-9-5-9 5 9 5 9-5z", "M3 8v8l9 5 9-5V8", "M12 13v8"],
-  trazabilidad: ["M6 3v12", "M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6", "M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6", "M18 9a9 9 0 0 1-9 9"],
-  exportacion: ["M12 3v12", "M7 8l5-5 5 5", "M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"],
+// Íconos: los del diseño de referencia (iconos.js) y, donde el diseño no tiene uno, estos trazos.
+const PROPIOS = {
   cooperativa: ["M3 21h18", "M5 21V8l7-5 7 5v13", "M9 21v-6h6v6"],
   plataforma: ["M4 4h16v6H4z", "M4 14h16v6H4z", "M8 7h.01", "M8 17h.01"],
   perfil: ["M20 21v-1a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v1", "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"],
   parcelas: ["M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z", "M9 3v15", "M15 6v15"],
-  entregas: ["M3 7h11v10H3z", "M14 10h4l3 3v4h-7", "M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4", "M17 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4"],
   salir: ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "M16 17l5-5-5-5", "M21 12H9"],
-  menu: ["M4 6h16", "M4 12h16", "M4 18h16"],
-  cerrar: ["M18 6L6 18", "M6 6l12 12"],
-  copiar: ["M9 9h11v11H9z", "M5 15H4V4h11v1"],
-  mas: ["M12 5v14", "M5 12h14"],
-  buscar: ["M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14", "M21 21l-4.3-4.3"],
-  ojo: ["M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6"],
+};
+// Nombres propios de la app -> ícono del diseño.
+const ALIAS = {
+  inicio: "home",
+  productores: "users",
+  lotes: "sack",
+  trazabilidad: "branch",
+  exportacion: "ship",
+  entregas: "sack",
+  cerrar: "x",
+  copiar: "copy",
+  mas: "plus",
+  buscar: "search",
+  ojo: "eye",
 };
 
-export function icono(nombre) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+export function icono(nombre, clase = "") {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("class", "ic");
+  svg.setAttribute("class", `ic ${clase}`.trim());
   svg.setAttribute("aria-hidden", "true");
-  for (const d of TRAZOS[nombre] ?? []) {
-    const trazo = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    trazo.setAttribute("d", d);
-    svg.append(trazo);
+  const elementos = ICONOS[ALIAS[nombre] ?? nombre] ?? (PROPIOS[nombre] ?? []).map((d) => ["path", { d }]);
+  for (const [etiqueta, atributos] of elementos) {
+    const elemento = document.createElementNS(ns, etiqueta);
+    for (const [clave, valor] of Object.entries(atributos)) elemento.setAttribute(clave, valor);
+    svg.append(elemento);
   }
   return svg;
 }
@@ -83,11 +89,24 @@ export function marca() {
 
 // ---------- Avisos ----------
 
+const ICONO_AVISO = { ok: "check", bad: "alert", warn: "alert", info: "bell" };
+
+/** Aviso flotante con ícono, como en el diseño. Se va solo o con la X. */
 export function toast(mensaje, tipo = "ok") {
   const contenedor = document.getElementById("toasts");
-  const aviso = h("div", { class: `toast ${tipo}`, role: tipo === "bad" ? "alert" : "status" }, mensaje);
+  const quitar = () => {
+    aviso.classList.add("is-out");
+    setTimeout(() => aviso.remove(), 200);
+  };
+  const aviso = h(
+    "div",
+    { class: `toast ${tipo}`, role: tipo === "bad" ? "alert" : "status" },
+    h("span", { class: "toast-ic" }, icono(ICONO_AVISO[tipo] ?? "check")),
+    h("div", { class: "toast-b" }, h("b", {}, mensaje)),
+    h("button", { class: "toast-x", type: "button", "aria-label": "Cerrar aviso", onclick: quitar }, icono("x")),
+  );
   contenedor.append(aviso);
-  setTimeout(() => aviso.remove(), 4500);
+  setTimeout(quitar, 4500);
 }
 
 // ---------- Modal ----------
@@ -218,9 +237,63 @@ export function enviarCon(formulario, boton, accion) {
   });
 }
 
+/** Buscador con lupa, como el del diseño. */
+export function buscador({ placeholder, etiqueta, alEscribir }) {
+  return h(
+    "label",
+    { class: "search" },
+    icono("search"),
+    h("input", { type: "search", placeholder, "aria-label": etiqueta ?? placeholder, autocomplete: "off", oninput: (e) => alEscribir(e.target.value) }),
+  );
+}
+
 /** Limpia los textos opcionales vacíos para no enviar cadenas vacías. */
 export function sinVacios(datos) {
   return Object.fromEntries(Object.entries(datos).filter(([, v]) => v !== ""));
+}
+
+// ---------- Fichas (inspector del diseño) ----------
+
+/**
+ * Cabecera de una ficha: avatar o ícono, título con insignias, una línea de detalle y una cifra
+ * destacada a la derecha. `codigo` pone el título en letra monoespaciada (PA-00001, RUC…).
+ */
+export function cabeceraFicha({ inicio, titulo, codigo = false, insignias = [], detalle, cifra, cifraTexto, accion }) {
+  return h(
+    "header",
+    { class: "ins-h" },
+    inicio,
+    h(
+      "div",
+      { class: "ins-h-t" },
+      h("div", { class: "ins-id" }, h("h1", { class: codigo ? "mono" : null }, titulo), insignias),
+      detalle && h("p", { class: "ins-who" }, detalle),
+    ),
+    cifra != null && h("div", { class: "ins-kg" }, h("b", {}, cifra), cifraTexto && h("span", {}, cifraTexto)),
+    // El botón principal de la pantalla, si lo hay (nunca en modo consulta: lo decide quien llama).
+    accion && h("div", { class: "ins-accion" }, accion),
+  );
+}
+
+/** Bloque dentro de una ficha: título, acciones a la derecha y contenido. */
+export function seccion({ titulo, sub, acciones, contenido, clase = "" }) {
+  return h(
+    "section",
+    { class: `sect ${clase}`.trim() },
+    h("div", { class: "sect-t" }, h("div", {}, h("h3", {}, titulo), sub && h("p", { class: "panel-sub" }, sub)), acciones && h("div", { class: "fila-acciones" }, acciones)),
+    contenido,
+  );
+}
+
+/** Rejilla de datos con bordes del diseño. items: { etiqueta, valor, mono, extra }. */
+export function rejilla(items) {
+  return h(
+    "dl",
+    { class: "meta" },
+    items.filter(Boolean).map(({ etiqueta, valor, mono = false, extra }) =>
+      h("div", {}, h("dt", {}, etiqueta), h("dd", { class: mono ? "mono" : null }, valor || "—"), extra && h("dd", { class: "meta-extra" }, extra)),
+    ),
+  );
 }
 
 // ---------- Listas ----------
@@ -288,4 +361,11 @@ export function fecha(valor, { hora = false } = {}) {
 
 export function iniciales(nombres = "", apellidos = "") {
   return `${nombres.trim()[0] ?? ""}${apellidos.trim()[0] ?? ""}`.toUpperCase();
+}
+
+/** Círculo con iniciales; cada persona conserva su tono, calculado de su nombre. */
+export function avatar(nombres = "", apellidos = "", tamano = "") {
+  let tono = 0;
+  for (const letra of `${nombres}${apellidos}`) tono = (tono * 31 + letra.charCodeAt(0)) % 360;
+  return h("span", { class: `avatar ${tamano}`.trim(), style: `--h:${tono}`, "aria-hidden": "true" }, iniciales(nombres, apellidos));
 }

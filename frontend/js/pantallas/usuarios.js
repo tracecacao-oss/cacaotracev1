@@ -3,8 +3,9 @@
 import { llamarApi } from "../api.js";
 import { estado, puede, ROTULOS_ROL } from "../estado.js";
 import {
-  reemplazar,
   abrirModal,
+  avatar,
+  buscador,
   campo,
   cargando,
   conRetraso,
@@ -16,6 +17,7 @@ import {
   icono,
   mostrarClaveTemporal,
   paginador,
+  reemplazar,
   toast,
   vacio,
 } from "../ui.js";
@@ -173,7 +175,11 @@ export default async function usuarios({ recargar }) {
               h(
                 "tr",
                 {},
-                h("td", {}, `${u.nombres} ${u.apellidos}`, h("span", { class: "sec" }, u.correo)),
+                h(
+                  "td",
+                  {},
+                  h("span", { class: "persona" }, avatar(u.nombres, u.apellidos, "sm"), h("span", {}, h("b", {}, `${u.nombres} ${u.apellidos}`), h("span", { class: "sec" }, u.correo))),
+                ),
                 h("td", {}, ROTULOS_ROL[u.rol]),
                 h("td", {}, estadoDe(u)),
                 h("td", { class: "ocultar-sm fecha" }, fecha(u.ultimo_acceso_en, { hora: true })),
@@ -207,6 +213,8 @@ export default async function usuarios({ recargar }) {
 
   return {
     titulo: "Usuarios",
+    antetitulo: "Cooperativa",
+    descripcion: "Personas que trabajan en CacaoTrace por la cooperativa, con su rol y su último ingreso.",
     migas: [["Cooperativa", "#/cooperativa"], ["Usuarios"]],
     secciones: seccionesCooperativa(),
     accion:
@@ -232,7 +240,7 @@ export default async function usuarios({ recargar }) {
       h(
         "div",
         { class: "barra-lista" },
-        h("input", { class: "input", type: "search", placeholder: "Buscar por nombre o correo", "aria-label": "Buscar usuarios", oninput: (e) => buscar(e.target.value) }),
+        buscador({ placeholder: "Buscar por nombre o correo", etiqueta: "Buscar usuarios", alEscribir: buscar }),
       ),
       lista,
     ),

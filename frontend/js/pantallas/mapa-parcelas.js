@@ -9,7 +9,7 @@ import { seccionesProductores } from "./productores.js";
 
 export default async function mapaParcelas({ navegar }) {
   const contenedor = h("div", { class: "mapa mapa-grande" });
-  const resumen = h("p", { class: "panel-sub" }, "Cargando parcelas…");
+  const resumen = h("span", {}, "Cargando parcelas…");
   const { L, mapa } = await crearMapa(contenedor);
   agregarLeyenda(L, mapa);
 
@@ -40,8 +40,10 @@ export default async function mapaParcelas({ navegar }) {
 
   return {
     titulo: "Mapa de parcelas",
+    antetitulo: "Productores",
+    descripcion: resumen,
     migas: [["Productores", "#/productores"], ["Mapa de parcelas"]],
     secciones: seccionesProductores(),
-    contenido: [resumen, contenedor],
+    contenido: h("section", { class: "panel panel-mapa" }, contenedor),
   };
 }
