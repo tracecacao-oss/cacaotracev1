@@ -122,8 +122,8 @@ Cada parcela se analiza con dos fuentes, cada una con su fecha y su versión, si
 | Whisp (FAO), `whisp.openforis.org` | `WHISP_API_KEY` | Riesgo para cultivos permanentes (`risk_pcrop`) e indicadores |
 | GFW Data API, `data-api.globalforestwatch.org` | `GFW_API_KEY` | Alertas integradas y pérdida de cobertura desde 2021 (densidad 2000 > 30 %) |
 
-- **La clave de GFW vence al año de creada.** Fecha de vencimiento: _pendiente de anotar por el
-  equipo_. Renovarla antes y reemplazarla en Render.
+- **La clave de GFW vence al año de creada.** La actual (alias `cacaotrace`) se creó el
+  2026-10-05: **vence el 2027-10-05**. Renovarla antes y reemplazarla en Render.
 - Sin una clave, esa fuente no crea análisis y la interfaz muestra "Fuente no configurada".
 - El análisis corre en segundo plano dentro de la API: hasta 3 intentos por fuente, 20 consultas
   por minuto y 60 segundos de espera máxima. La respuesta completa se guarda en Storage antes de

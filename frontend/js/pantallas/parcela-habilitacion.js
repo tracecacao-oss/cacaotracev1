@@ -90,16 +90,12 @@ const ESTADO_ANALISIS = {
 };
 
 async function descargarRespuesta(analisis) {
-  const ventana = window.open("about:blank", "_blank");
   try {
     const { respuesta_url: url } = await llamarApi(`/analisis/${analisis.id}`);
     if (!url) throw new Error("La respuesta completa no está disponible.");
-    if (ventana) {
-      ventana.opener = null;
-      ventana.location.href = url;
-    } else window.location.assign(url);
+    // La URL firmada trae "download": el navegador guarda el archivo y la página no cambia.
+    window.location.assign(url);
   } catch (error) {
-    ventana?.close();
     toast(error.message, "bad");
   }
 }

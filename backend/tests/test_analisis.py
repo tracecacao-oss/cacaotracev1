@@ -277,6 +277,9 @@ def test_respuesta_que_no_se_puede_interpretar(
     assert fila.error_detalle.startswith("La respuesta no se pudo interpretar")
     assert fila.indicadores == {}
     assert "analisis_requiere_revision" in api.get(f"/parcelas/{parcela.id}").json()["alertas"]
+    # El personal la descarga como archivo, con la fuente y el código de la parcela en el nombre.
+    url = api.get(f"/analisis/{fila.id}").json()["respuesta_url"]
+    assert f"download=gfw-{parcela.codigo}-" in url and url.endswith(".json")
 
 
 def test_el_productor_no_recibe_la_respuesta_completa(api, sesion, coop, operador):

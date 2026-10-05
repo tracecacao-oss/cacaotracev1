@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.contexto import Contexto, cooperativa_del_contexto
 from app.errores import error_api, no_encontrado
-from app.fechas import ahora
+from app.fechas import LIMA, ahora
 from app.models import Afiliacion, AnalisisCobertura, Documento, Parcela, Perfil
 from app.schemas.habilitacion import AnalisisDetalle, AnalisisSalida, FuenteSalida
 from app.services import geometria
@@ -290,8 +290,11 @@ def detalle(
     url = None
     if analisis.respuesta_documento_id:
         documento = contexto.sesion.get(Documento, analisis.respuesta_documento_id)
+        momento = (analisis.completado_en or analisis.solicitado_en).astimezone(LIMA).strftime("%Y%m%d-%H%M")
         try:
-            url = storage.url_firmada(documento.ruta)
+            url = storage.url_firmada(
+                documento.ruta, descarga=f"{analisis.fuente}-{parcela.codigo}-{momento}.json"
+            )
         except ErrorStorage:
             url = None
     return AnalisisDetalle(**base.model_dump(), respuesta_url=url)
