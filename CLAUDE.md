@@ -2,7 +2,7 @@
 
 **Especificación:** `docs/especificacion.md` es la única fuente de verdad. Lo que no está ahí no se construye sin preguntar.
 
-**Parte en curso:** 1 — Infraestructura y despliegue (rama `feat/parte-1-infraestructura`).
+**Parte en curso:** ninguna. La Parte 1 está cerrada; la siguiente es la 2 — Acceso y base, que empieza cuando el equipo lo indique.
 
 ## Reglas de trabajo
 
@@ -32,8 +32,19 @@ python -m http.server 5500 --directory frontend        # interfaz (desde la raí
 
 Las pruebas que necesitan Postgres se saltan en local si Docker no está arriba; en CI son obligatorias.
 
+## Producción
+
+| Pieza | Dónde |
+| --- | --- |
+| Interfaz | https://cacaotrace.pages.dev (Cloudflare Pages publica `frontend/` en cada merge a `main`) |
+| API | https://cacaotrace-api.onrender.com (Render redespliega solo cuando el merge toca `backend/`) |
+| Supabase | https://fbntvwuirklffsohrqoo.supabase.co (tokens ES256 por JWKS; registro público desactivado) |
+
+La base `cacaotrace-db` de Render es del MVP anterior: no se usa y el equipo la borra.
+
 ## Estado por parte
 
 | Parte | Estado |
 | --- | --- |
-| 1 Infraestructura y despliegue | En construcción |
+| 1 Infraestructura y despliegue | Cerrada el 2026-10-04: diez criterios de aceptación verificados en producción |
+| 2 Acceso y base | Pendiente |
