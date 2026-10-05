@@ -2,7 +2,7 @@
 
 **Especificación:** `docs/especificacion.md` es la única fuente de verdad. Lo que no está ahí no se construye sin preguntar.
 
-**Parte en curso:** 2 — Acceso y base (rama `feat/parte-2-acceso-base`). Diseño de referencia en `legacy/diseno/`: solo colores, tipografías, espaciados y estilo de componentes; manda la especificación.
+**Parte en curso:** 3 — Productor y parcela. Diseño de referencia en `legacy/diseno/`: solo colores, tipografías, espaciados y estilo de componentes; manda la especificación.
 
 ## Reglas de trabajo
 
@@ -55,4 +55,5 @@ La base `cacaotrace-db` de Render es del MVP anterior: no se usa y el equipo la 
 | Parte | Estado |
 | --- | --- |
 | 1 Infraestructura y despliegue | Cerrada el 2026-10-04: diez criterios de aceptación verificados en producción |
-| 2 Acceso y base | En construcción |
+| 2 Acceso y base | Cerrada el 2026-10-05: criterios 1-11 probados por el equipo en producción; 12 (CI) con este cierre |
+| 3 Productor y parcela | En construcción |
