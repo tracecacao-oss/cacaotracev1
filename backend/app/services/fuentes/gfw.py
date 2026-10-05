@@ -163,11 +163,16 @@ class GFW:
         # GFW entrega cifras, no un veredicto: no hay "resultado de la fuente".
         return None, indicadores, version or None
 
-    def requiere_revision(self, resultado: str | None, indicadores: dict[str, Any]) -> bool:
+    def requiere_revision(
+        self, resultado: str | None, indicadores: dict[str, Any], *, hubo_bosque_2020: bool = True
+    ) -> bool:
         # Sin cifras (respuesta que no se pudo interpretar) también pide que una persona mire la parcela.
         cifras = [indicadores.get("alertas_desde_2021"), indicadores.get("perdida_ha_total")]
-        # Los análisis anteriores a la adenda no consultaron DIST: esa pregunta queda sin medir.
-        cifras.append(indicadores.get("alertas_dist_desde_2021", 0))
+        # DIST marca cualquier cambio de vegetación (poda, cosecha, renovación del cultivo) sin decir la
+        # causa. Decisión del equipo del 2026-10-05: solo pide revisión si algún conjunto registra bosque
+        # en la parcela el 31/12/2020. Los análisis anteriores a la adenda no consultaron DIST.
+        if hubo_bosque_2020:
+            cifras.append(indicadores.get("alertas_dist_desde_2021", 0))
         return any(c is None or c > 0 for c in cifras)
 
     def texto(self, resultado: str | None, indicadores: dict[str, Any]) -> str | None:

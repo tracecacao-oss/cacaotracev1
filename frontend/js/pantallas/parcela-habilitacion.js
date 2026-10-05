@@ -216,7 +216,7 @@ async function descargarRespuesta(analisis) {
  * Lo que hizo que esta fuente pida revisión, y nada más: las cifras distintas de cero de su propia regla.
  * La regla vive en la API (requiere_revision); aquí solo se señalan las cifras.
  */
-function motivosRevision(codigo, ind) {
+function motivosRevision(codigo, ind, hayBosque) {
   const motivos = [];
   if (codigo === "whisp") {
     // El riesgo ya lo dice la línea del resultado; aquí van las capas que vieron bosque o cambios.
@@ -232,7 +232,7 @@ function motivosRevision(codigo, ind) {
       ...Object.entries(ind.perdida_ha_por_anio ?? {})
         .filter(([, ha]) => ha > 0)
         .map(([anio, ha]) => `Pérdida en ${anio}: ${hectareas(ha)}.`),
-      "alertas_dist_desde_2021" in ind ? cifra(ind.alertas_dist_desde_2021, "Alertas DIST desde 2021") : null,
+      hayBosque && "alertas_dist_desde_2021" in ind ? cifra(ind.alertas_dist_desde_2021, "Alertas DIST desde 2021") : null,
     );
   } else if (codigo === "mapbiomas") {
     motivos.push(
@@ -242,6 +242,17 @@ function motivosRevision(codigo, ind) {
     );
   }
   return motivos.filter(Boolean);
+}
+
+/**
+ * Decisión del equipo del 2026-10-05: las alertas DIST marcan cualquier cambio de la vegetación (poda,
+ * cosecha, renovación del cultivo) sin decir la causa. Si ningún mapa vio bosque en la parcela el
+ * 31/12/2020, no piden visita; se muestran como dato, con esta explicación.
+ */
+function notaDistSinBosque(ind, hayBosque) {
+  const n = ind.alertas_dist_desde_2021;
+  if (hayBosque || !(n > 0)) return null;
+  return `${n === 1 ? "1 alerta DIST" : `${numero(n)} alertas DIST`} desde 2021, pero ningún mapa vio bosque en la parcela el ${CORTE}: no piden visita. Estas alertas marcan cualquier cambio de la vegetación, como poda, cosecha o renovación del cultivo.`;
 }
 
 /** Notas sobre cómo se obtuvo el resultado; van dentro del detalle. */
@@ -262,7 +273,7 @@ function botonRespuesta(ultimo, ctx) {
  * solo las cifras que la piden; los indicadores completos, el detalle por capa y la descarga quedan
  * plegados en "Ver indicadores y detalle".
  */
-function tarjetaFuente(codigo, analisis, configurada, ctx) {
+function tarjetaFuente(codigo, analisis, configurada, ctx, hayBosque) {
   const ultimo = analisis.find((a) => a.fuente === codigo);
   const nombre = FUENTES[codigo];
   if (!ultimo) {
@@ -282,7 +293,8 @@ function tarjetaFuente(codigo, analisis, configurada, ctx) {
     ultimo.es_aproximacion && insignia("info", "Aproximación"),
   ];
   const ind = ultimo.indicadores ?? {};
-  const motivos = completado && ultimo.requiere_revision && !ultimo.error_detalle ? motivosRevision(codigo, ind) : [];
+  const motivos = completado && ultimo.requiere_revision && !ultimo.error_detalle ? motivosRevision(codigo, ind, hayBosque) : [];
+  const notaDist = completado && codigo === "gfw" ? notaDistSinBosque(ind, hayBosque) : null;
   return h(
     "article",
     { class: `fuente${ultimo.requiere_revision || ultimo.estado === "error" ? " fuente-atencion" : ""}` },
@@ -299,6 +311,7 @@ function tarjetaFuente(codigo, analisis, configurada, ctx) {
       ultimo.error_detalle &&
       h("p", { class: "alerta warn" }, `${ultimo.error_detalle}. La respuesta completa quedó guardada; una persona debe revisar la parcela.`),
     motivos.length > 0 && h("ul", { class: "motivos-revision" }, motivos.map((m) => h("li", {}, m))),
+    notaDist && h("p", { class: "nota-dist" }, notaDist),
     !completado && ultimo.estado !== "error" && h("p", { class: "panel-sub" }, `Consultando a ${nombre}… intento ${Math.max(ultimo.intentos, 1)}.`),
     completado &&
       h(
@@ -412,9 +425,11 @@ function cifra(m, areaHa) {
 }
 
 /** Lo que hay que revisar, conjunto por conjunto, en palabras. Cada punto dice qué vio, cuánto y cuándo. */
-function hallazgos(ultimos, tabla) {
+function hallazgos(ultimos, tabla, hayBosque) {
   const areaHa = tabla?.area_ha;
   const puntos = [];
+  let cambios = false;
+  const pide = (via) => ultimos.some((a) => VIA[a.fuente] === via && a.estado === "completado" && a.requiere_revision);
   const whisp = ultimos.find((a) => a.fuente === "whisp" && a.estado === "completado" && a.requiere_revision && !a.error_detalle);
   if (whisp) {
     const riesgo = (whisp.resultado_texto ?? "").replace(/^Whisp: /, "") || "sin valor";
@@ -426,21 +441,23 @@ function hallazgos(ultimos, tabla) {
       const mayor = bosque.sort((a, b) => (b.unidad === a.unidad ? b.valor - a.valor : 0))[0];
       puntos.push([f.nombre, `Vio bosque o árboles el ${CORTE}${mayor ? `: ${cifra(mayor, areaHa)}` : ""}.`]);
     }
-    if (f.registra_cambio) {
-      const cambios = numeros(f.despues_2020 ?? []).filter((m) => m.valor > 0);
+    const cuenta = hayBosque || (f.conjunto !== "umd_glad_dist" && f.vias.some(pide));
+    if (f.registra_cambio && cuenta) {
+      cambios = true;
+      const medidas = numeros(f.despues_2020 ?? []).filter((m) => m.valor > 0);
       const que = ALERTAS_SATELITE.has(f.conjunto)
         ? "Son avisos del satélite de que la vegetación cambió; no dicen la causa."
         : AREA_QUEMADA.has(f.conjunto)
           ? "Marca área quemada."
           : "Marca pérdida o cambio de la cobertura.";
-      puntos.push([f.nombre, `Registró ${cambios.map((m) => cifra(m, areaHa)).join(" y ") || "cambios"} desde el 1 de enero de 2021. ${que}`]);
+      puntos.push([f.nombre, `Registró ${medidas.map((m) => cifra(m, areaHa)).join(" y ") || "cambios"} desde el 1 de enero de 2021. ${que}`]);
     }
   }
   for (const a of ultimos) {
     if (a.estado === "error") puntos.push([FUENTES[a.fuente], 'La consulta falló. Prueba con "Repetir análisis".']);
     else if (a.estado === "completado" && a.error_detalle) puntos.push([FUENTES[a.fuente], "Su respuesta no trae las cifras esperadas; quedó guardada para revisarla."]);
   }
-  return puntos;
+  return { puntos, cambios };
 }
 
 /** Arriba de las tarjetas: qué revisar, en palabras, o que nada pide revisión. */
@@ -448,7 +465,10 @@ function resumenCobertura(codigos, analisis, tabla, ctx) {
   const ultimos = codigos.map((c) => analisis.find((a) => a.fuente === c)).filter(Boolean);
   if (!ultimos.length) return null;
   const enCurso = ultimos.filter((a) => a.estado === "pendiente" || a.estado === "en_proceso");
-  const puntos = hallazgos(ultimos, tabla);
+  const hayBosque = (tabla?.filas ?? []).some((f) => f.registra_bosque_2020);
+  const { puntos, cambios: hayCambios } = hallazgos(ultimos, tabla, hayBosque);
+  const gfw = ultimos.find((a) => a.fuente === "gfw" && a.estado === "completado");
+  const notaDist = gfw ? notaDistSinBosque(gfw.indicadores ?? {}, hayBosque) : null;
   // Una fuente que pide revisión sin cifra en la tabla (por ejemplo, una cifra que no llegó).
   for (const a of ultimos) {
     if (a.estado === "completado" && a.requiere_revision && !puntos.some(([t]) => t === FUENTES[a.fuente]) && a.fuente !== "whisp" && !(tabla?.filas ?? []).some((f) => (f.registra_cambio || f.registra_bosque_2020) && f.vias.includes(VIA[a.fuente]))) {
@@ -463,11 +483,15 @@ function resumenCobertura(codigos, analisis, tabla, ctx) {
       "div",
       { class: "verif" },
       icono("check"),
-      h("div", {}, h("b", {}, "Ninguna fuente ni conjunto de datos pide revisión en campo"), h("span", {}, "El detalle de cada fuente queda plegado en su tarjeta.")),
+      h(
+        "div",
+        { class: "hallazgos" },
+        h("b", {}, "Ninguna fuente ni conjunto de datos pide revisión en campo"),
+        notaDist && h("p", {}, `GFW registró ${notaDist}`),
+        h("p", {}, "El detalle de cada fuente queda plegado en su tarjeta."),
+      ),
     );
   }
-  const hayBosque = (tabla?.filas ?? []).some((f) => f.registra_bosque_2020);
-  const hayCambios = (tabla?.filas ?? []).some((f) => f.registra_cambio);
   return h(
     "div",
     { class: "verif warn" },
@@ -484,6 +508,7 @@ function resumenCobertura(codigos, analisis, tabla, ctx) {
           `Por qué importa el ${CORTE}: es la fecha de corte del Reglamento (UE) 2023/1115. Que hubiera bosque ese día no es una pérdida; es la foto de cómo estaba la parcela. Si ese día había bosque y hoy hay cacao, hay que confirmar en campo que no se taló después. El cacao bajo sombra suele verse como bosque desde el satélite.`,
         ),
       hayCambios && h("p", {}, "Los cambios cuentan solo desde el 1 de enero de 2021, después de la fecha de corte; lo ocurrido en 2020 o antes no se cuenta aquí."),
+      notaDist && h("p", {}, `Además, GFW registró ${notaDist}`),
       enCurso.length > 0 && h("p", {}, `Todavía se consulta a ${enCurso.map((a) => FUENTES[a.fuente]).join(", ")}.`),
       h(
         "p",
@@ -538,7 +563,7 @@ export async function pestanaCobertura(ctx) {
     acciones: repetir,
     contenido: [
       resumenCobertura(codigos, analisis, tabla, ctx),
-      h("div", { class: "fuentes" }, codigos.map((c) => tarjetaFuente(c, analisis, configurada[c], ctx))),
+      h("div", { class: "fuentes" }, codigos.map((c) => tarjetaFuente(c, analisis, configurada[c], ctx, (tabla?.filas ?? []).some((f) => f.registra_bosque_2020)))),
       tablaConvergencia(tabla),
       analisis.length > 0 &&
         h(

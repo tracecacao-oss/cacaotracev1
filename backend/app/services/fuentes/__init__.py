@@ -33,8 +33,11 @@ class Fuente(Protocol):
     def interpretar(self, contenido: bytes) -> tuple[str | None, dict[str, Any], str | None]:
         """(resultado_fuente sin traducir, indicadores, versión informada por la fuente)."""
 
-    def requiere_revision(self, resultado: str | None, indicadores: dict[str, Any]) -> bool:
-        """True si lo que dice la fuente pide que una persona mire la parcela."""
+    def requiere_revision(
+        self, resultado: str | None, indicadores: dict[str, Any], *, hubo_bosque_2020: bool = True
+    ) -> bool:
+        """True si lo que dice la fuente pide que una persona mire la parcela. `hubo_bosque_2020`: algún
+        conjunto de datos registra bosque en la parcela el 31/12/2020 (sin ese dato se supone que sí)."""
 
     def texto(self, resultado: str | None, indicadores: dict[str, Any]) -> str | None:
         """Resultado para mostrar, siempre precedido por el nombre de la fuente."""
