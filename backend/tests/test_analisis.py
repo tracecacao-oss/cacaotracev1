@@ -273,6 +273,35 @@ def test_cada_analisis_dice_si_pide_revision(api, sesion, operador, productor):
     assert all(not a["requiere_revision"] for a in tarjetas)
 
 
+def _gfw_completado(api, parcela) -> dict:
+    lista = api.get(f"/parcelas/{parcela.id}/analisis").json()
+    return next(a for a in lista if a["fuente"] == "gfw" and a["estado"] == "completado")
+
+
+def test_alertas_dist_piden_revision_solo_si_hubo_bosque_en_2020(api, sesion, operador, productor):
+    # Decisión del equipo del 2026-10-05: DIST marca cualquier cambio de vegetación (poda, cosecha,
+    # renovación del cultivo); sin bosque en la parcela el 31/12/2020 no pide visita.
+    sin_bosque = {"alertas_desde_2021": 0, "perdida_ha_total": 0, "bosque_natural_2020_ha": 0,
+                  "alertas_dist_desde_2021": 18}
+    gfw = fuentes_configuradas()["gfw"]
+    assert not gfw.requiere_revision(None, sin_bosque, hubo_bosque_2020=False)
+    assert gfw.requiere_revision(None, sin_bosque, hubo_bosque_2020=True)
+
+    parcela = _parcela(api, sesion, operador, productor)
+    analisis_completado(sesion, parcela, "whisp", resultado="low")
+    analisis_completado(sesion, parcela, "gfw", indicadores=sin_bosque)
+    tarjeta = _gfw_completado(api, parcela)
+    assert not tarjeta["requiere_revision"]
+    assert "analisis_requiere_revision" not in api.get(f"/parcelas/{parcela.id}").json()["alertas"]
+
+    # Si un conjunto registra bosque natural el 31/12/2020, las mismas alertas piden revisión.
+    con_bosque = {**sin_bosque, "bosque_natural_2020_ha": 0.5}
+    analisis_completado(sesion, parcela, "gfw", indicadores=con_bosque, hace=timedelta(hours=1))
+    tarjeta = _gfw_completado(api, parcela)
+    assert tarjeta["requiere_revision"]
+    assert "analisis_requiere_revision" in api.get(f"/parcelas/{parcela.id}").json()["alertas"]
+
+
 def test_respuesta_que_no_se_puede_interpretar(
     api, sesion, operador, productor, simulado, fuentes, storage_falso
 ):

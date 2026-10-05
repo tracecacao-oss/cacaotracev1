@@ -262,13 +262,15 @@ def resumen(fuentes: dict[str, Fuente], parcela: Parcela, analisis: list[Analisi
     con_error = [c for c, a in ultimo.items() if a is not None and a.estado == "error"]
     # Lo que dice cada fuente en su último análisis completado sobre la geometría actual.
     completados = ultimos_completados(fuentes, parcela, analisis)
+    # Adenda de la Parte 4, 7.2 regla 3: algún conjunto registra bosque en 2020 en al menos el umbral.
+    bosque_2020 = convergencia_de(fuentes, parcela, analisis).registran_bosque_2020
     revision = [
         a.fuente
         for a in completados
-        if fuentes[a.fuente].requiere_revision(a.resultado_fuente, a.indicadores or {})
+        if fuentes[a.fuente].requiere_revision(
+            a.resultado_fuente, a.indicadores or {}, hubo_bosque_2020=bool(bosque_2020)
+        )
     ]
-    # Adenda de la Parte 4, 7.2 regla 3: algún conjunto registra bosque en 2020 en al menos el umbral.
-    bosque_2020 = convergencia_de(fuentes, parcela, analisis).registran_bosque_2020
     return {
         "configuradas": codigos,
         "sin_vigente": sin_vigente,
@@ -306,6 +308,7 @@ def salidas(
         ).all()
     )
     resultado = []
+    hubo_bosque = bool(convergencia_de(fuentes, parcela, analisis).registran_bosque_2020)
     for a in analisis:
         fuente = fuentes.get(a.fuente)
         resultado.append(
@@ -331,7 +334,9 @@ def salidas(
                 requiere_revision=bool(
                     fuente
                     and a.estado == "completado"
-                    and fuente.requiere_revision(a.resultado_fuente, a.indicadores or {})
+                    and fuente.requiere_revision(
+                        a.resultado_fuente, a.indicadores or {}, hubo_bosque_2020=hubo_bosque
+                    )
                 ),
                 respuesta_documento_id=a.respuesta_documento_id if con_respuesta else None,
             )

@@ -126,7 +126,7 @@ Siguen prohibidas las frases de la Parte 4. Se agrega a la lista "no deforestada
 
 Se activa, además de los casos ya definidos, cuando:
 
-1. GFW informa alertas DIST desde 2021.
+1. GFW informa alertas DIST desde 2021 y algún conjunto registra bosque en la parcela el 31 de diciembre de 2020. Decisión del equipo del 2026-10-05: DIST marca cualquier cambio de la vegetación (poda, cosecha, renovación del cultivo) sin decir la causa; sin bosque en la fecha de corte, sus alertas se muestran como dato y no piden visita.
 2. MapBiomas informa `cambio_bosque_a_no_bosque_ha` mayor que cero.
 3. Algún conjunto registra bosque en 2020 en al menos `UMBRAL_BOSQUE_2020_PCT` del área de la parcela.
 

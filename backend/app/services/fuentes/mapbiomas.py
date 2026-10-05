@@ -169,7 +169,9 @@ class MapBiomas:
         }
         return None, indicadores, f"{evidencia['coleccion']} · hasta {ultimo}"
 
-    def requiere_revision(self, resultado: str | None, indicadores: dict[str, Any]) -> bool:
+    def requiere_revision(
+        self, resultado: str | None, indicadores: dict[str, Any], *, hubo_bosque_2020: bool = True
+    ) -> bool:
         cambio = indicadores.get("cambio_bosque_a_no_bosque_ha")
         return cambio is None or cambio > 0
 

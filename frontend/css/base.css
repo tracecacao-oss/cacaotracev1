@@ -2524,3 +2524,10 @@ button.kpi[aria-pressed="true"] {
   font-weight: 600;
   color: var(--ink);
 }
+.nota-dist {
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}

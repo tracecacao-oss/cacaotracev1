@@ -113,7 +113,9 @@ class Whisp:
         metadatos = propiedades.get("whisp_processing_metadata") or {}
         return propiedades.get("risk_pcrop"), indicadores, metadatos.get("whisp_version")
 
-    def requiere_revision(self, resultado: str | None, indicadores: dict[str, Any]) -> bool:
+    def requiere_revision(
+        self, resultado: str | None, indicadores: dict[str, Any], *, hubo_bosque_2020: bool = True
+    ) -> bool:
         # Todo valor distinto de riesgo bajo pide que una persona mire la parcela; también la falta de valor.
         return resultado != "low"
 
