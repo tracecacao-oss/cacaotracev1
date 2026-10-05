@@ -11,13 +11,14 @@ from app.routers.comun import json_desde_formulario, leer_archivo, modelo_desde_
 from app.schemas.comunes import ClaveTemporal, Pagina
 from app.schemas.parcelas import DocumentoSalida, ParcelaDatos, ParcelaDetalle, ParcelaSalida
 from app.schemas.productores import (
+    CargaMasiva,
     CierreAfiliacion,
     ProductorCambios,
     ProductorDetalle,
     ProductorNuevo,
     ProductorSalida,
 )
-from app.services import documentos, parcelas
+from app.services import carga_productores, documentos, parcelas
 from app.services import productores as servicio
 from app.services.geometria import TAMANO_MAXIMO_ARCHIVO
 from app.services.paginacion import ParametrosPaginacion
@@ -45,6 +46,16 @@ def listar_productores(
 @router.post("", response_model=ProductorDetalle, status_code=201)
 def crear_productor(datos: ProductorNuevo, contexto: Registro):
     return servicio.crear(contexto, datos)
+
+
+@router.post("/carga-masiva/analizar", response_model=CargaMasiva)
+def analizar_carga_masiva(contexto: Registro, archivo: Annotated[UploadFile, File()]):
+    return carga_productores.analizar(contexto, leer_archivo(archivo, carga_productores.TAMANO_MAXIMO))
+
+
+@router.post("/carga-masiva", response_model=CargaMasiva, status_code=201)
+def registrar_carga_masiva(contexto: Registro, archivo: Annotated[UploadFile, File()]):
+    return carga_productores.registrar(contexto, leer_archivo(archivo, carga_productores.TAMANO_MAXIMO))
 
 
 @router.get("/{productor_id}", response_model=ProductorDetalle)

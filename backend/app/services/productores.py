@@ -166,6 +166,20 @@ def obtener(contexto: Contexto, productor_id: uuid.UUID) -> ProductorDetalle:
 
 
 def crear(contexto: Contexto, datos: ProductorNuevo) -> ProductorDetalle:
+    productor = registrar(contexto, datos)
+    try:
+        contexto.sesion.commit()
+    except IntegrityError as exc:
+        # Otra cooperativa lo afilió al mismo tiempo: el índice único lo impide.
+        contexto.sesion.rollback()
+        raise error_api(
+            409, "dni_afiliado_otra_cooperativa", "Este DNI ya está afiliado a otra cooperativa"
+        ) from exc
+    return obtener(contexto, productor.id)
+
+
+def registrar(contexto: Contexto, datos: ProductorNuevo) -> Productor:
+    """Afilia al productor (y lo crea si su DNI es nuevo) y audita, sin confirmar la transacción."""
     sesion = contexto.sesion
     cooperativa = sesion.get(Cooperativa, contexto.cooperativa_id)
     productor = sesion.scalar(select(Productor).where(Productor.dni == datos.dni))
@@ -223,15 +237,8 @@ def crear(contexto: Contexto, datos: ProductorNuevo) -> ProductorDetalle:
             productor.id,
             {"origen": "cooperativa", "version_texto": datos.version_consentimiento},
         )
-    try:
-        sesion.commit()
-    except IntegrityError as exc:
-        # Otra cooperativa lo afilió al mismo tiempo: el índice único lo impide.
-        sesion.rollback()
-        raise error_api(
-            409, "dni_afiliado_otra_cooperativa", "Este DNI ya está afiliado a otra cooperativa"
-        ) from exc
-    return obtener(contexto, productor.id)
+    sesion.flush()
+    return productor
 
 
 def editar(
