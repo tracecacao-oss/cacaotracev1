@@ -2474,3 +2474,30 @@ button.kpi[aria-pressed="true"] {
     order: -1;
   }
 }
+/* Cobertura forestal: cada tarjeta en pocas líneas; el detalle se pliega. */
+.fuente-atencion {
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+}
+.motivos-revision {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 10px 8px 26px;
+  border-radius: var(--r-md);
+  background: var(--amber-tint);
+  color: var(--amber-ink);
+  font-size: 12.5px;
+}
+.fuente-detalle > summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.fuente-detalle[open] {
+  display: grid;
+  gap: 10px;
+}
+.verif .linea {
+  display: block;
+}

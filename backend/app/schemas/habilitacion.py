@@ -40,6 +40,9 @@ class AnalisisSalida(BaseModel):
     error_detalle: str | None
     obsoleto: bool
     vigente: bool
+    # Si lo que dijo la fuente pide que una persona revise la parcela (regla de cada fuente). La interfaz
+    # muestra el detalle abierto solo en ese caso.
+    requiere_revision: bool = False
     # El productor no recibe la respuesta completa de la fuente.
     respuesta_documento_id: uuid.UUID | None = None
 

@@ -262,6 +262,15 @@ def test_alertas_de_revision_y_error(api, sesion, operador, productor):
     }
     assert tarjetas["whisp"]["resultado_texto"] == "Whisp: requiere más información"
     assert tarjetas["gfw"]["resultado_texto"] == "GFW: 3 alertas y 0.25 ha de pérdida desde 2021"
+    assert tarjetas["whisp"]["requiere_revision"] and tarjetas["gfw"]["requiere_revision"]
+
+
+def test_cada_analisis_dice_si_pide_revision(api, sesion, operador, productor):
+    parcela = _parcela(api, sesion, operador, productor)
+    analisis_completado(sesion, parcela, "whisp", resultado="low")
+    analisis_completado(sesion, parcela, "gfw", indicadores={"alertas_desde_2021": 0, "perdida_ha_total": 0})
+    tarjetas = api.get(f"/parcelas/{parcela.id}/analisis").json()
+    assert all(not a["requiere_revision"] for a in tarjetas)
 
 
 def test_respuesta_que_no_se_puede_interpretar(
