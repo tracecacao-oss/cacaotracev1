@@ -1,0 +1,145 @@
+/* Estilo mínimo y neutro de la Parte 1. El sistema de diseño "Slate & Emerald" llega en la Parte 2. */
+
+:root {
+  --texto: #1f2933;
+  --texto-suave: #616e7c;
+  --fondo: #f5f7fa;
+  --superficie: #ffffff;
+  --borde: #d9e2ec;
+  --ok: #2f8a4f;
+  --falla: #c0392b;
+  --pendiente: #9aa5b1;
+  --radio: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--texto);
+  background: var(--fondo);
+  line-height: 1.5;
+}
+
+.contenedor {
+  max-width: 440px;
+  margin: 48px auto;
+  padding: 0 16px;
+}
+
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 24px;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 4px;
+}
+
+.subtitulo {
+  color: var(--texto-suave);
+  margin: 0 0 24px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin: 16px 0 4px;
+}
+
+input {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: var(--radio);
+  border: 1px solid var(--texto);
+  background: var(--texto);
+  color: #fff;
+  cursor: pointer;
+}
+
+button[disabled] {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+button.secundario {
+  background: transparent;
+  color: var(--texto);
+}
+
+form button {
+  width: 100%;
+  margin-top: 24px;
+}
+
+.error {
+  color: var(--falla);
+  margin: 16px 0 0;
+}
+
+.nota {
+  color: var(--texto-suave);
+  font-size: 0.875rem;
+  margin: 16px 0 0;
+}
+
+.estado {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+}
+
+.estado li {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.estado .punto {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--pendiente);
+}
+
+.estado .ok .punto {
+  background: var(--ok);
+}
+
+.estado .falla .punto {
+  background: var(--falla);
+}
+
+.estado .detalle {
+  grid-column: 2;
+  color: var(--texto-suave);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.aviso {
+  position: sticky;
+  top: 0;
+  padding: 10px 16px;
+  text-align: center;
+  background: #fff8e1;
+  border-bottom: 1px solid #f0d58c;
+}
