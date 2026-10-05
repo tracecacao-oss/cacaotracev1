@@ -116,7 +116,10 @@ def test_exencion_cubre_la_casilla_y_se_retira(api, sesion, admin, parcela):
 
     assert api.post(f"/exenciones/{respuesta.json()['id']}/retirar").status_code == 204
     assert _casilla(_expediente(api, parcela), "cusaf")["estado"] == "faltante"
-    acciones = [a.accion for a in sesion.query(Auditoria).filter(Auditoria.accion.like("exencion.%"))]
+    acciones = [
+        a.accion
+        for a in sesion.query(Auditoria).filter(Auditoria.accion.like("exencion.%")).order_by(Auditoria.id)
+    ]
     assert acciones == ["exencion.declarar", "exencion.retirar"]
 
 
