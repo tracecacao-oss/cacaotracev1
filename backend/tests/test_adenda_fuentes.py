@@ -228,8 +228,8 @@ def test_hectareas_por_clase_coinciden_con_las_esperadas(mapas):
         2021,
     )
     assert version == "MapBiomas Perú, Colección 3 · hasta 2021"
-    # Solo rangos: la cabecera (64 KiB como máximo), las entradas de la tabla y los bloques.
-    assert all(b - a + 1 <= 64 * 1024 for _, a, b in fuente.servidor.pedidos)
+    # Solo rangos: la cabecera (16 KiB como máximo), las entradas de la tabla y los bloques.
+    assert all(b - a + 1 <= 16 * 1024 for _, a, b in fuente.servidor.pedidos)
 
 
 def test_georreferencia_lejos_de_la_cabecera_como_en_los_archivos_reales():
@@ -414,3 +414,61 @@ def test_tabla_de_convergencia_por_la_api(api, sesion, operador, productor):
     assert tabla["filas"][0]["despues_2020"] is None  # no mide esa pregunta: celda vacía
     # Regla 3 de la sección 7.2: un conjunto registra bosque en 2020, así que se pide revisión.
     assert "analisis_requiere_revision" in api.get(f"/parcelas/{parcela.id}").json()["alertas"]
+
+
+# --- Respuestas reales de las tres fuentes (PA-00002, producción, 2026-10-05) ---
+
+MAPBIOMAS_REAL = (DATOS / "mapbiomas_respuesta_real.json").read_bytes()
+WHISP_REAL_2 = (DATOS / "whisp_respuesta_real_2.json").read_bytes()
+GFW_REAL_ADENDA = (DATOS / "gfw_respuesta_real_adenda.json").read_bytes()
+
+
+def test_mapbiomas_respuesta_real():
+    fuente = MapBiomas(True, 2015, 2024)
+    resultado, indicadores, version = fuente.interpretar(MAPBIOMAS_REAL)
+    assert resultado is None
+    assert version == "MapBiomas Perú, Colección 3 · hasta 2024"
+    assert indicadores["clase_predominante_2020"] == "Arroz"
+    assert (indicadores["bosque_2020_ha"], indicadores["cambio_bosque_a_no_bosque_ha"]) == (0, 0)
+    assert (indicadores["pixeles"], indicadores["pocos_pixeles"]) == (74, False)
+    assert indicadores["clases"] == {"33": "Río, lago u océano", "40": "Arroz"}
+    assert indicadores["anios"]["2021"] == {"33": 4.3669, "40": 2.228}
+    assert not fuente.requiere_revision(resultado, indicadores)
+    evidencia = json.loads(MAPBIOMAS_REAL)
+    assert all(
+        set(a["cabeceras"]) == {"etag", "last-modified", "x-goog-generation"}
+        for a in evidencia["anios"].values()
+    )
+
+
+def test_convergencia_con_las_tres_respuestas_reales():
+    """PA-00002: UMD GFC registra cobertura arbórea en 2020 (3.906 de 6.527 ha) y pérdida en 2022, por Whisp
+    y por GFW; MapBiomas la ve como arroz desde 2015."""
+    fuentes = fuentes_configuradas()
+    analisis_reales = [
+        _analisis("whisp", fuentes["whisp"].interpretar(WHISP_REAL_2)[1]),
+        _analisis("gfw", fuentes["gfw"].interpretar(GFW_REAL_ADENDA)[1]),
+        _analisis("mapbiomas", MapBiomas(True, 2015, 2024).interpretar(MAPBIOMAS_REAL)[1]),
+    ]
+    c = convergencia.calcular(analisis_reales, 6.527, 10)
+    por_conjunto = {f.conjunto: f for f in c.filas}
+    hansen = por_conjunto["umd_gfc"]
+    assert hansen.vias == ["Whisp", "GFW"]
+    assert (hansen.registra_bosque_2020, hansen.registra_cambio) == (True, True)
+    assert [(m.nombre, m.valor) for m in hansen.despues_2020 if not m.serie] == [
+        ("GFC_loss_after_2020", 0.21699999272823334),
+        ("perdida_ha_total", 0.2292),
+    ]
+    assert (
+        por_conjunto["mapbiomas_peru_c3"].registra_bosque_2020,
+        por_conjunto["mapbiomas_peru_c3"].registra_cambio,
+    ) == (
+        False,
+        False,
+    )
+    assert por_conjunto["esa_worldcover"].registra_bosque_2020 is False  # 0.002 ha, menos del 10 %
+    assert (c.conteos["bosque_registran"], c.conteos["cambio_registran"]) == (1, 1)
+    assert c.frase.startswith(
+        f"Conjuntos de datos consultados: {len(c.filas)}. Registran bosque en 2020: 1 de "
+    )
+    assert c.discrepan == {"estado_2020": True, "cambio_posterior": True}

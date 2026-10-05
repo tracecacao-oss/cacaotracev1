@@ -193,7 +193,7 @@ Corrida el 2026-10-05 contra las direcciones reales, con la parcela de `backend/
 | Memoria máxima del proceso | 48,2 MB (máximo 150) |
 | Dependencia de rásteres en Render | Ninguna nueva: el lector (`app/services/fuentes/cog.py`) es Python con numpy, que ya estaba |
 
-Pasó, así que `MAPBIOMAS_ACTIVO` queda en `true` en `render.yaml`. Por parcela y año se leen unos 80 KB en 5 peticiones: la cabecera, la georreferencia (que el archivo guarda después de la tabla de bloques), las dos entradas de la tabla de bloques y el bloque.
+Pasó, así que `MAPBIOMAS_ACTIVO` queda en `true` en `render.yaml`. Por parcela y año se hacen 5 peticiones: la cabecera, la georreferencia (que el archivo guarda después de la tabla de bloques), las dos entradas de la tabla de bloques y el bloque. Ese mismo día la lectura inicial de cabecera bajó de 64 KB a 16 KB y la comprobación se repitió: 27,1 s y 47,7 MB. Son unos 30 KB por año.
 
 ### Fuentes de los catálogos
 
@@ -211,7 +211,15 @@ Pasó, así que `MAPBIOMAS_ACTIVO` queda en `true` en `render.yaml`. Por parcela
 6. **Puntos.** Whisp analiza el punto tal cual, así que cualquier valor distinto de cero cuenta como "registra bosque", como en el propio Whisp.
 7. **Hectáreas por píxel.** El área de cada píxel se calcula con la esfera de igual área del WGS 84 (radio 6 371 007 m), entre las latitudes de sus dos bordes.
 
+### Respuestas reales guardadas
+
+El 2026-10-05, ya en producción, el equipo bajó con "Descargar la respuesta completa" las tres respuestas de la parcela ficticia PA-00002:
+- `whisp_respuesta_real_2.json`;
+- `gfw_respuesta_real_adenda.json`, con las cuatro consultas: la clase de bosque natural llega como texto ("Non-Forest") y hay pérdida en 2022 con la columna `area__ha`;
+- `mapbiomas_respuesta_real.json`, la evidencia de 74 píxeles en 10 años: 50 peticiones, una de ellas con la cabecera de 64 KB de entonces.
+
+Coinciden con lo que se interpretaba; las pruebas usan esos archivos.
+
 ### Pendiente
 
-- Guardar en `backend/tests/datos/` una respuesta real de las dos consultas nuevas de GFW. Hoy sus pruebas usan la forma que publica la API de GFW.
 - Las decisiones de la sección 11.
