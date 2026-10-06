@@ -21,6 +21,10 @@ const ACCIONES = [
   ["lugar.", "Lugares"],
   ["tanda.", "Tandas"],
   ["dop.", "DOP"],
+  ["plantilla.", "Plantilla de proceso"],
+  ["calidad.", "Calidades"],
+  ["corrida.", "Corridas"],
+  ["dpp.", "DPP"],
   ["superadmin.", "Consultas de soporte"],
 ];
 
@@ -73,6 +77,18 @@ const TEXTO_ACCION = {
   "tanda.anular": "Anuló una tanda",
   "dop.emitir": "Emitió un DOP",
   "dop.anular": "Anuló un DOP",
+  "plantilla.cambiar": "Cambió la plantilla de proceso",
+  "calidad.crear": "Creó una calidad",
+  "calidad.editar": "Editó una calidad",
+  "corrida.crear": "Creó una corrida",
+  "corrida.agregar_tanda": "Agregó una tanda a una corrida",
+  "corrida.quitar_tanda": "Quitó una tanda de una corrida",
+  "corrida.iniciar": "Inició una corrida",
+  "corrida.registrar_etapa": "Registró una etapa",
+  "corrida.consolidar": "Consolidó una corrida",
+  "corrida.anular": "Anuló una corrida",
+  "dpp.emitir": "Emitió un DPP",
+  "dpp.anular": "Anuló un DPP",
 };
 
 function resumen(detalle) {

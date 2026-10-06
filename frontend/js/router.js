@@ -28,12 +28,19 @@ const RUTAS = [
   { patron: /^#\/lotes\/dop$/, roles: PERSONAL, cargar: () => import("./pantallas/dops.js") },
   { patron: /^#\/tandas\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/tanda.js") },
   { patron: /^#\/dops\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/dop.js") },
+  { patron: /^#\/lotes\/corridas$/, roles: PERSONAL, cargar: () => import("./pantallas/corridas.js") },
+  { patron: /^#\/lotes\/corridas\/nueva$/, roles: ["admin_cooperativa", "operador"], cargar: () => import("./pantallas/corrida-nueva.js") },
+  { patron: /^#\/corridas\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/corrida.js") },
+  { patron: /^#\/lotes\/stock$/, roles: PERSONAL, cargar: () => import("./pantallas/stock.js") },
+  { patron: /^#\/tandas-finales\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/tanda-final.js") },
+  { patron: /^#\/dpps\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/dpp.js") },
   { patron: /^#\/(trazabilidad|exportacion)$/, roles: PERSONAL, cargar: vacia },
   { patron: /^#\/cooperativa$/, roles: PERSONAL, cargar: () => import("./pantallas/cooperativa.js") },
   { patron: /^#\/cooperativa\/usuarios$/, roles: ["admin_cooperativa", "consulta"], cargar: () => import("./pantallas/usuarios.js") },
   { patron: /^#\/cooperativa\/auditoria$/, roles: ["admin_cooperativa", "consulta"], cargar: () => import("./pantallas/auditoria.js") },
   { patron: /^#\/cooperativa\/configuracion$/, roles: PERSONAL, cargar: () => import("./pantallas/configuracion.js") },
   { patron: /^#\/cooperativa\/lugares$/, roles: PERSONAL, cargar: () => import("./pantallas/lugares.js") },
+  { patron: /^#\/cooperativa\/plantilla-proceso$/, roles: PERSONAL, cargar: () => import("./pantallas/plantilla-proceso.js") },
   { patron: /^#\/plataforma(\/cooperativas)?$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/cooperativas.js") },
   { patron: /^#\/plataforma\/superposiciones$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/superposiciones-plataforma.js") },
   { patron: /^#\/plataforma\/cooperativas\/([0-9a-f-]{36})$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/cooperativa-detalle.js") },
@@ -44,8 +51,8 @@ const RUTAS = [
   { patron: /^#\/mis-entregas$/, roles: ["productor"], cargar: () => import("./pantallas/mis-entregas.js") },
 ];
 
-// Verificación pública del DOP: no pide sesión, no lleva barra lateral y no enlaza al resto.
-const VERIFICACION = { patron: /^#\/verificar\/dop\/([^/?#]{1,40})$/, cargar: () => import("./pantallas/verificar-dop.js") };
+// Verificación pública del DOP y del DPP: no pide sesión, no lleva barra lateral y no enlaza al resto.
+const VERIFICACION = { patron: /^#\/verificar\/(dop|dpp)\/([^/?#]{1,40})$/, cargar: () => import("./pantallas/verificar.js") };
 
 const raiz = document.getElementById("app");
 let avisoIngreso = null;

@@ -493,11 +493,22 @@ def url_pdf(contexto: Contexto, storage: ClienteStorage, dop_id: uuid.UUID) -> s
 
 
 def anular(contexto: Contexto, dop_id: uuid.UUID, motivo: str) -> DopDetalle:
-    """Solo antes de que la tanda entre a una corrida de proceso (Parte 6, todavía no existe). El DOP
-    conserva su contenido y su PDF; su tanda sigue validada, pero cuenta como anulada."""
+    """Solo mientras la tanda no haya entrado a una corrida de proceso (Parte 6). El DOP conserva su
+    contenido y su PDF; su tanda sigue validada, pero cuenta como anulada."""
+    from app.models import CorridaTanda
+
     dop = dop_visible(contexto, dop_id)
     if dop.estado == "anulado":
         raise error_api(400, "dop_anulado", "El DOP ya estaba anulado.")
+    en_corrida = contexto.sesion.scalar(
+        select(CorridaTanda.id).where(
+            CorridaTanda.tanda_id == dop.tanda_id, CorridaTanda.liberada_en.is_(None)
+        )
+    )
+    if en_corrida is not None:
+        raise error_api(
+            400, "tanda_en_proceso", "La tanda ya entró a una corrida de proceso: su DOP no se puede anular."
+        )
     dop.estado = "anulado"
     dop.anulado_en = ahora()
     dop.anulado_por = contexto.usuario_id

@@ -250,6 +250,7 @@ export const TIPOS_ORGANIZACION = [
   ["empresa", "Empresa acopiadora o exportadora"],
 ];
 TIPOS_DOCUMENTO.dop_pdf = "PDF del DOP";
+TIPOS_DOCUMENTO.dpp_pdf = "PDF del DPP";
 
 /** Pesos siempre con dos decimales y su unidad. */
 export function kilos(valor) {

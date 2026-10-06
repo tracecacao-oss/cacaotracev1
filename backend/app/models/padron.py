@@ -46,11 +46,13 @@ TIPOS_DOCUMENTO = (
     # Parte 5; la adenda 3 cambió "guia_remision" por "documento_entrega"
     "documento_entrega",
     "dop_pdf",
+    # Parte 6
+    "dpp_pdf",
     # Adenda 2 de la Parte 4
     "imagen_satelital",
     "imagen_externa",
 )
-ENTIDADES_DOCUMENTO = ("productor", "parcela", "visita", "analisis", "tanda", "dop", "imagen")
+ENTIDADES_DOCUMENTO = ("productor", "parcela", "visita", "analisis", "tanda", "dop", "imagen", "dpp")
 ESTADOS_HABILITACION = ("pendiente", "habilitada", "observada", "excluida")
 ESTADOS_MIDAGRI = ("no_registrada", "sin_observacion", "en_revision", "validado")
 ESTADOS_PARCELA = ("activa", "inactiva")

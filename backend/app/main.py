@@ -24,6 +24,7 @@ from app.routers import (
     mi,
     parcelas,
     plataforma,
+    proceso,
     productores,
     publico,
     recepcion,
@@ -155,6 +156,7 @@ def crear_app(
         habilitacion,
         imagenes,
         recepcion,
+        proceso,
         publico,
     ):
         app.include_router(modulo.router)

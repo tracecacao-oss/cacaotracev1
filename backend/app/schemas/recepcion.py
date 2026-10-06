@@ -174,6 +174,14 @@ class DecisionTandaSalida(BaseModel):
     nota: str | None
 
 
+class ProcesoDeTanda(BaseModel):
+    """Parte 6: en qué fase está la corrida de la tanda, o si ya entró al stock."""
+
+    estado: str
+    fase: str
+    fase_nombre: str
+
+
 class TandaSalida(BaseModel):
     id: uuid.UUID
     codigo: str
@@ -203,6 +211,7 @@ class TandaSalida(BaseModel):
     registrada_por_nombre: str | None
     creado_en: datetime
     dop: DopDeTanda | None
+    proceso: ProcesoDeTanda | None = None
 
 
 class TandaDetalle(TandaSalida):

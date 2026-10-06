@@ -46,7 +46,7 @@ from app.schemas.recepcion import (
     TandaNueva,
     TandaSalida,
 )
-from app.services import configuracion, correlativos, documentos
+from app.services import configuracion, correlativos, corridas, documentos
 from app.services.auditoria import aplicar_cambios, registrar_auditoria
 from app.services.documentos import Archivo
 from app.services.productores import documento_salida
@@ -652,6 +652,7 @@ def _salidas(sesion: Session, tandas: list[Tanda]) -> list[TandaSalida]:
         d.tanda_id: d for d in sesion.scalars(select(Dop).where(Dop.tanda_id.in_([t.id for t in tandas])))
     }
     nombres = _nombres(sesion, {t.registrada_por for t in tandas})
+    procesos = corridas.proceso_de_tandas(sesion, [t.id for t in tandas])
     factores = {}
     salida = []
     for t in tandas:
@@ -699,6 +700,7 @@ def _salidas(sesion: Session, tandas: list[Tanda]) -> list[TandaSalida]:
                 registrada_por_nombre=nombres.get(t.registrada_por),
                 creado_en=t.creado_en,
                 dop=DopDeTanda(id=dop.id, codigo=dop.codigo, estado=dop.estado) if dop else None,
+                proceso=procesos.get(t.id),
             )
         )
     return salida

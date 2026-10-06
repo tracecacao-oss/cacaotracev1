@@ -48,6 +48,7 @@ TIPOS_POR_ENTIDAD = {
     "analisis": ("respuesta_analisis",),
     "tanda": ("documento_entrega",),
     "dop": ("dop_pdf",),
+    "dpp": ("dpp_pdf",),
     "imagen": ("imagen_satelital", "imagen_externa"),
 }
 NOMBRES_TIPO = {
@@ -59,12 +60,20 @@ NOMBRES_TIPO = {
     "respuesta_analisis": "respuesta completa del análisis",
     "documento_entrega": "documento de entrega",
     "dop_pdf": "PDF del DOP",
+    "dpp_pdf": "PDF del DPP",
     "imagen_satelital": "imagen satelital",
     "imagen_externa": "imagen externa",
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
 }
 # Los genera el sistema o forman parte de un registro que no se edita: no se anulan a mano.
-NO_ANULABLES = ("respuesta_analisis", "foto_visita", "dop_pdf", "imagen_satelital", "imagen_externa")
+NO_ANULABLES = (
+    "respuesta_analisis",
+    "foto_visita",
+    "dop_pdf",
+    "dpp_pdf",
+    "imagen_satelital",
+    "imagen_externa",
+)
 
 
 @dataclass(frozen=True)
