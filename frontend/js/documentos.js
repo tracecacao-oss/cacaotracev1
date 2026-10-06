@@ -22,7 +22,8 @@ export async function verDocumento(documento) {
   }
 }
 
-function anular(documento, alCambiar) {
+/** Anula un documento con motivo; no se borra. */
+export function anularDocumento(documento, alCambiar) {
   const boton = h("button", { class: "btn btn-danger", type: "submit", form: "form-anular" }, "Anular documento");
   const formulario = h(
     "form",
@@ -73,7 +74,7 @@ export function listaDocumentos(documentos, { puedeAnular = false, alCambiar }) 
               "td",
               { class: "acciones" },
               h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => verDocumento(d) }, "Ver"),
-              puedeAnular && d.vigente && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => anular(d, alCambiar) }, "Anular"),
+              puedeAnular && d.vigente && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => anularDocumento(d, alCambiar) }, "Anular"),
             ),
           ),
         ),

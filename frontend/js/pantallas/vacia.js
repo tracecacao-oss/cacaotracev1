@@ -8,6 +8,7 @@ import { rolEfectivo } from "../estado.js";
  */
 export function seccionesCooperativa() {
   const comunes = [
+    ["Datos y expediente legal", "#/cooperativa/legal"],
     ["Configuración", "#/cooperativa/configuracion"],
     ["Lugares", "#/cooperativa/lugares"],
     ["Plantilla de proceso", "#/cooperativa/plantilla-proceso"],

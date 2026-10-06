@@ -22,6 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.catalogos import documentos_embarque, documentos_legales
 from app.models import Base, ConFechas
 
 # Los 7 documentos del expediente legal de la parcela (Parte 4); su catálogo vive en
@@ -51,8 +52,22 @@ TIPOS_DOCUMENTO = (
     # Adenda 2 de la Parte 4
     "imagen_satelital",
     "imagen_externa",
+    # Parte 8: expediente legal de la cooperativa y documentos de embarque del lote
+    *documentos_legales.CODIGOS_COOPERATIVA,
+    *documentos_embarque.CODIGOS,
 )
-ENTIDADES_DOCUMENTO = ("productor", "parcela", "visita", "analisis", "tanda", "dop", "imagen", "dpp")
+ENTIDADES_DOCUMENTO = (
+    "productor",
+    "parcela",
+    "visita",
+    "analisis",
+    "tanda",
+    "dop",
+    "imagen",
+    "dpp",
+    "cooperativa",
+    "lote",
+)
 ESTADOS_HABILITACION = ("pendiente", "habilitada", "observada", "excluida")
 ESTADOS_MIDAGRI = ("no_registrada", "sin_observacion", "en_revision", "validado")
 ESTADOS_PARCELA = ("activa", "inactiva")

@@ -46,6 +46,7 @@ from app.models.exportacion import (  # noqa: E402
     LoteAsignacion,
     LoteGenealogia,
     OrdenCompra,
+    Recomprobacion,
 )
 from app.models.habilitacion import (  # noqa: E402
     AnalisisCobertura,
@@ -91,6 +92,7 @@ __all__ = [
     "LoteAsignacion",
     "LoteGenealogia",
     "OrdenCompra",
+    "Recomprobacion",
     "Calidad",
     "Corrida",
     "CorridaEtapa",

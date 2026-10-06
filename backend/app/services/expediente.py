@@ -166,8 +166,9 @@ def no_excluida(parcela: Parcela) -> None:
 
 
 def validar_datos_legales(tipo: str, numero, entidad_emisora, fecha_emision, fecha_vencimiento) -> dict:
-    """Un documento legal exige número, entidad emisora y fecha de emisión."""
-    if tipo not in catalogo.POR_CODIGO:
+    """Un documento legal (de la parcela o, desde la Parte 8, de la cooperativa) exige número, entidad emisora
+    y fecha de emisión."""
+    if catalogo.tipo_legal(tipo) is None:
         return {}
     faltan = [
         n
@@ -262,10 +263,12 @@ def retirar_exencion(contexto: Contexto, exencion_id: uuid.UUID) -> ExencionDocu
 
 
 def cotejar(contexto: Contexto, documento: Documento, nota: str) -> Documento:
-    tipo = catalogo.POR_CODIGO.get(documento.tipo)
+    """Documentos del expediente de la parcela (Parte 4) o de la cooperativa (Parte 8)."""
+    tipo = catalogo.tipo_legal(documento.tipo)
     if tipo is None:
         raise error_api(400, "no_es_documento_legal", "Solo se cotejan documentos del expediente legal.")
-    no_excluida(contexto.sesion.get(Parcela, documento.entidad_id))
+    if documento.entidad == "parcela":
+        no_excluida(contexto.sesion.get(Parcela, documento.entidad_id))
     if not tipo.registro_consultable:
         raise error_api(
             400,

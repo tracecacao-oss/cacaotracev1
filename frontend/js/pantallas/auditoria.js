@@ -101,6 +101,9 @@ const TEXTO_ACCION = {
   "lote.cambiar_seleccion": "Cambió la selección de un lote",
   "lote.confirmar": "Confirmó un lote de exportación",
   "lote.anular": "Anuló un lote de exportación",
+  "lote.recomprobar": "Recomprobó un lote",
+  "lote.cambiar_estado": "Cambió el estado de un lote (recomprobación)",
+  "lote.alerta": "Alerta en un lote cerrado",
 };
 
 function resumen(detalle) {

@@ -55,7 +55,7 @@ from app.schemas.exportacion import (
 )
 from app.schemas.proceso import Referencia
 from app.schemas.recepcion import ProductorDeTanda
-from app.services import correlativos, geometria, ordenes
+from app.services import correlativos, geometria, ordenes, recomprobacion
 from app.services.auditoria import registrar_auditoria
 
 CENTIMO = Decimal("0.01")
@@ -106,6 +106,9 @@ def sugerencia(
     """Regla 3: el saldo de cada una, en orden, hasta completar la cantidad; la última puede quedar en parte.
     No reserva nada: se recalcula en cada consulta."""
     candidatas = _candidatas(sesion, orden.cooperativa_id, orden.calidad_id)
+    # Parte 8: una tanda final retenida (cacao de una parcela excluida) no entra en la sugerencia.
+    retenidas = recomprobacion.retenidas(sesion, [tf.id for tf in candidatas])
+    candidatas = [tf for tf in candidatas if tf.id not in retenidas]
     falta = Decimal(orden.cantidad_kg)
     asignaciones = []
     for tf in candidatas:
@@ -265,6 +268,7 @@ def obtener(contexto: Contexto, lote_id: uuid.UUID) -> LoteDetalle:
     minimo, maximo = ordenes.limites(orden)
     pares = _asignaciones(sesion, lote)
     corridas, dpps = _referencias(sesion, [tf for _, tf in pares])
+    ultima = recomprobacion.ultima(sesion, lote.id)
     indicadores_ = None
     if lote.estado != "en_armado":
         indicadores_ = indicadores(sesion, lote, _filas_genealogia(sesion, [lote.id]).get(lote.id, []))
@@ -283,6 +287,8 @@ def obtener(contexto: Contexto, lote_id: uuid.UUID) -> LoteDetalle:
             AsignacionSalida(**_de_lote(tf, corridas, dpps), kg_asignados=a.kg_asignados) for a, tf in pares
         ],
         indicadores=indicadores_,
+        alertas=lote.alertas or [],
+        recomprobacion=recomprobacion.salida(sesion, ultima) if ultima else None,
     )
 
 
@@ -332,6 +338,16 @@ def crear(contexto: Contexto, orden_id: uuid.UUID) -> LoteDetalle:
     return obtener(contexto, lote.id)
 
 
+def _no_retenida(tf: TandaFinal, retenidas: set[uuid.UUID]) -> None:
+    if tf.id in retenidas:
+        raise error_api(
+            400,
+            "stock_retenido",
+            f"La tanda final {tf.codigo} está retenida: tiene cacao de una parcela excluida y no se "
+            "puede usar.",
+        )
+
+
 def _exigir_en_armado(lote: Lote) -> None:
     if lote.estado != "en_armado":
         raise error_api(400, "lote_no_en_armado", "La selección solo cambia mientras el lote está en armado.")
@@ -359,10 +375,12 @@ def cambiar_seleccion(contexto: Contexto, lote_id: uuid.UUID, datos: Seleccion) 
     if len(ids) != len(set(ids)):
         raise error_api(422, "tanda_final_repetida", "Cada tanda final va una sola vez en la selección.")
     finales = _tandas_finales(sesion, ids)
+    retenidas = recomprobacion.retenidas(sesion, ids)
     for a in datos.asignaciones:
         tf = finales.get(a.tanda_final_id)
         if tf is None or tf.cooperativa_id != lote.cooperativa_id:
             raise error_api(422, "tanda_final_invalida", "La tanda final no existe en la cooperativa.")
+        _no_retenida(tf, retenidas)
         if tf.calidad_id != orden.calidad_id:
             raise error_api(
                 400,
@@ -595,8 +613,10 @@ def confirmar(contexto: Contexto, lote_id: uuid.UUID, datos: Confirmacion) -> Lo
     if not seleccion:
         raise error_api(400, "lote_sin_seleccion", "El lote no tiene tandas finales seleccionadas.")
     finales = _tandas_finales(sesion, [a.tanda_final_id for a in seleccion], bloquear=True)
+    retenidas = recomprobacion.retenidas(sesion, list(finales))
     for a in seleccion:
         tf = finales[a.tanda_final_id]
+        _no_retenida(tf, retenidas)
         if tf.calidad_id != orden.calidad_id:
             raise error_api(
                 400,
@@ -684,19 +704,25 @@ def anular_en_armado(contexto: Contexto, lote: Lote, motivo: str, momento: datet
 
 
 def anular(contexto: Contexto, lote_id: uuid.UUID, motivo: str) -> LoteDetalle:
-    """Un lote armado devuelve sus saldos: las tandas finales agotadas vuelven al stock y la orden queda
-    abierta. Su genealogía se conserva como historial."""
+    """Un lote confirmado (armado, bloqueado o listo) devuelve sus saldos: las tandas finales agotadas vuelven
+    al stock y la orden queda abierta. Su genealogía se conserva como historial. Un lote bloqueado o listo
+    solo lo anula un administrador (Parte 8); uno cerrado, con DEX, ya no se anula por esta vía."""
     sesion = contexto.sesion
     lote = lote_visible(contexto, lote_id, bloquear=True)
     if lote.estado == "anulado":
         raise error_api(400, "lote_anulado", "El lote ya estaba anulado.")
-    if lote.estado not in ("en_armado", "armado"):
+    if lote.estado not in ("en_armado", "armado", "bloqueado", "listo"):
         raise error_api(400, "lote_no_anulable", "Este lote ya no se anula por esta vía.")
+    if lote.estado in ("bloqueado", "listo") and contexto.rol != "admin_cooperativa":
+        raise error_api(
+            403, "solo_administrador", "Un lote bloqueado o listo solo lo anula un administrador."
+        )
     momento = ahora()
     if lote.estado == "en_armado":
         anular_en_armado(contexto, lote, motivo, momento)
         sesion.commit()
         return obtener(contexto, lote.id)
+    estaba = lote.estado
     orden = ordenes.orden_visible(contexto, lote.orden_compra_id, bloquear=True)
     seleccion = list(sesion.scalars(select(LoteAsignacion).where(LoteAsignacion.lote_id == lote.id)))
     finales = _tandas_finales(sesion, [a.tanda_final_id for a in seleccion], bloquear=True)
@@ -718,7 +744,7 @@ def anular(contexto: Contexto, lote_id: uuid.UUID, motivo: str) -> LoteDetalle:
         "lote.anular",
         "lote",
         lote.id,
-        {"codigo": lote.codigo, "motivo": motivo, "estaba": "armado", "saldos_devueltos": devueltos},
+        {"codigo": lote.codigo, "motivo": motivo, "estaba": estaba, "saldos_devueltos": devueltos},
     )
     sesion.commit()
     return obtener(contexto, lote.id)

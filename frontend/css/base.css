@@ -3403,3 +3403,158 @@ button.tira-item:hover {
     gap: 44px;
   }
 }
+
+/* Parte 8: franja fija del lote bloqueado, comprobaciones de la recomprobación y panel de pendientes. */
+.franja-fija {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 5;
+  border-radius: 0;
+}
+.franja-fija .btn {
+  margin-left: auto;
+  align-self: center;
+}
+.btn-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--emerald-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.comprobaciones {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.comprobacion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.comprobacion.con_observaciones {
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+  background: var(--amber-tint);
+}
+.comprobacion-marca {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--emerald-tint);
+  color: var(--emerald-ink);
+}
+.comprobacion.con_observaciones .comprobacion-marca {
+  background: var(--amber-soft);
+  color: var(--amber-ink);
+}
+.comprobacion-marca .ic {
+  width: 14px;
+  height: 14px;
+}
+.comprobacion-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+.comprobacion-h .sec {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.casos {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+}
+.casos li {
+  display: grid;
+  gap: 2px;
+}
+.casos .sec {
+  color: var(--ink-3);
+}
+.historial {
+  margin-top: 12px;
+  font-size: 12.5px;
+}
+.pendientes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.pendientes-grupo {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px 16px;
+}
+.pendientes-grupo.is-bad {
+  border-color: color-mix(in srgb, var(--rose) 45%, var(--line));
+}
+.pendientes-grupo.is-warn {
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+.pendientes-h {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.pendientes-h h3 {
+  font-size: 13.5px;
+}
+.pendientes-grupo.is-bad .kpi-ic {
+  background: var(--rose-tint);
+  color: var(--rose-ink);
+}
+.pendientes-grupo.is-warn .kpi-ic {
+  background: var(--amber-tint);
+  color: var(--amber-ink);
+}
+.pendientes-lista {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pendientes-lista li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12.5px;
+}
+.pendientes-lista li:last-child {
+  border-bottom: 0;
+}
+.pendientes-lista a {
+  display: grid;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.pendientes-lista a:hover b {
+  color: var(--emerald-ink);
+}
+.pendientes-lista .sec {
+  font-size: 12px;
+  color: var(--ink-3);
+}

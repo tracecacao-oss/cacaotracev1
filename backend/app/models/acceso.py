@@ -47,6 +47,10 @@ class Cooperativa(ConFechas, Base):
         CheckConstraint(f"estado IN ({_en(ESTADOS_COOPERATIVA)})", name="estado_valido"),
         CheckConstraint("codigo IS NULL OR codigo ~ '^[A-Z]{3,6}$'", name="codigo_3_a_6_letras"),
         CheckConstraint(f"tipo_organizacion IN ({_en(TIPOS_ORGANIZACION)})", name="tipo_organizacion_valido"),
+        CheckConstraint(
+            "representante_dni IS NULL OR representante_dni ~ '^[0-9]{8}$'",
+            name="representante_dni_8_digitos",
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -64,6 +68,12 @@ class Cooperativa(ConFechas, Base):
     codigo: Mapped[str | None] = mapped_column(String(6), unique=True)
     # Adenda 3 de la Parte 5: la fija el superadmin al crear la organización y puede corregirla.
     tipo_organizacion: Mapped[str] = mapped_column(Text)
+    # Parte 8: los datos que el DEX necesita para identificar al exportador. Obligatorios para que un lote
+    # quede listo.
+    direccion_postal: Mapped[str | None] = mapped_column(Text)
+    correo: Mapped[str | None] = mapped_column(Text)
+    representante_nombre: Mapped[str | None] = mapped_column(Text)
+    representante_dni: Mapped[str | None] = mapped_column(String(8))
 
 
 class Productor(ConFechas, Base):

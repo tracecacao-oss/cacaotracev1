@@ -30,7 +30,11 @@ export const ESTADOS_ORDEN = {
 };
 export const ESTADOS_LOTE = {
   en_armado: ["warn", "En armado"],
-  armado: ["ok", "Armado"],
+  armado: ["info", "Armado"],
+  // Parte 8: los fija la recomprobación; cerrado, la emisión del DEX (Parte 9).
+  bloqueado: ["bad", "Bloqueado"],
+  listo: ["ok", "Listo"],
+  cerrado: ["", "Cerrado"],
   anulado: ["bad", "Anulado"],
 };
 

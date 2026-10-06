@@ -51,3 +51,45 @@ POR_CODIGO = {t.codigo: t for t in TIPOS}
 CODIGOS = tuple(POR_CODIGO)
 TENENCIA = tuple(t.codigo for t in TIPOS if t.tenencia)
 CON_EXENCION = tuple(t.codigo for t in TIPOS if not t.tenencia)
+
+# ---------- Parte 8: expediente legal de la cooperativa ----------
+# Seis casillas sin exenciones: las seis deben estar vigentes. `registro_consultable` trae los valores
+# iniciales de la especificación ("Los 6 documentos"), que el equipo debe confirmar.
+
+TIPOS_COOPERATIVA = (
+    TipoLegal(
+        "rnca", "Registro Nacional de Cooperativas Agrarias (MIDAGRI)", "Registro agrario", False, False
+    ),
+    TipoLegal(
+        "partida_sunarp", "Partida registral de la cooperativa en SUNARP", "Identificación legal", False, True
+    ),
+    TipoLegal("ficha_ruc", "Ficha RUC de SUNAT", "Identificación legal", False, True),
+    TipoLegal(
+        "vigencia_poderes",
+        "Vigencia de poderes del representante legal (SUNARP)",
+        "Representación legal",
+        False,
+        True,
+    ),
+    TipoLegal(
+        "ruc_comercio_exterior",
+        "Sustento del RUC habilitado para comercio exterior",
+        "Capacidad exportadora",
+        False,
+        True,
+    ),
+    TipoLegal(
+        "registro_aduanas",
+        "Registro como exportador ante SUNAT Aduanas",
+        "Capacidad exportadora",
+        False,
+        False,
+    ),
+)
+POR_CODIGO_COOPERATIVA = {t.codigo: t for t in TIPOS_COOPERATIVA}
+CODIGOS_COOPERATIVA = tuple(POR_CODIGO_COOPERATIVA)
+
+
+def tipo_legal(codigo: str) -> TipoLegal | None:
+    """Un tipo legal de la parcela (Parte 4) o de la cooperativa (Parte 8)."""
+    return POR_CODIGO.get(codigo) or POR_CODIGO_COOPERATIVA.get(codigo)

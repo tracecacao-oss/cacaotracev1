@@ -9,6 +9,9 @@ const FILTROS = [
   ["", "Todos"],
   ["en_armado", "En armado"],
   ["armado", "Armados"],
+  ["bloqueado", "Bloqueados"],
+  ["listo", "Listos"],
+  ["cerrado", "Cerrados"],
   ["anulado", "Anulados"],
 ];
 let filtro = "";
