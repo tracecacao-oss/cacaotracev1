@@ -1,4 +1,4 @@
-"""Parte 4: análisis de cobertura forestal, visitas de campo, expediente legal y compuerta de habilitación.
+"""Parte 4: análisis de cobertura forestal, expediente legal y compuerta de habilitación.
 
 El operador y el productor arman el expediente; el administrador decide.
 """
@@ -6,15 +6,13 @@ El operador y el productor arman el expediente; el administrador decide.
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
+from fastapi import APIRouter, Depends, Response
 
 from app.contexto import Contexto, requiere_rol
-from app.routers.comun import leer_archivo, modelo_desde_json
 from app.schemas.habilitacion import (
     AnalisisDetalle,
     AnalisisSalida,
     AnalisisSolicitado,
-    Anulacion,
     ConvergenciaSalida,
     CotejoNuevo,
     ExcluirEntrada,
@@ -25,11 +23,9 @@ from app.schemas.habilitacion import (
     HabilitacionSalida,
     HabilitarEntrada,
     ResumenHabilitacion,
-    VisitaNueva,
-    VisitaSalida,
 )
 from app.schemas.parcelas import DocumentoSalida
-from app.services import analisis, documentos, expediente, habilitacion, visitas
+from app.services import analisis, documentos, expediente, habilitacion
 from app.services.fuentes import registro
 from app.services.parcelas import parcela_visible
 from app.services.productores import documento_salida
@@ -74,33 +70,6 @@ def convergencia_de_parcela(parcela_id: uuid.UUID, contexto: Lectura):
 @router.get("/analisis/{analisis_id}", response_model=AnalisisDetalle)
 def detalle_analisis(analisis_id: uuid.UUID, contexto: Lectura, storage: Storage):
     return analisis.detalle(contexto, registro.actuales(), storage, analisis_id)
-
-
-# ---------- Visitas de campo ----------
-
-
-@router.post("/parcelas/{parcela_id}/visitas", response_model=VisitaSalida, status_code=201)
-def registrar_visita(
-    parcela_id: uuid.UUID,
-    contexto: Registro,
-    storage: Storage,
-    datos: Annotated[str, Form(description="VisitaNueva en JSON")],
-    fotos: Annotated[list[UploadFile] | None, File()] = None,
-):
-    parcela = parcela_visible(contexto, parcela_id)
-    visita = modelo_desde_json(VisitaNueva, datos, "datos")
-    return visitas.registrar(contexto, storage, parcela, visita, [leer_archivo(f) for f in fotos or []])
-
-
-@router.get("/parcelas/{parcela_id}/visitas", response_model=list[VisitaSalida])
-def visitas_de_parcela(parcela_id: uuid.UUID, contexto: Lectura):
-    parcela_visible(contexto, parcela_id)
-    return visitas.listar(contexto, parcela_id)
-
-
-@router.post("/visitas/{visita_id}/anular", response_model=VisitaSalida)
-def anular_visita(visita_id: uuid.UUID, datos: Anulacion, contexto: Administrador):
-    return visitas.anular(contexto, visita_id, datos.motivo)
 
 
 # ---------- Expediente legal ----------

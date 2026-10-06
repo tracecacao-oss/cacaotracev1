@@ -64,7 +64,7 @@ export const REQUISITOS = {
   parcela_activa: "Parcela activa",
   sin_superposiciones_abiertas: "Sin superposiciones abiertas",
   analisis_vigente: "Análisis de cobertura vigente",
-  revision_atendida: "Revisión atendida en campo",
+  revision_atendida: "Revisión de imágenes atendida",
   expediente_completo: "Expediente legal completo",
   productor_listo: "Productor con DNI documentado y consentimiento",
 };
@@ -74,7 +74,7 @@ export const REQUISITOS_PRODUCTOR = {
   parcela_activa: "La parcela está inactiva",
   sin_superposiciones_abiertas: "Se cruza con otra parcela: la cooperativa lo revisa",
   analisis_vigente: "Falta el análisis de bosque, que hace la cooperativa",
-  revision_atendida: "Falta la visita de un técnico a tu parcela",
+  revision_atendida: "Falta que la cooperativa revise imágenes satelitales de tu parcela",
   expediente_completo: "Faltan documentos de tu parcela, como el título o la constancia de posesión",
   productor_listo: "Falta la foto de tu DNI o aceptar el uso de tus datos",
 };
@@ -87,19 +87,35 @@ export const ESTADOS_CASILLA = {
   faltante: ["", "Falta"],
 };
 
+// Adenda 2: las visitas ya no se registran. Esta lista solo nombra el motivo de las del historial.
 export const MOTIVOS_VISITA = [
   ["analisis_requiere_revision", "Una fuente pidió revisión"],
   ["verificacion_de_coordenadas", "Verificar las coordenadas"],
   ["otro", "Otro"],
 ];
 
-export const USOS_OBSERVADOS = [
-  ["cacao_bajo_sombra", "Cacao bajo sombra"],
-  ["cacao_sin_sombra", "Cacao sin sombra"],
+// ---------- Adenda 2: imágenes de la parcela y revisión de imágenes ----------
+
+export const OBSERVACIONES_2020 = [
   ["bosque", "Bosque"],
-  ["otro_cultivo", "Otro cultivo"],
+  ["cultivo_o_uso_agricola", "Cultivo o uso agrícola"],
   ["mixto", "Mixto"],
+  ["no_se_distingue", "No se distingue"],
 ];
+
+export const OBSERVACIONES_CAMBIO = [
+  ["sin_cambio_visible", "Sin cambio visible"],
+  ["cambio_visible", "Cambio visible"],
+  ["no_se_distingue", "No se distingue"],
+];
+
+export const PAPELES_IMAGEN = {
+  anterior_al_corte: "Anterior al corte",
+  anual: "Imagen del año",
+  reciente: "Reciente",
+  alta_resolucion: "Alta resolución",
+  externa: "Imagen externa",
+};
 
 export const FUENTES = { whisp: "Whisp (FAO)", gfw: "Global Forest Watch", mapbiomas: "MapBiomas Perú" };
 
@@ -124,6 +140,8 @@ export const TIPOS_DOCUMENTO = {
   zonificacion: "Sustento de zonificación forestal",
   foto_visita: "Foto de la visita",
   respuesta_analisis: "Respuesta del análisis",
+  imagen_satelital: "Imagen satelital",
+  imagen_externa: "Imagen externa",
 };
 
 export function insigniaAlerta(codigo) {

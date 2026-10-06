@@ -150,6 +150,34 @@ function abrirAlta(navegar) {
   });
 }
 
+/** Adenda 2: unidades de procesamiento de Copernicus usadas en el mes; al 80 % se pausan las imágenes. */
+async function tarjetaConsumo() {
+  let c;
+  try {
+    c = await llamarApi("/admin/imagenes/consumo", { sinConsulta: true });
+  } catch {
+    return null;
+  }
+  const n = (v) => Number(v).toLocaleString("es-PE", { maximumFractionDigits: 2 });
+  const detalle = !c.configurada
+    ? "Copernicus no está configurado en el servidor: no se generan imágenes."
+    : c.en_pausa
+      ? `Se llegó al 80 % de la cuota: las imágenes nuevas esperan al próximo mes${c.pendientes ? ` (${c.pendientes} en espera)` : ""}.`
+      : `Al llegar a ${n(c.umbral_pu)} unidades (80 %) se dejan de generar imágenes nuevas.${c.pendientes ? ` ${c.pendientes} en cola.` : ""}`;
+  return h(
+    "section",
+    { class: "kpis", "aria-label": "Uso de imágenes satelitales" },
+    h(
+      "div",
+      { class: `kpi ${c.en_pausa || !c.configurada ? "is-warn" : "is-info"}` },
+      h("span", { class: "kpi-ic" }, icono("layers")),
+      h("span", { class: "kpi-l" }, "Imágenes satelitales del mes (Copernicus)"),
+      h("span", { class: "kpi-v" }, n(c.usadas_pu), h("small", {}, `de ${n(c.cuota_pu)} unidades de procesamiento`)),
+      h("span", { class: "kpi-s" }, detalle),
+    ),
+  );
+}
+
 export default async function cooperativas({ navegar }) {
   const lista = h("div", {}, cargando());
   let busqueda = "";
@@ -217,6 +245,7 @@ export default async function cooperativas({ navegar }) {
     cargar();
   });
   cargar();
+  const consumo = await tarjetaConsumo();
 
   return {
     titulo: "Cooperativas",
@@ -225,15 +254,18 @@ export default async function cooperativas({ navegar }) {
     migas: [["Plataforma"], ["Cooperativas"]],
     secciones: seccionesPlataforma(),
     accion: h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirAlta(navegar) }, icono("mas"), "Nueva cooperativa"),
-    contenido: h(
-      "section",
-      { class: "panel" },
+    contenido: [
+      consumo,
       h(
-        "div",
-        { class: "barra-lista" },
-        buscador({ placeholder: "Buscar por nombre o RUC", etiqueta: "Buscar cooperativas", alEscribir: buscar }),
+        "section",
+        { class: "panel" },
+        h(
+          "div",
+          { class: "barra-lista" },
+          buscador({ placeholder: "Buscar por nombre o RUC", etiqueta: "Buscar cooperativas", alEscribir: buscar }),
+        ),
+        lista,
       ),
-      lista,
-    ),
+    ],
   };
 }

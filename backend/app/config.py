@@ -37,9 +37,22 @@ class Settings(BaseSettings):
     umbral_bosque_2020_pct: float = Field(10, gt=0, le=100)
     # Parte 5: el código QR del DOP lleva a la verificación pública de esta interfaz.
     url_interfaz: str = "https://cacaotrace.pages.dev"
+    # Adenda 2 de la Parte 4: imágenes de Sentinel-2 (Copernicus Data Space) para revisar la parcela.
+    # Sin credenciales, la fuente queda "no configurada".
+    copernicus_client_id: SecretStr | None = None
+    copernicus_client_secret: SecretStr | None = None
+    imagenes_nubes_max_pct: float = Field(5, gt=0, le=100)
+    imagenes_margen_m: int = Field(150, ge=0, le=2000)
+    imagenes_cuota_mensual_pu: float = Field(10_000, gt=0)
 
     @field_validator(
-        "supabase_secret_key", "supabase_jwt_secret", "whisp_api_key", "gfw_api_key", mode="before"
+        "supabase_secret_key",
+        "supabase_jwt_secret",
+        "whisp_api_key",
+        "gfw_api_key",
+        "copernicus_client_id",
+        "copernicus_client_secret",
+        mode="before",
     )
     @classmethod
     def _vacio_es_nulo(cls, valor):

@@ -1,6 +1,7 @@
 // Detalle de parcela, con el inspector del diseño: cabecera con código, estado y área, y pestañas.
 // General: mapa con alertas y superposiciones al lado, datos, documentos e historial de cambios.
-// Parte 4: cobertura forestal, visitas, expediente legal y habilitación (parcela-habilitacion.js).
+// Parte 4: cobertura forestal, expediente legal y habilitación (parcela-habilitacion.js); adenda 2:
+// imágenes satelitales y revisión de imágenes (parcela-imagenes.js).
 // El personal la ve en #/parcelas/{id}; el productor, la suya en #/mis-parcelas/{id}.
 
 import { llamarApi } from "../api.js";
@@ -10,7 +11,8 @@ import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo } f
 import { ESTADOS_MIDAGRI, MOTIVOS_VISITA, hectareas, insigniaAlerta, insigniaHabilitacion, insigniaNivel } from "../textos.js";
 import { abrirModal, cabeceraFicha, campo, confirmar, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 import { camposUbigeo } from "../ubigeo.js";
-import { cargarPestana, pestanaCobertura, pestanaExpediente, pestanaHabilitacion, pestanaVisitas } from "./parcela-habilitacion.js";
+import { cargarPestana, pestanaCobertura, pestanaExpediente, pestanaHabilitacion } from "./parcela-habilitacion.js";
+import { pestanaImagenes } from "./parcela-imagenes.js";
 
 const ACCIONES = {
   "parcela.crear": "Registró la parcela",
@@ -23,6 +25,10 @@ const ACCIONES = {
   "analisis.solicitar": "Solicitó un análisis de cobertura",
   "visita.registrar": "Registró una visita de campo",
   "visita.anular": "Anuló una visita de campo",
+  "imagenes.generar": "Pidió las imágenes satelitales",
+  "imagenes.cargar_externa": "Cargó una imagen externa",
+  "revision_imagenes.registrar": "Registró una revisión de imágenes",
+  "revision_imagenes.anular": "Anuló una revisión de imágenes",
   "exencion.declarar": "Declaró que un documento no aplica",
   "exencion.retirar": "Retiró una exención",
   "parcela.habilitar": "Habilitó la parcela",
@@ -37,7 +43,7 @@ const motivoLegible = (x) =>
 const PESTANAS = [
   ["general", "General"],
   ["cobertura", "Cobertura forestal"],
-  ["visitas", "Visitas"],
+  ["imagenes", "Imágenes"],
   ["expediente", "Expediente"],
   ["habilitacion", "Habilitación"],
 ];
@@ -195,7 +201,12 @@ export default async function parcela({ hash, parametros, recargar }) {
 
   const geometria = seccion({
     titulo: "Geometría",
-    sub: `${esPoligono ? "Polígono" : "Punto"} · ${p.origen_geometria === "archivo" ? "de archivo" : "dibujado"} · registrada el ${fecha(p.creado_en)}`,
+    sub: [
+      `${esPoligono ? "Polígono" : "Punto"} · ${p.origen_geometria === "archivo" ? "de archivo" : "dibujado"} · registrada el ${fecha(p.creado_en)}`,
+      p.procedencia?.recorrida_en_campo && `lindero recorrido en campo el ${fecha(p.procedencia.fecha_recorrido)}`,
+    ]
+      .filter(Boolean)
+      .join(" · "),
     acciones: [botonGeometria, !delProductor && h("button", { class: "btn btn-sm", type: "button", onclick: () => exportar(p) }, icono("download"), "Exportar GeoJSON")],
     contenido: h(
       "div",
@@ -294,7 +305,7 @@ export default async function parcela({ hash, parametros, recargar }) {
   const cuerpo = h("div", { class: "contenido-pestana" });
   const barra = h("div", { class: "seg", role: "tablist", "aria-label": "Secciones de la parcela" });
   if (recordada.id !== p.id) recordada = { id: p.id, clave: "general" };
-  const generadores = { cobertura: pestanaCobertura, visitas: pestanaVisitas, expediente: pestanaExpediente, habilitacion: pestanaHabilitacion };
+  const generadores = { cobertura: pestanaCobertura, imagenes: pestanaImagenes, expediente: pestanaExpediente, habilitacion: pestanaHabilitacion };
   const ctx = {
     p,
     base: ruta,

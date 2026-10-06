@@ -35,7 +35,8 @@ from app.services.documentos import Archivo
 from app.services.fuentes import registro
 from app.storage import ClienteStorage, ErrorStorage
 
-VERSION_CONTENIDO = 1
+# 2: adenda 2 de la Parte 4, las imágenes y la revisión de las parcelas con alerta de análisis.
+VERSION_CONTENIDO = 2
 NIVEL = {
     "declarado": "Declarado",
     "documentado": "Documentado",
@@ -116,11 +117,13 @@ def _bloque_parcela(contexto: Contexto, parcela: Parcela) -> dict[str, Any]:
 
 def _bloque_habilitacion(contexto: Contexto, parcela: Parcela) -> dict[str, Any]:
     estado = habilitacion.obtener(contexto, parcela)
-    vigente = next((d for d in reversed(estado.decisiones) if d.decision == "habilitar"), None)
+    # Las decisiones vienen de la más reciente a la más antigua: la vigente es la primera de habilitar.
+    vigente = next((d for d in estado.decisiones if d.decision == "habilitar"), None)
     return {
         "estado": estado.estado,
         "decision": vigente.model_dump(
-            mode="json", exclude={"id", "evidencia_visita_id", "evidencia_analisis_id"}
+            mode="json",
+            exclude={"id", "evidencia_visita_id", "evidencia_analisis_id", "evidencia_revision_id"},
         )
         if vigente
         else None,
@@ -264,6 +267,7 @@ def construir_contenido(
     nota: str | None,
     codigo: str,
     emitido_en: datetime,
+    imagenes: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     sesion = contexto.sesion
     cooperativa = sesion.get(Cooperativa, tanda.cooperativa_id)
@@ -291,6 +295,7 @@ def construir_contenido(
         "habilitacion": _bloque_habilitacion(contexto, parcela),
         "cobertura": cobertura,
         "convergencia": convergencia,
+        **({"imagenes": imagenes} if imagenes else {}),
         "expediente": _bloque_expediente(contexto, parcela),
         "tanda": _bloque_tanda(sesion, tanda, evaluacion),
         "alertas": {
@@ -302,6 +307,20 @@ def construir_contenido(
     contenido = _texto(contenido)
     contenido["no_verificado"] = _no_verificado(contenido)
     return contenido
+
+
+def _bloque_imagenes(contexto: Contexto, tanda: Tanda) -> tuple[dict[str, Any] | None, dict[str, str]]:
+    """Adenda 2 (12): solo para una parcela con la alerta de análisis, sus imágenes de Sentinel-2 anterior al
+    corte y reciente, las versiones de Wayback como datos y la revisión de imágenes vigente."""
+    from app.services import analisis, imagenes, revisiones_imagenes  # evita importación circular
+
+    sesion = contexto.sesion
+    parcela = sesion.get(Parcela, tanda.parcela_id)
+    revision = revisiones_imagenes.vigente(
+        revisiones_imagenes.de_parcelas(sesion, [parcela.id])[parcela.id], analisis.huella_parcela(parcela)
+    )
+    resumen = revisiones_imagenes.resumen(revision, revisiones_imagenes.nombre_de(sesion, revision))
+    return imagenes.para_dop(sesion, parcela, resumen)
 
 
 # ---------- Emisión ----------
@@ -323,7 +342,8 @@ def emitir(
     anio = momento.astimezone(LIMA).year
     numero = correlativos.siguiente(contexto.sesion, tanda.cooperativa_id, "dop", anio)
     codigo = f"DOP-{cooperativa.codigo}-{anio}-{numero:06d}"
-    contenido = construir_contenido(contexto, tanda, evaluacion, nota, codigo, momento)
+    bloque_imagenes, rutas = _bloque_imagenes(contexto, tanda)
+    contenido = construir_contenido(contexto, tanda, evaluacion, nota, codigo, momento, bloque_imagenes)
     huella = sello.huella(contenido)
     dop = Dop(
         cooperativa_id=tanda.cooperativa_id,
@@ -339,7 +359,9 @@ def emitir(
     )
     contexto.sesion.add(dop)
     contexto.sesion.flush()
-    pdf = pdf_dop.generar(contenido, huella, url_verificacion(codigo))
+    # Las dos imágenes en color natural van dibujadas en el PDF; su huella va en el contenido sellado.
+    png = {papel: storage.descargar(ruta) for papel, ruta in rutas.items()}
+    pdf = pdf_dop.generar(contenido, huella, url_verificacion(codigo), png)
     documento, ruta = documentos.guardar(
         contexto,
         storage,

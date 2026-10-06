@@ -224,9 +224,37 @@ def fuentes() -> dict:
 
 
 @pytest.fixture
-def api(sesion, verificador, auth_falso, storage_falso, fuentes) -> ClienteAPI:
+def imagenes():
+    """Adenda 2: Copernicus y Wayback sin credenciales; cualquier llamada real hace fallar la prueba.
+    Las pruebas de imágenes la reemplazan por respuestas simuladas (tests/imagenes_util.py)."""
+    import httpx
+
+    from app.services.imagenes import Proveedores
+    from app.services.sentinel import Sentinel
+    from app.services.wayback import Wayback
+
+    def _no_llamar(request: httpx.Request) -> httpx.Response:
+        raise AssertionError(f"La prueba no debía llamar a {request.url}")
+
+    cliente = httpx.Client(transport=httpx.MockTransport(_no_llamar))
+    return Proveedores(
+        sentinel=Sentinel(None, None, http=cliente),
+        wayback=Wayback(http=cliente),
+        nubes_max_pct=5,
+        margen_m=150,
+        cuota_mensual_pu=30_000,
+    )
+
+
+@pytest.fixture
+def api(sesion, verificador, auth_falso, storage_falso, fuentes, imagenes) -> ClienteAPI:
     app = crear_app(
-        get_settings(), verificador=verificador, auth_admin=auth_falso, storage=storage_falso, fuentes=fuentes
+        get_settings(),
+        verificador=verificador,
+        auth_admin=auth_falso,
+        storage=storage_falso,
+        fuentes=fuentes,
+        imagenes_proveedores=imagenes,
     )
     app.dependency_overrides[obtener_sesion] = lambda: sesion
     with ClienteAPI(app, raise_server_exceptions=False) as c:

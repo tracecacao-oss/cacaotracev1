@@ -64,7 +64,7 @@ class Fila:
 
 # Decisión del equipo del 2026-10-05 (adenda, 7.2 reglas 1 y 3): hubo bosque en la parcela el 31/12/2020
 # cuando al menos 3 conjuntos de datos lo registran. Un mapa solo puede ver árboles sueltos (sombra,
-# frutales, cercos vivos): se muestra como dato, pero no pide visita.
+# frutales, cercos vivos): se muestra como dato, pero no pide revisión.
 MAPAS_MINIMOS_BOSQUE_2020 = 3
 
 

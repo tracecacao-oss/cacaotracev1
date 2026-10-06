@@ -15,12 +15,22 @@ from app.schemas.habilitacion import (
     ConvergenciaSalida,
     ExpedienteSalida,
     HabilitacionSalida,
-    VisitaSalida,
 )
+from app.schemas.imagenes import ImagenesSalida, RevisionSalida
 from app.schemas.parcelas import DocumentoSalida, ParcelaCambios, ParcelaDetalle, ParcelaSalida, UrlDescarga
 from app.schemas.productores import MisCambios, ProductorDetalle
 from app.schemas.recepcion import DopDetalle, DopSalida, TandaSalida
-from app.services import analisis, documentos, dops, expediente, habilitacion, parcelas, tandas, visitas
+from app.services import (
+    analisis,
+    documentos,
+    dops,
+    expediente,
+    habilitacion,
+    imagenes,
+    parcelas,
+    revisiones_imagenes,
+    tandas,
+)
 from app.services import productores as servicio
 from app.services.fuentes import registro
 from app.services.productores import documento_salida
@@ -123,10 +133,15 @@ def convergencia_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
     return analisis.convergencia_salida(contexto.sesion, registro.actuales(), parcela)
 
 
-@router.get("/parcelas/{parcela_id}/visitas", response_model=list[VisitaSalida])
-def visitas_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
-    parcelas.parcela_visible(contexto, parcela_id)
-    return visitas.listar(contexto, parcela_id)
+@router.get("/parcelas/{parcela_id}/imagenes", response_model=ImagenesSalida)
+def imagenes_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor, storage: Storage):
+    """Adenda 2: el productor ve las imágenes de sus parcelas y el resultado de las revisiones."""
+    return imagenes.salida(contexto.sesion, storage, parcelas.parcela_visible(contexto, parcela_id))
+
+
+@router.get("/parcelas/{parcela_id}/revisiones-imagenes", response_model=list[RevisionSalida])
+def revisiones_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
+    return revisiones_imagenes.listar(contexto.sesion, parcelas.parcela_visible(contexto, parcela_id))
 
 
 @router.get("/parcelas/{parcela_id}/expediente", response_model=ExpedienteSalida)

@@ -12,7 +12,7 @@ import time
 
 from app.db import SesionLocal
 from app.scripts import reprocesar_whisp
-from app.services import analisis, habilitacion
+from app.services import analisis, habilitacion, imagenes
 from app.services.fuentes import Fuente
 from app.storage import ClienteStorage
 
@@ -38,7 +38,14 @@ class Trabajador(threading.Thread):
             observadas = habilitacion.revisar_habilitadas(sesion)
         with SesionLocal() as sesion:
             renovados = analisis.renovar_por_caducar(sesion, self.fuentes)
-        log.info("Tarea diaria: %s parcelas observadas, %s análisis renovados", observadas, renovados)
+        with SesionLocal() as sesion:
+            juegos = imagenes.encolar_pendientes(sesion)
+        log.info(
+            "Tarea diaria: %s parcelas observadas, %s análisis renovados, %s juegos de imágenes encolados",
+            observadas,
+            renovados,
+            juegos,
+        )
 
     def run(self) -> None:
         try:
@@ -56,6 +63,14 @@ class Trabajador(threading.Thread):
                 log.info("Análisis de Whisp reprocesados desde su respuesta guardada: %s", reprocesados)
         except Exception:
             log.exception("No se pudieron reprocesar los análisis de Whisp")
+        try:
+            # Adenda 2: las parcelas que ya tenían la alerta reciben su juego de imágenes.
+            with SesionLocal() as sesion:
+                encolados = imagenes.encolar_pendientes(sesion)
+            if encolados:
+                log.info("Juegos de imágenes encolados al arrancar: %s", encolados)
+        except Exception:
+            log.exception("No se pudieron encolar los juegos de imágenes")
         proxima_diaria = time.monotonic() + PRIMERA_TAREA_DIARIA
         while not self.detenido.is_set():
             hubo_trabajo = False
@@ -65,6 +80,9 @@ class Trabajador(threading.Thread):
                     proxima_diaria = time.monotonic() + CADA_DIA
                 with SesionLocal() as sesion:
                     hubo_trabajo = analisis.procesar_siguiente(sesion, self.fuentes, self.storage, self.ritmo)
+                # Adenda 2 de la Parte 4: las imágenes de las parcelas con alerta, en la misma cola.
+                with SesionLocal() as sesion:
+                    hubo_trabajo = imagenes.procesar_siguiente(sesion, self.storage) or hubo_trabajo
             except Exception:
                 log.exception("Falló una vuelta del bucle de análisis")
             if not hubo_trabajo:

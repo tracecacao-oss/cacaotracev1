@@ -9,7 +9,6 @@ a la vista. La exclusión es definitiva y ningún endpoint la revierte.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import timedelta
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, aliased
@@ -17,7 +16,7 @@ from sqlalchemy.orm import Session, aliased
 from app.catalogos import documentos_legales as catalogo
 from app.contexto import Contexto
 from app.errores import error_api
-from app.fechas import ahora, hoy_lima
+from app.fechas import ahora
 from app.models import (
     AnalisisCobertura,
     DecisionHabilitacion,
@@ -25,6 +24,7 @@ from app.models import (
     Parcela,
     Perfil,
     Productor,
+    RevisionImagenes,
     Superposicion,
     VisitaCampo,
 )
@@ -38,11 +38,11 @@ from app.schemas.habilitacion import (
 )
 from app.services import analisis as servicio_analisis
 from app.services import expediente as servicio_expediente
+from app.services import revisiones_imagenes as servicio_revisiones
 from app.services import visitas as servicio_visitas
 from app.services.auditoria import registrar_auditoria
 from app.services.fuentes import registro
 
-VIGENCIA_VISITA = timedelta(days=365)
 NOMBRE_FUENTE = {"whisp": "Whisp", "gfw": "GFW", "mapbiomas": "MapBiomas"}
 
 
@@ -52,8 +52,10 @@ class Evaluacion:
     alertas: list[str]  # las de la Parte 4
     expediente: servicio_expediente.Expediente
     analisis: list[AnalisisCobertura]
-    visitas: list[VisitaCampo]
+    visitas: list[VisitaCampo]  # solo para la procedencia: una visita ya no atiende un análisis
     procedencia: object
+    # Adenda 2: la revisión de imágenes vigente, si la hay.
+    revision: RevisionImagenes | None = None
     observada_ahora: bool = False
     faltan: list[str] = field(default_factory=list)
 
@@ -67,7 +69,7 @@ def _requisitos(
     *,
     abiertas: int,
     estado_analisis: dict,
-    visitas: list[VisitaCampo],
+    revision_imagenes: RevisionImagenes | None,
     exp: servicio_expediente.Expediente,
     dni_documentado: bool,
     consentimiento: bool,
@@ -118,32 +120,33 @@ def _requisitos(
             f"{n} {'conjunto de datos que registra' if n == 1 else 'conjuntos de datos que registran'} "
             "bosque en 2020"
         )
+    # Adenda 2 (8.1): la atiende una revisión de imágenes vigente (no anulada y de la geometría actual) en
+    # la que ninguna de las dos observaciones es "no se distingue". Un análisis nuevo no la vence (decisión
+    # del equipo del 2026-10-05). Una visita de campo ya no la atiende.
     if not revision:
         r.append(Requisito(codigo="revision_atendida", cumple=True, detalle="Ninguna fuente pide revisión."))
     else:
-        atendida = next(
-            (
-                v
-                for v in visitas
-                if v.motivo == "analisis_requiere_revision"
-                and servicio_visitas.posterior_a_la_geometria(v, parcela)
-                and hoy_lima() - v.fecha < VIGENCIA_VISITA
-            ),
-            None,
-        )
         motivos = _lista(revision)
-        r.append(
-            Requisito(
-                codigo="revision_atendida",
-                cumple=atendida is not None,
-                detalle=(
-                    f"Piden revisión: {motivos}. La atiende la visita de campo del {atendida.fecha:%d/%m/%Y}."
-                    if atendida
-                    else f"Piden revisión: {motivos}. Falta una visita de campo por ese motivo, posterior al "
-                    "último cambio de geometría y de menos de 365 días."
-                ),
+        if revision_imagenes is None:
+            cumple = False
+            detalle = (
+                f"Piden revisión: {motivos}. Falta que el administrador revise las imágenes de la parcela "
+                "(pestaña Imágenes)."
             )
-        )
+        elif "no_se_distingue" in (revision_imagenes.observacion_2020, revision_imagenes.observacion_cambio):
+            cumple = False
+            detalle = (
+                f"Piden revisión: {motivos}. La revisión de imágenes del "
+                f"{revision_imagenes.revisada_en:%d/%m/%Y} no permite distinguir: busca más imágenes o carga "
+                "una imagen externa y registra otra revisión."
+            )
+        else:
+            cumple = True
+            detalle = (
+                f"Piden revisión: {motivos}. La atiende la revisión de imágenes del "
+                f"{revision_imagenes.revisada_en:%d/%m/%Y}."
+            )
+        r.append(Requisito(codigo="revision_atendida", cumple=cumple, detalle=detalle))
     faltan = [
         "tenencia (título o constancia de posesión)" if c == "tenencia" else catalogo.POR_CODIGO[c].nombre
         for c in exp.faltan
@@ -217,6 +220,7 @@ def evaluar(
     expedientes = servicio_expediente.expedientes(sesion, ids)
     todos_analisis = servicio_analisis.de_parcelas(sesion, ids)
     todas_visitas = servicio_visitas.vigentes(sesion, ids)
+    todas_revisiones = servicio_revisiones.de_parcelas(sesion, ids)
     con_excluida = _con_excluida(sesion, ids)
     productores = {
         p.id: p
@@ -237,13 +241,16 @@ def evaluar(
     cambio = False
     for parcela in parcelas:
         estado_analisis = servicio_analisis.resumen(fuentes, parcela, todos_analisis[parcela.id])
+        revision_vigente = servicio_revisiones.vigente(
+            todas_revisiones[parcela.id], servicio_analisis.huella_parcela(parcela)
+        )
         exp = expedientes[parcela.id]
         productor = productores[parcela.productor_id]
         requisitos = _requisitos(
             parcela,
             abiertas=abiertas.get(parcela.id, 0),
             estado_analisis=estado_analisis,
-            visitas=todas_visitas[parcela.id],
+            revision_imagenes=revision_vigente,
             exp=exp,
             dni_documentado=productor.id in con_dni,
             consentimiento=productor.consentimiento_datos_en is not None,
@@ -258,6 +265,7 @@ def evaluar(
             analisis=todos_analisis[parcela.id],
             visitas=todas_visitas[parcela.id],
             procedencia=servicio_visitas.procedencia(parcela, todas_visitas[parcela.id]),
+            revision=revision_vigente,
             faltan=[r.codigo for r in requisitos if not r.cumple],
         )
         if parcela.habilitacion_estado == "habilitada" and evaluacion.faltan:
@@ -270,9 +278,21 @@ def evaluar(
     return resultado
 
 
-def _foto(evaluacion: Evaluacion, alertas: list[str]) -> dict:
-    """Copia de los requisitos y las alertas tal como estaban al decidir."""
-    return {"requisitos": [r.model_dump() for r in evaluacion.requisitos], "alertas": alertas}
+def _foto(evaluacion: Evaluacion, alertas: list[str], sesion: Session | None = None) -> dict:
+    """Copia de los requisitos, las alertas y la revisión de imágenes vigente tal como estaban al decidir."""
+    foto = {"requisitos": [r.model_dump() for r in evaluacion.requisitos], "alertas": alertas}
+    if evaluacion.revision is not None and sesion is not None:
+        foto["revision_imagenes"] = servicio_revisiones.resumen(
+            evaluacion.revision, servicio_revisiones.nombre_de(sesion, evaluacion.revision)
+        )
+    return foto
+
+
+def nota_obligatoria(evaluacion: Evaluacion, alertas: list[str]) -> bool:
+    """Con alertas, o si la revisión de imágenes vigente registró un cambio visible (adenda 2, 8.4)."""
+    return bool(alertas) or (
+        evaluacion.revision is not None and evaluacion.revision.observacion_cambio == "cambio_visible"
+    )
 
 
 def _observar(sesion: Session, parcela: Parcela, evaluacion: Evaluacion) -> None:
@@ -326,12 +346,12 @@ def habilitar(contexto: Contexto, parcela: Parcela, nota: str | None) -> Habilit
         incumplidos = [r for r in evaluacion.requisitos if not r.cumple]
         raise_requisitos(incumplidos)
     alertas = _alertas_completas(contexto, parcela)
-    if alertas and len(nota or "") < 50:
+    if nota_obligatoria(evaluacion, alertas) and len(nota or "") < 50:
         raise error_api(
             422,
             "nota_requerida",
-            "La parcela tiene alertas: explica en una nota de al menos 50 caracteres por qué se habilita "
-            "a pesar de ellas.",
+            "La parcela tiene alertas o su revisión de imágenes registró un cambio visible: explica en una "
+            "nota de al menos 50 caracteres por qué se habilita.",
         )
     parcela.habilitacion_estado = "habilitada"
     decision = DecisionHabilitacion(
@@ -340,7 +360,7 @@ def habilitar(contexto: Contexto, parcela: Parcela, nota: str | None) -> Habilit
         decidida_por=contexto.usuario_id,
         decidida_en=ahora(),
         nota=nota or None,
-        requisitos=_foto(evaluacion, alertas),
+        requisitos=_foto(evaluacion, alertas, contexto.sesion),
         geometria_sha256=servicio_analisis.huella_parcela(parcela),
     )
     contexto.sesion.add(decision)
@@ -375,16 +395,18 @@ def excluir(contexto: Contexto, parcela: Parcela, datos: ExcluirEntrada) -> Habi
         raise error_api(
             422, "confirmacion_requerida", "Escribe EXCLUIR para confirmar que la exclusión es definitiva."
         )
-    if not (datos.evidencia_visita_id or datos.evidencia_analisis_id):
+    if not (datos.evidencia_revision_id or datos.evidencia_analisis_id):
         raise error_api(
             422,
             "evidencia_requerida",
-            "La exclusión debe citar una visita de campo o un análisis de esta parcela.",
+            "La exclusión debe citar una revisión de imágenes o un análisis de esta parcela.",
         )
-    if datos.evidencia_visita_id:
-        visita = contexto.sesion.get(VisitaCampo, datos.evidencia_visita_id)
-        if visita is None or visita.parcela_id != parcela.id:
-            raise error_api(422, "evidencia_invalida", "La visita citada no es de esta parcela.")
+    if datos.evidencia_revision_id:
+        citada = contexto.sesion.get(RevisionImagenes, datos.evidencia_revision_id)
+        if citada is None or citada.parcela_id != parcela.id or citada.anulada_en is not None:
+            raise error_api(
+                422, "evidencia_invalida", "La revisión citada no es de esta parcela o está anulada."
+            )
     if datos.evidencia_analisis_id:
         citado = contexto.sesion.get(AnalisisCobertura, datos.evidencia_analisis_id)
         if citado is None or citado.parcela_id != parcela.id:
@@ -398,9 +420,9 @@ def excluir(contexto: Contexto, parcela: Parcela, datos: ExcluirEntrada) -> Habi
         decidida_por=contexto.usuario_id,
         decidida_en=ahora(),
         nota=datos.descripcion,
-        requisitos=_foto(evaluacion, alertas),
+        requisitos=_foto(evaluacion, alertas, contexto.sesion),
         geometria_sha256=servicio_analisis.huella_parcela(parcela),
-        evidencia_visita_id=datos.evidencia_visita_id,
+        evidencia_revision_id=datos.evidencia_revision_id,
         evidencia_analisis_id=datos.evidencia_analisis_id,
     )
     contexto.sesion.add(decision)
@@ -413,7 +435,7 @@ def excluir(contexto: Contexto, parcela: Parcela, datos: ExcluirEntrada) -> Habi
         {
             "decision_id": decision.id,
             "descripcion": datos.descripcion,
-            "evidencia_visita_id": datos.evidencia_visita_id,
+            "evidencia_revision_id": datos.evidencia_revision_id,
             "evidencia_analisis_id": datos.evidencia_analisis_id,
         },
     )
@@ -445,7 +467,7 @@ def obtener(contexto: Contexto, parcela: Parcela) -> HabilitacionSalida:
         requisitos=evaluacion.requisitos,
         puede_habilitar=parcela.habilitacion_estado in ("pendiente", "observada") and not evaluacion.faltan,
         alertas=alertas,
-        nota_obligatoria=bool(alertas),
+        nota_obligatoria=nota_obligatoria(evaluacion, alertas),
         decisiones=decisiones(contexto.sesion, parcela.id),
     )
 

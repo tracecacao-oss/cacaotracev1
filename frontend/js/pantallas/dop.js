@@ -3,7 +3,7 @@
 
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
-import { ALERTAS, ALERTAS_TANDA, ESTADOS_CASILLA, ESTADOS_HABILITACION, ESTADOS_MIDAGRI, PRODUCTO, REQUISITOS, hectareas, insigniaDop, insigniaNivel, kilos } from "../textos.js";
+import { ALERTAS, ALERTAS_TANDA, ESTADOS_CASILLA, ESTADOS_HABILITACION, ESTADOS_MIDAGRI, OBSERVACIONES_2020, OBSERVACIONES_CAMBIO, PRODUCTO, REQUISITOS, hectareas, insigniaDop, insigniaNivel, kilos } from "../textos.js";
 import { codigoQr, descargarPdf, huella } from "../tandas.js";
 import { abrirModal, cabeceraFicha, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 
@@ -73,6 +73,48 @@ function medidas(lista) {
   if (!lista?.length) return "—";
   const visibles = lista.filter((m) => !m.serie);
   return (visibles.length ? visibles : lista).map((m) => `${m.valor} ${m.unidad ?? ""} (${m.nombre}, ${m.via})`.replace("  ", " ")).join("; ");
+}
+
+/** Adenda 2: solo si la parcela tuvo la alerta de análisis. Las imágenes van dibujadas en el PDF. */
+function bloqueImagenes(im) {
+  const n = (v) => Number(v).toLocaleString("es-PE", { maximumFractionDigits: 2 });
+  const imagen = (titulo, f) =>
+    f
+      ? {
+          etiqueta: titulo,
+          valor: `${fecha(f.fecha_captura)} (${f.dias_respecto_al_corte > 0 ? "+" : ""}${f.dias_respecto_al_corte} días respecto al corte)`,
+          extra: [
+            [f.proveedor ?? "Sentinel-2", `resolución ${n(f.resolucion_m ?? 10)} m`, f.nubes_parcela_pct != null ? `nubes sobre la parcela ${n(f.nubes_parcela_pct)} %` : null].filter(Boolean).join(" · "),
+            h("span", { class: "sec mono" }, `SHA-256 ${f.sha256}`),
+            h("span", { class: "sec" }, f.atribucion),
+          ],
+        }
+      : { etiqueta: titulo, valor: "Sin imagen al emitirse" };
+  const r = im.revision;
+  return seccion({
+    titulo: "Imágenes de la parcela",
+    sub: "La parcela tuvo la alerta de análisis. Las dos imágenes de Sentinel-2 (10 m) van dibujadas en el PDF, con el lindero.",
+    contenido: [
+      rejilla([
+        imagen("Anterior al corte", im.anterior_al_corte),
+        imagen("Reciente", im.reciente),
+        im.alta_resolucion?.length > 0 && {
+          etiqueta: "Alta resolución (Esri Wayback)",
+          valor: im.alta_resolucion.map((a) => `${fecha(a.fecha_captura)}${a.proveedor ? ` · ${a.proveedor}` : ""}`).join("; "),
+          extra: `Se listan solo sus datos. ${im.atribucion_alta_resolucion ?? ""}`,
+        },
+      ]),
+      r
+        ? rejilla([
+            { etiqueta: "Revisó las imágenes", valor: r.revisada_por },
+            { etiqueta: "Fecha de la revisión", valor: fecha(r.revisada_en, { hora: true }) },
+            { etiqueta: "En la imagen anterior al corte", valor: OBSERVACIONES_2020.find(([v]) => v === r.observacion_2020)?.[1] ?? r.observacion_2020 },
+            { etiqueta: "Cambio después del corte", valor: OBSERVACIONES_CAMBIO.find(([v]) => v === r.observacion_cambio)?.[1] ?? r.observacion_cambio },
+            { etiqueta: "Lo que observó", valor: r.descripcion },
+          ])
+        : h("p", { class: "panel-sub" }, "Sin revisión de imágenes vigente al emitirse."),
+    ],
+  });
 }
 
 export default async function dop({ parametros: [id], recargar }) {
@@ -235,6 +277,7 @@ export default async function dop({ parametros: [id], recargar }) {
           ),
       ],
     }),
+    c.imagenes && bloqueImagenes(c.imagenes),
     seccion({
       titulo: "Expediente legal",
       sub: "Las 7 casillas, con su documento o su exención.",

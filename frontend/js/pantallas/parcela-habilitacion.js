@@ -1,5 +1,6 @@
-// Parte 4 en el detalle de la parcela: pestañas Cobertura forestal, Visitas, Expediente y
-// Habilitación. El operador y el productor arman el expediente; el administrador decide.
+// Parte 4 en el detalle de la parcela: pestañas Cobertura forestal, Expediente y Habilitación (la de
+// Imágenes, de la adenda 2, está en parcela-imagenes.js). El operador y el productor arman el expediente;
+// el administrador decide.
 // Principio: exponer, no concluir. Cada tarjeta dice quién afirma qué y cuándo.
 
 import { llamarApi } from "../api.js";
@@ -8,16 +9,15 @@ import { rolEfectivo } from "../estado.js";
 import {
   ESTADOS_CASILLA,
   FUENTES,
-  MOTIVOS_VISITA,
+  OBSERVACIONES_CAMBIO,
   REQUISITOS,
   REQUISITOS_PRODUCTOR,
-  USOS_OBSERVADOS,
   hectareas,
   insigniaAlerta,
   insigniaHabilitacion,
   insigniaNivel,
 } from "../textos.js";
-import { abrirModal, campo, cargando, enviarCon, errorDeCarga, fecha, h, icono, reemplazar, seccion, toast, vacio } from "../ui.js";
+import { abrirModal, campo, cargando, enviarCon, errorDeCarga, fecha, h, icono, reemplazar, seccion, toast } from "../ui.js";
 
 const hoy = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
 
@@ -247,7 +247,7 @@ function motivosRevision(codigo, ind, bosque) {
 /**
  * Decisión del equipo del 2026-10-05: las alertas DIST marcan cualquier cambio de la vegetación (poda,
  * cosecha, renovación del cultivo) sin decir la causa. Si ningún mapa vio bosque en la parcela el
- * 31/12/2020, no piden visita; se muestran como dato, con esta explicación.
+ * 31/12/2020, no piden revisión; se muestran como dato, con esta explicación.
  */
 function notaDistSinBosque(ind, bosque) {
   const n = ind.alertas_dist_desde_2021;
@@ -255,7 +255,7 @@ function notaDistSinBosque(ind, bosque) {
   const cuantos = bosque.filas.length
     ? `solo ${bosque.filas.length === 1 ? "1 mapa vio" : `${bosque.filas.length} mapas vieron`} bosque en la parcela el ${CORTE} (hacen falta ${bosque.minimo})`
     : `ningún mapa vio bosque en la parcela el ${CORTE}`;
-  return `${n === 1 ? "1 alerta DIST" : `${numero(n)} alertas DIST`} desde 2021, pero ${cuantos}: no piden visita. Estas alertas marcan cualquier cambio de la vegetación, como poda, cosecha o renovación del cultivo.`;
+  return `${n === 1 ? "1 alerta DIST" : `${numero(n)} alertas DIST`} desde 2021, pero ${cuantos}: no piden revisión. Estas alertas marcan cualquier cambio de la vegetación, como poda, cosecha o renovación del cultivo.`;
 }
 
 /**
@@ -277,7 +277,7 @@ function notaBosqueSuelto(bosque, areaHa) {
     return mayor ? `${f.nombre} (${cifra(mayor, areaHa)})` : f.nombre;
   });
   const n = bosque.filas.length;
-  return `${n === 1 ? "1 mapa vio" : `${n} mapas vieron`} bosque o árboles el ${CORTE}: ${cuales.join("; ")}. Se pide visita cuando ${bosque.minimo} o más mapas lo ven, porque uno solo puede estar viendo árboles de sombra, frutales o cercos vivos.`;
+  return `${n === 1 ? "1 mapa vio" : `${n} mapas vieron`} bosque o árboles el ${CORTE}: ${cuales.join("; ")}. Se pide revisar imágenes cuando ${bosque.minimo} o más mapas lo ven, porque uno solo puede estar viendo árboles de sombra, frutales o cercos vivos.`;
 }
 
 /** Notas sobre cómo se obtuvo el resultado; van dentro del detalle. */
@@ -417,7 +417,7 @@ function tablaConvergencia(tabla) {
     h(
       "p",
       { class: "panel-sub" },
-      `"Registran bosque en 2020" quiere decir que el mapa vio bosque en la parcela el ${CORTE}, la fecha de corte: es la foto de ese día, no una pérdida. Se pide visita cuando ${tabla.mapas_minimos_bosque_2020 ?? 3} o más mapas lo ven. Los cambios cuentan solo desde el 1 de enero de 2021.`,
+      `"Registran bosque en 2020" quiere decir que el mapa vio bosque en la parcela el ${CORTE}, la fecha de corte: es la foto de ese día, no una pérdida. Se pide revisar imágenes cuando ${tabla.mapas_minimos_bosque_2020 ?? 3} o más mapas lo ven. Los cambios cuentan solo desde el 1 de enero de 2021.`,
     ),
     marcadas.length > 0 && tablaDeFilas(marcadas),
     h(
@@ -512,7 +512,7 @@ function resumenCobertura(codigos, analisis, tabla, ctx) {
       h(
         "div",
         { class: "hallazgos" },
-        h("b", {}, "Ninguna fuente ni conjunto de datos pide revisión en campo"),
+        h("b", {}, "Ninguna fuente ni conjunto de datos pide revisión"),
         notaBosque && h("p", {}, notaBosque),
         notaDist && h("p", {}, `GFW registró ${notaDist}`),
         h("p", {}, "El detalle de cada fuente queda plegado en su tarjeta."),
@@ -532,7 +532,7 @@ function resumenCobertura(codigos, analisis, tabla, ctx) {
         h(
           "p",
           {},
-          `Por qué importa el ${CORTE}: es la fecha de corte del Reglamento (UE) 2023/1115. Que hubiera bosque ese día no es una pérdida; es la foto de cómo estaba la parcela. Si ese día había bosque y hoy hay cacao, hay que confirmar en campo que no se taló después. El cacao bajo sombra suele verse como bosque desde el satélite.`,
+          `Por qué importa el ${CORTE}: es la fecha de corte del Reglamento (UE) 2023/1115. Que hubiera bosque ese día no es una pérdida; es la foto de cómo estaba la parcela. Si ese día había bosque y hoy hay cacao, hay que confirmar en las imágenes que no se taló después. El cacao bajo sombra suele verse como bosque desde el satélite.`,
         ),
       hayCambios && h("p", {}, "Los cambios cuentan solo desde el 1 de enero de 2021, después de la fecha de corte; lo ocurrido en 2020 o antes no se cuenta aquí."),
       notaBosque && h("p", {}, `Además, ${notaBosque.charAt(0).toLowerCase()}${notaBosque.slice(1)}`),
@@ -542,8 +542,8 @@ function resumenCobertura(codigos, analisis, tabla, ctx) {
         "p",
         { class: "hallazgos-accion" },
         ctx.delProductor
-          ? "La cooperativa revisará tu parcela en campo."
-          : 'Qué hacer: un técnico visita la parcela y registra lo que ve en la pestaña Visitas (motivo "Una fuente pidió revisión"). Con esa visita, el administrador decide en Habilitación.',
+          ? "La cooperativa revisará imágenes satelitales de tu parcela."
+          : "Qué hacer: el administrador revisa las imágenes de la parcela en la pestaña Imágenes y registra lo que observa. Con esa revisión decide en Habilitación.",
       ),
     ),
   );
@@ -622,146 +622,6 @@ export async function pestanaCobertura(ctx) {
             ),
           ),
         ),
-    ],
-  });
-}
-
-// ---------- Visitas de campo ----------
-
-const etiqueta = (lista, valor) => lista.find(([v]) => v === valor)?.[1] ?? valor;
-
-function abrirNuevaVisita(ctx) {
-  const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-visita" }, "Registrar visita");
-  const fotos = h("input", { class: "input", type: "file", name: "fotos", accept: "image/jpeg,image/png", capture: "environment", multiple: true, required: true });
-  const formulario = h(
-    "form",
-    { class: "form", id: "form-visita" },
-    h(
-      "div",
-      { class: "grid2" },
-      campo({ etiqueta: "Fecha de la visita", name: "fecha", type: "date", value: hoy(), max: hoy(), required: true }),
-      campo({ etiqueta: "Motivo", name: "motivo", opciones: MOTIVOS_VISITA, value: ctx.p.alertas.includes("analisis_requiere_revision") ? "analisis_requiere_revision" : "verificacion_de_coordenadas" }),
-    ),
-    h(
-      "div",
-      { class: "grid2" },
-      campo({ etiqueta: "Técnico que fue a campo", name: "realizada_por_nombre", required: true, maxlength: 200 }),
-      campo({ etiqueta: "Cargo", name: "realizada_por_cargo", required: true, maxlength: 200 }),
-    ),
-    campo({ etiqueta: "Uso observado", name: "uso_observado", opciones: USOS_OBSERVADOS }),
-    h("label", { class: "check" }, h("input", { type: "checkbox", name: "perimetro_recorrido", value: "si" }), h("span", {}, "El técnico caminó el lindero de la parcela")),
-    h(
-      "label",
-      { class: "field" },
-      "Qué se observó (mínimo 30 caracteres)",
-      h("textarea", { class: "input texto-libre", name: "descripcion", required: true, minlength: 30, maxlength: 4000, rows: 4 }),
-      h("small", {}, "Describe lo que se vio. La visita no declara que la parcela cumple ni que no cumple."),
-    ),
-    h("label", { class: "field" }, "Fotos de la parcela (JPG o PNG, al menos una)", fotos),
-  );
-  const { cerrar } = abrirModal({
-    titulo: "Registrar visita de campo",
-    subtitulo: `${ctx.p.codigo} · ${ctx.p.nombre}`,
-    contenido: formulario,
-    pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton],
-  });
-  enviarCon(formulario, boton, async (datos) => {
-    const cuerpo = new FormData();
-    cuerpo.append(
-      "datos",
-      JSON.stringify({
-        fecha: datos.fecha,
-        motivo: datos.motivo,
-        realizada_por_nombre: datos.realizada_por_nombre,
-        realizada_por_cargo: datos.realizada_por_cargo,
-        uso_observado: datos.uso_observado,
-        perimetro_recorrido: datos.perimetro_recorrido === "si",
-        descripcion: datos.descripcion,
-      }),
-    );
-    for (const foto of fotos.files) cuerpo.append("fotos", foto);
-    await llamarApi(`/parcelas/${ctx.p.id}/visitas`, { metodo: "POST", formulario: cuerpo });
-    cerrar();
-    toast("Visita registrada.");
-    ctx.recargar();
-  });
-}
-
-function abrirAnulacion(visita, ctx) {
-  const boton = h("button", { class: "btn btn-danger", type: "submit", form: "form-anular-visita" }, "Anular visita");
-  const formulario = h(
-    "form",
-    { class: "form", id: "form-anular-visita" },
-    h("p", {}, "La visita no se borra: queda anulada y deja de contar. Si estaba mal, registra otra."),
-    campo({ etiqueta: "Motivo", name: "motivo", required: true, maxlength: 200 }),
-  );
-  const { cerrar } = abrirModal({ titulo: "Anular visita", contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
-  enviarCon(formulario, boton, async ({ motivo }) => {
-    await llamarApi(`/visitas/${visita.id}/anular`, { metodo: "POST", cuerpo: { motivo } });
-    cerrar();
-    toast("Visita anulada.");
-    ctx.recargar();
-  });
-}
-
-export async function pestanaVisitas(ctx) {
-  const { p, base } = ctx;
-  const visitas = await llamarApi(`${base}/visitas`);
-  const puedo = permisos(ctx);
-  const pr = p.procedencia;
-  const procedencia =
-    pr &&
-    h(
-      "div",
-      { class: `verif ${pr.recorrida_en_campo ? "" : "neutro"}` },
-      icono("pin"),
-      h(
-        "div",
-        {},
-        h("b", {}, pr.recorrida_en_campo ? `Lindero recorrido en campo el ${fecha(pr.fecha_recorrido)}` : "Lindero sin recorrer en campo"),
-        h("span", {}, `Geometría ${pr.origen_geometria === "archivo" ? "de archivo" : "dibujada"} · registrada por ${pr.registrada_por_rol === "productor" ? "el propio productor (coordenada declarada)" : "el personal de la cooperativa"}`),
-      ),
-    );
-  return seccion({
-    titulo: "Visitas de campo",
-    sub: "Lo que un técnico vio en la parcela. Una visita no se edita: si está mal, se anula y se registra otra.",
-    acciones: puedo.registro && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirNuevaVisita(ctx) }, icono("mas"), "Registrar visita"),
-    contenido: [
-      procedencia,
-      visitas.length
-        ? h(
-            "ol",
-            { class: "visitas" },
-            visitas.map((v) =>
-              h(
-                "li",
-                { class: `visita ${v.vigente ? "" : "anulada"}` },
-                h(
-                  "div",
-                  { class: "visita-h" },
-                  h("b", {}, fecha(v.fecha)),
-                  h(
-                    "span",
-                    { class: "fila-acciones" },
-                    insignia("", etiqueta(MOTIVOS_VISITA, v.motivo)),
-                    insignia("info", etiqueta(USOS_OBSERVADOS, v.uso_observado)),
-                    v.perimetro_recorrido && insignia("ok", "Lindero recorrido"),
-                    !v.vigente && insignia("bad", "Anulada"),
-                  ),
-                ),
-                h("p", {}, v.descripcion),
-                h("p", { class: "sec" }, `${v.realizada_por_nombre} · ${v.realizada_por_cargo}${v.registrada_por_nombre ? ` · ingresada por ${v.registrada_por_nombre}` : ""}`),
-                !v.vigente && v.motivo_anulacion && h("p", { class: "sec" }, `Motivo de la anulación: ${v.motivo_anulacion}`),
-                h(
-                  "div",
-                  { class: "fila-acciones" },
-                  v.fotos.map((f, i) => h("button", { class: "btn btn-sm", type: "button", onclick: () => verDocumento(f) }, icono("eye"), `Foto ${i + 1}`)),
-                  puedo.admin && v.vigente && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => abrirAnulacion(v, ctx) }, "Anular"),
-                ),
-              ),
-            ),
-          )
-        : vacio({ titulo: "Sin visitas", texto: "Cuando un técnico vaya a la parcela, registra aquí lo que vio, con fotos." }),
     ],
   });
 }
@@ -925,7 +785,7 @@ function abrirHabilitar(hab, ctx) {
     h(
       "label",
       { class: "field" },
-      hab.nota_obligatoria ? "Nota (obligatoria, mínimo 50 caracteres): por qué se habilita a pesar de las alertas" : "Nota (opcional)",
+      hab.nota_obligatoria ? "Nota (obligatoria, mínimo 50 caracteres): por qué se habilita a pesar de las alertas o del cambio visible en las imágenes" : "Nota (opcional)",
       h("textarea", { class: "input texto-libre", name: "nota", required: hab.nota_obligatoria, minlength: hab.nota_obligatoria ? 50 : 0, maxlength: 4000, rows: 4 }),
     ),
   );
@@ -939,10 +799,11 @@ function abrirHabilitar(hab, ctx) {
 }
 
 async function abrirExcluir(ctx) {
-  const [visitas, analisis] = await Promise.all([llamarApi(`${ctx.base}/visitas`), llamarApi(`${ctx.base}/analisis`)]);
+  const [revisiones, analisis] = await Promise.all([llamarApi(`${ctx.base}/revisiones-imagenes`), llamarApi(`${ctx.base}/analisis`)]);
+  const etiquetaCambio = (valor) => OBSERVACIONES_CAMBIO.find(([v]) => v === valor)?.[1] ?? valor;
   const evidencias = [
     ["", "Elige la evidencia…"],
-    ...visitas.filter((v) => v.vigente).map((v) => [`visita:${v.id}`, `Visita del ${fecha(v.fecha)} · ${v.realizada_por_nombre}`]),
+    ...revisiones.filter((r) => !r.anulada_en).map((r) => [`revision:${r.id}`, `Revisión de imágenes del ${fecha(r.revisada_en)} · ${etiquetaCambio(r.observacion_cambio)} · ${r.revisada_por_nombre ?? ""}`]),
     ...analisis.filter((a) => a.estado === "completado").map((a) => [`analisis:${a.id}`, `${FUENTES[a.fuente]} del ${fecha(a.completado_en)} · ${a.resultado_texto ?? "sin resultado"}`]),
   ];
   const boton = h("button", { class: "btn btn-danger", type: "submit", form: "form-excluir" }, "Excluir definitivamente");
@@ -960,7 +821,7 @@ async function abrirExcluir(ctx) {
     const [tipo, id] = evidencia.split(":");
     await llamarApi(`/parcelas/${ctx.p.id}/excluir`, {
       metodo: "POST",
-      cuerpo: { descripcion, confirmacion, [tipo === "visita" ? "evidencia_visita_id" : "evidencia_analisis_id"]: id },
+      cuerpo: { descripcion, confirmacion, [tipo === "revision" ? "evidencia_revision_id" : "evidencia_analisis_id"]: id },
     });
     cerrar();
     toast("Parcela excluida.", "warn");
