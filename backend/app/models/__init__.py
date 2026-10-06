@@ -60,6 +60,15 @@ from app.models.padron import (  # noqa: E402
     Parcela,
     Superposicion,
 )
+from app.models.proceso import (  # noqa: E402
+    Calidad,
+    Corrida,
+    CorridaEtapa,
+    CorridaTanda,
+    Dpp,
+    PlantillaEtapa,
+    TandaFinal,
+)
 from app.models.recepcion import (  # noqa: E402
     ConfiguracionCooperativa,
     Correlativo,
@@ -70,6 +79,13 @@ from app.models.recepcion import (  # noqa: E402
 )
 
 __all__ = [
+    "Calidad",
+    "Corrida",
+    "CorridaEtapa",
+    "CorridaTanda",
+    "Dpp",
+    "PlantillaEtapa",
+    "TandaFinal",
     "ConsumoImagenes",
     "ImagenParcela",
     "RevisionImagenes",

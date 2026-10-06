@@ -9,6 +9,9 @@ export function seccionesLotes() {
   return [
     ["Recepción", "#/lotes/recepcion"],
     ["DOP", "#/lotes/dop"],
+    // Parte 6
+    ["Corridas", "#/lotes/corridas"],
+    ["Stock", "#/lotes/stock"],
   ];
 }
 

@@ -2649,3 +2649,244 @@ button.tira-item:hover {
     height: 300px;
   }
 }
+
+/* Parte 6: tablero de corridas (el kanban del diseño, sin arrastrar), etapas y plantilla de proceso. */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  gap: 14px;
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+}
+.kcol {
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  scroll-snap-align: start;
+}
+.kcol-h {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.kcol-h h3 {
+  font-size: 13.5px;
+}
+.kcol-h p {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.kcol-n {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.kcol-b {
+  display: grid;
+  gap: 10px;
+  padding: 0 10px 10px;
+  min-height: 90px;
+}
+.kcol-empty {
+  padding: 22px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.lot {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.lot:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+}
+.lot:hover .lot-id {
+  color: var(--emerald-ink);
+}
+.lot-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lot-id {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.lot-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.lot-facts b {
+  display: block;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.lot-f {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+@media (max-width: 900px) {
+  .kanban {
+    grid-template-columns: repeat(5, minmax(260px, 1fr));
+  }
+}
+
+.fase-grupo + .fase-grupo {
+  margin-top: 14px;
+}
+.etapas {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.etapa {
+  display: grid;
+  grid-template-columns: 26px 22px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.etapa.no_aplica,
+.etapa.no_ocurrio {
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+.etapa.pendiente {
+  border-style: dashed;
+}
+.etapa-n {
+  font-size: 12px;
+  color: var(--ink-3);
+  padding-top: 2px;
+}
+.etapa-c {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+}
+.etapa-c .sec {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.etapa-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.etapa-dato {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.etapa > .btn,
+.etapa > .sec {
+  align-self: center;
+  font-size: 12px;
+}
+.simbolo-etapa {
+  width: 20px;
+  height: 20px;
+  fill: var(--emerald-soft);
+  stroke: var(--emerald);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  flex: none;
+}
+.simbolo-etapa.inactivo {
+  fill: none;
+  stroke: var(--ink-4);
+}
+.rendimiento .alerta,
+.rendimiento .panel-sub {
+  margin: 0;
+}
+.tabla-plantilla .input,
+.tabla-plantilla .select {
+  min-width: 120px;
+}
+.tabla-plantilla td.num .input {
+  width: 110px;
+  min-width: 0;
+}
+.fila-fase th {
+  background: var(--surface-2);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+.fila-calidad {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fila-calidad .btn {
+  margin-left: auto;
+}
+@media (max-width: 640px) {
+  .etapa {
+    grid-template-columns: 22px 20px minmax(0, 1fr);
+  }
+  .etapa > .btn,
+  .etapa > .sec {
+    grid-column: 3;
+    justify-self: start;
+  }
+}

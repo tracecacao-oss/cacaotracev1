@@ -361,16 +361,25 @@ PROHIBIDAS = re.compile(
 
 
 def _sin_leyenda_del_dop(texto: str) -> str:
-    """La leyenda que la Parte 5 manda poner en el DOP niega serlo ("No es una constancia ni un
-    certificado"): es la única excepción, y solo con su texto exacto."""
+    """Las leyendas que la Parte 5 y la Parte 6 mandan poner en el DOP y en el DPP niegan serlo ("No es una
+    constancia ni un certificado"): son la única excepción, y solo con su texto exacto."""
     from app.services.dops import LEYENDA
+    from app.services.dpps import LEYENDA as LEYENDA_DPP
 
-    # En el código fuente la leyenda va partida en tres literales; en el PDF, entera.
+    # En el código fuente la leyenda del DOP va partida en tres literales y la del DPP en dos; en el PDF,
+    # enteras.
     primero = LEYENDA.index("emitirse.")
     ultimo = LEYENDA.index("2023/1115")
-    for parte in (LEYENDA[:primero], LEYENDA[primero:ultimo], LEYENDA[ultimo:]):
+    corte = LEYENDA_DPP.index("No es")
+    for parte in (
+        LEYENDA[:primero],
+        LEYENDA[primero:ultimo],
+        LEYENDA[ultimo:],
+        LEYENDA_DPP[:corte],
+        LEYENDA_DPP[corte:],
+    ):
         texto = texto.replace(f'"{parte}"', "")
-    return texto.replace(LEYENDA, "")
+    return texto.replace(LEYENDA, "").replace(LEYENDA_DPP, "")
 
 
 def test_ninguna_frase_prohibida_en_el_codigo():

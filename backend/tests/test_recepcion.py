@@ -515,6 +515,16 @@ def test_detalle_y_pdf_del_dop(api, sesion, cancha, operador, productor, parcela
     assert [d["codigo"] for d in api.get("/dops").json()] == [dop.codigo]
 
 
+def test_el_croquis_de_una_parcela_punto():
+    """fpdf2 2.8 llama radius al radio del círculo: el croquis de un punto no debe fallar."""
+    from app.pdf.base import Documento
+
+    pdf = Documento("DOP-PRUEBA")
+    pdf.add_page()
+    nota = pdf.croquis({"type": "Point", "coordinates": [-76.55, -6.95]}, 10, 10, 40)
+    assert nota.startswith("Punto en") and bytes(pdf.output()).startswith(b"%PDF")
+
+
 def test_el_pdf_no_usa_frases_prohibidas(api, sesion, cancha, operador, productor, parcela):
     from app.pdf import dop as pdf_dop
     from app.services.dops import LEYENDA, url_verificacion

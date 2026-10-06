@@ -191,7 +191,7 @@ class Documento(FPDF):
             cx, cy = x + lado / 2, y + lado / 2
             self.set_draw_color(*ESMERALDA)
             self.set_line_width(0.6)
-            self.circle(x=cx - 3, y=cy - 3, r=3, style="D")
+            self.circle(x=cx - 3, y=cy - 3, radius=3, style="D")
             self.line(cx - 5, cy, cx + 5, cy)
             self.line(cx, cy - 5, cx, cy + 5)
             self.set_line_width(0.2)
