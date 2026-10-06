@@ -1,8 +1,8 @@
 # CacaoTrace — instrucciones para Claude Code
 
-**Especificación:** `docs/especificacion.md` es la única fuente de verdad, junto con sus adendas en `docs/` (por ejemplo `docs/adenda-parte-4-fuentes.md`, que manda sobre la Parte 4 donde difiera). Lo que no está ahí no se construye sin preguntar.
+**Especificación:** `docs/especificacion.md` es la única fuente de verdad, junto con sus adendas en `docs/` (por ejemplo `docs/adenda-parte-4-fuentes.md` y `docs/adenda-2-parte-4-revision-imagenes.md`, que mandan sobre la Parte 4 donde difieran; la adenda 2 manda sobre la primera). Lo que no está ahí no se construye sin preguntar.
 
-**Parte en curso:** 6 — Proceso y DPP, por empezar cuando el equipo lo indique. Al empezarla, revisar en el estado de la Parte 5 lo que quedó sin probar en producción: sobre todo, todavía no se emitió ningún DOP real, así que el PDF (fpdf2) nunca se generó en Render.
+**Parte en curso:** adenda 2 de la Parte 4 — revisión de imágenes en lugar de visita de campo (`docs/adenda-2-parte-4-revision-imagenes.md`). Se aplica antes de la Parte 6 porque cambia el contenido del DOP. Primero va la comprobación de viabilidad (`backend/scripts/check_imagenes.py`, sección 4). Después sigue la 6 — Proceso y DPP. Al empezar la 6, revisar en el estado de la Parte 5 lo que quedó sin probar en producción: sobre todo, todavía no se emitió ningún DOP real, así que el PDF (fpdf2) nunca se generó en Render.
 
 **Diseño:** la interfaz debe parecerse en su mayoría a `legacy/diseno/` (decisión del 2026-10-05): sus colores, tipografías, componentes y composición (barra superior con la ruta, inspector en las fichas, tarjetas, tablas, modo oscuro). Si choca con la especificación en navegación, nombres de módulos, una tarea por pantalla o un botón principal, manda la especificación. Del diseño nunca se copian textos, datos de ejemplo ni lógica.
 

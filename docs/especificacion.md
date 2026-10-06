@@ -1377,6 +1377,8 @@ Esta parte corresponde a la etapa 1 del flujo operativo del equipo, "Habilitaci�
 > **Estado:** cerrada el 2026-10-05 por decisión del equipo. El detalle de lo probado en producción y lo pendiente está en `CLAUDE.md`, sección "Estado por parte".
 >
 > **Adenda del 2026-10-05:** `docs/adenda-parte-4-fuentes.md` amplía esta parte. Agrega el detalle por capa de Whisp, dos consultas más a GFW, MapBiomas Perú como tercera fuente y la tabla de convergencia. Donde difiera de esta especificación, manda la adenda.
+>
+> **Adenda 2 del 2026-10-05:** `docs/adenda-2-parte-4-revision-imagenes.md` reemplaza la visita de campo por la revisión de imágenes satelitales (Sentinel-2 y Esri Wayback) que registra el administrador, y suma esas imágenes al DOP de las parcelas con alerta. Donde difiera de esta especificación o de la primera adenda, manda la adenda 2.
 
 ### Principio: exponer, no concluir
 

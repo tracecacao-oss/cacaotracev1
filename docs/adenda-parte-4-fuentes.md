@@ -124,6 +124,8 @@ Siguen prohibidas las frases de la Parte 4. Se agrega a la lista "no deforestada
 
 ### 7.2 Alerta `analisis_requiere_revision`
 
+> Sin efecto desde la adenda 2 (`docs/adenda-2-parte-4-revision-imagenes.md`, 2.1): la regla de cuándo se activa la alerta es la que está implementada en el código. Este texto la describe tal como quedó con las decisiones del equipo del 2026-10-05.
+
 Se activa, además de los casos ya definidos, cuando:
 
 1. GFW informa alertas DIST desde 2021 y hubo bosque en la parcela el 31 de diciembre de 2020 (regla 3). Decisión del equipo del 2026-10-05: DIST marca cualquier cambio de la vegetación (poda, cosecha, renovación del cultivo) sin decir la causa; sin bosque en la fecha de corte, sus alertas se muestran como dato y no piden visita.
