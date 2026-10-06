@@ -582,14 +582,25 @@ export async function pestanaCobertura(ctx) {
       "Repetir análisis",
     );
   // Mientras haya consultas en curso, la pestaña se refresca sola.
-  if (analisis.some((a) => a.estado === "pendiente" || a.estado === "en_proceso")) {
+  const enCurso = analisis.some((a) => a.estado === "pendiente" || a.estado === "en_proceso");
+  if (enCurso) {
     setTimeout(() => ctx.contenedor.isConnected && ctx.pestanaActual() === "cobertura" && ctx.recargarPestana(), 5000);
   }
+  // Parte 10: la cola atiende una consulta a la vez en toda la plataforma; se dice cuántas esperan.
+  const cola = enCurso && !ctx.delProductor ? await llamarApi("/analisis/cola").catch(() => null) : null;
   return seccion({
     titulo: "Cobertura forestal",
     sub: "Lo que dice cada fuente sobre la parcela, con su fecha y su versión. CacaoTrace no emite veredictos ni combina fuentes.",
     acciones: repetir,
     contenido: [
+      cola &&
+        cola.en_cola > 0 &&
+        h(
+          "p",
+          { class: "nota-cola" },
+          icono("clock"),
+          `${cola.en_cola === 1 ? "Hay 1 consulta" : `Hay ${cola.en_cola} consultas`} en la cola de la plataforma. Se atienden de a una: con muchas parcelas el mismo día, pueden tardar desde minutos hasta más de una hora.`,
+        ),
       resumenCobertura(codigos, analisis, tabla, ctx),
       h("div", { class: "fuentes" }, codigos.map((c) => tarjetaFuente(c, analisis, configurada[c], ctx, estadoBosque(tabla)))),
       tablaConvergencia(tabla),

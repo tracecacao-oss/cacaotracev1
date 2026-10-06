@@ -182,7 +182,10 @@ def registrar(contexto: Contexto, datos: ProductorNuevo) -> Productor:
     """Afilia al productor (y lo crea si su DNI es nuevo) y audita, sin confirmar la transacción."""
     sesion = contexto.sesion
     cooperativa = sesion.get(Cooperativa, contexto.cooperativa_id)
-    productor = sesion.scalar(select(Productor).where(Productor.dni == datos.dni))
+    # Parte 10: un DNI de demostración no choca con uno real; cada uno se busca entre los suyos.
+    productor = sesion.scalar(
+        select(Productor).where(Productor.dni == datos.dni, Productor.es_demo == cooperativa.es_demo)
+    )
 
     if productor is not None:
         activa = sesion.scalar(
@@ -256,7 +259,10 @@ def editar(
     if cambia_dni:
         if not motivo:
             raise error_api(422, "motivo_requerido", "Para corregir el DNI escribe el motivo del cambio.")
-        if contexto.sesion.scalar(select(Productor.id).where(Productor.dni == valores["dni"])):
+        mismo_dni = select(Productor.id).where(
+            Productor.dni == valores["dni"], Productor.es_demo == productor.es_demo
+        )
+        if contexto.sesion.scalar(mismo_dni):
             raise error_api(409, "dni_en_uso", "Ese DNI ya está registrado en CacaoTrace.")
 
     registrado = valores.get("ppa_registrado", productor.ppa_registrado)

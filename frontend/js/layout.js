@@ -2,7 +2,7 @@
 // puede contraer), barra superior con la ruta de navegación, encabezado (título y como máximo
 // un botón principal) y secciones como control segmentado. Bajo 900 px la barra se pliega en un menú.
 
-import { enConsulta, estado, fijarConsulta, nombreCooperativa, rolEfectivo, ROTULOS_ROL } from "./estado.js";
+import { enConsulta, esDemo, estado, fijarConsulta, nombreCooperativa, rolEfectivo, ROTULOS_ROL } from "./estado.js";
 import { alternarMenu, cambiarTema, menuContraido, temaActual } from "./preferencias.js";
 import { avatar, h, icono, marca } from "./ui.js";
 
@@ -141,6 +141,17 @@ function ruta(migas) {
   );
 }
 
+// La franja fija del lote bloqueado (Parte 8) se pega debajo de las franjas de demostración y consulta.
+const altoFranjas = new ResizeObserver(([entrada]) =>
+  document.documentElement.style.setProperty("--franjas-h", `${entrada.target.offsetHeight}px`),
+);
+
+/** Parte 10: franja fija en toda pantalla de una cooperativa de demostración. */
+function franjaDemo() {
+  if (!esDemo()) return null;
+  return h("div", { class: "franja franja-demo", role: "note" }, "Demostración: datos ficticios");
+}
+
 function franjaConsulta(alCambiar) {
   if (!enConsulta()) return null;
   return h(
@@ -205,6 +216,11 @@ export function estructura(vista, hash, { alSalir, navegar }) {
       accion && h("div", { class: "tab-tools" }, accion),
     );
 
+  // Una sola caja fija para las dos franjas, para que no se monten al bajar.
+  const franjas = h("div", { class: "franjas" }, franjaDemo(), franjaConsulta(navegar));
+  altoFranjas.disconnect();
+  altoFranjas.observe(franjas);
+
   const secciones = vista.secciones?.length
     ? h(
         "div",
@@ -224,7 +240,7 @@ export function estructura(vista, hash, { alSalir, navegar }) {
       "main",
       { class: "principal" },
       barraSuperior,
-      franjaConsulta(navegar),
+      franjas,
       h("div", { class: "contenido" }, encabezado, secciones, vista.contenido),
     ),
   ];

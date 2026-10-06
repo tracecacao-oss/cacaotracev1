@@ -56,13 +56,15 @@ class DexDetalle(DexSalida):
 
 
 class DexPublico(BaseModel):
-    """Lo único que se muestra sin token."""
+    """Lo único que se muestra sin token, más la marca de demostración."""
 
     codigo: str
     estado: str
     emitido_en: datetime
     contenido_sha256: str
     cooperativa: str
+    # Parte 10: la página pública avisa que es un documento de demostración.
+    es_demo: bool = False
 
 
 # ---------- Certificaciones ----------

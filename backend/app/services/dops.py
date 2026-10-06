@@ -522,17 +522,18 @@ def anular(contexto: Contexto, dop_id: uuid.UUID, motivo: str) -> DopDetalle:
 def publico(sesion, codigo: str) -> DopPublico:
     """Sin token: solo código, estado, fecha de emisión, huella y razón social. Nada personal."""
     fila = sesion.execute(
-        select(Dop, Cooperativa.razon_social)
+        select(Dop, Cooperativa.razon_social, Cooperativa.es_demo)
         .join(Cooperativa, Cooperativa.id == Dop.cooperativa_id)
         .where(Dop.codigo == codigo.strip().upper())
     ).first()
     if fila is None:
         raise no_encontrado("No existe un DOP con ese código.")
-    dop, razon_social = fila
+    dop, razon_social, es_demo = fila
     return DopPublico(
         codigo=dop.codigo,
         estado=dop.estado,
         emitido_en=dop.emitido_en,
         contenido_sha256=dop.contenido_sha256,
         cooperativa=razon_social,
+        es_demo=bool(es_demo),
     )

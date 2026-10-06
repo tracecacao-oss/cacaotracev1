@@ -417,7 +417,7 @@ def _coordenadas(valor: Any) -> str:
     return "[" + ",".join(_coordenadas(v) for v in valor) + "]"
 
 
-def geojson(sesion, parcelas: list[dict[str, Any]]) -> dict[str, Any]:
+def geojson(sesion, parcelas: list[dict[str, Any]], es_demo: bool = False) -> dict[str, Any]:
     """FeatureCollection en WGS 84, un Feature por parcela, sin datos personales. Propiedades según la
     descripción del archivo GeoJSON del EUDR de la Comisión Europea: ProductionPlace y ProducerCountry, y
     Area (en hectáreas) solo para un punto. Cada geometría vuelve a pasar las validaciones de la Parte 3."""
@@ -436,7 +436,8 @@ def geojson(sesion, parcelas: list[dict[str, Any]]) -> dict[str, Any]:
         if p["geometria"]["type"] == "Point" and declarada is not None:
             propiedades["Area"] = float(declarada)
         features.append({"type": "Feature", "properties": propiedades, "geometry": p["geometria"]})
-    return {"type": "FeatureCollection", "features": features}
+    # Parte 10: el archivo dice si viene de una cooperativa de demostración (miembro adicional).
+    return {"type": "FeatureCollection", "es_demo": es_demo, "features": features}
 
 
 def geojson_texto(coleccion: dict[str, Any]) -> str:
@@ -453,7 +454,8 @@ def geojson_texto(coleccion: dict[str, Any]) -> str:
             + _coordenadas(geometria_["coordinates"])
             + "}}"
         )
-    return '{"type":"FeatureCollection","features":[' + ",".join(partes) + "]}\n"
+    demo = "true" if coleccion.get("es_demo") else "false"
+    return '{"type":"FeatureCollection","es_demo":' + demo + ',"features":[' + ",".join(partes) + "]}\n"
 
 
 def anexo_ii(contenido: dict[str, Any], huella: str) -> dict[str, Any]:
@@ -469,6 +471,7 @@ def anexo_ii(contenido: dict[str, Any], huella: str) -> dict[str, Any]:
     return {
         "nota": {i: textos.obtener(i, "anexo.nota_general") for i in textos.IDIOMAS},
         "referencia": REFERENCIA_ANEXO,
+        "es_demo": bool(contenido.get("es_demo")),
         "dex": {"codigo": contenido["identificacion"]["codigo"], "contenido_sha256": huella},
         "campos": [
             {
@@ -567,9 +570,18 @@ def generar_archivos(contenido: dict[str, Any], huella: str, url: str, sesion, p
     archivos = {
         "pdf_es": pdf_dex.generar(contenido, huella, url, "es", png),
         "pdf_en": pdf_dex.generar(contenido, huella, url, "en", png),
-        "geojson": geojson_texto(geojson(sesion, contenido["genealogia"]["parcelas"])).encode("utf-8"),
+        "geojson": geojson_texto(
+            geojson(sesion, contenido["genealogia"]["parcelas"], bool(contenido.get("es_demo")))
+        ).encode("utf-8"),
         "anexo_ii": _json(anexo_ii(contenido, huella)),
-        "hallazgos": _json({"dex": codigo, "contenido_sha256": huella, "informe": contenido["informe"]}),
+        "hallazgos": _json(
+            {
+                "dex": codigo,
+                "contenido_sha256": huella,
+                "es_demo": bool(contenido.get("es_demo")),
+                "informe": contenido["informe"],
+            }
+        ),
         "leeme": leeme(contenido, huella, url).encode("utf-8"),
     }
     paquete = io.BytesIO()
@@ -856,19 +868,20 @@ def anular(contexto: Contexto, dex_id: uuid.UUID, motivo: str) -> DexDetalle:
 def publico(sesion, codigo: str) -> DexPublico:
     """Sin token: los mismos cinco datos que el DOP (código, estado, fecha, huella y cooperativa)."""
     fila = sesion.execute(
-        select(Dex, Cooperativa.razon_social)
+        select(Dex, Cooperativa.razon_social, Cooperativa.es_demo)
         .join(Cooperativa, Cooperativa.id == Dex.cooperativa_id)
         .where(Dex.codigo == codigo.strip().upper())
     ).first()
     if fila is None:
         raise no_encontrado("No existe un DEX con ese código.")
-    dex, razon_social = fila
+    dex, razon_social, es_demo = fila
     return DexPublico(
         codigo=dex.codigo,
         estado=dex.estado,
         emitido_en=dex.emitido_en,
         contenido_sha256=dex.contenido_sha256,
         cooperativa=razon_social,
+        es_demo=bool(es_demo),
     )
 
 
@@ -894,4 +907,5 @@ def geojson_preliminar(contexto: Contexto, lote_id: uuid.UUID) -> dict[str, Any]
             }
             for p in parcelas
         ],
+        bool(contexto.sesion.get(Cooperativa, lote.cooperativa_id).es_demo),
     )

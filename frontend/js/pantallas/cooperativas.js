@@ -35,7 +35,11 @@ export function insigniaEstado(cooperativa) {
 }
 
 export function consultar(cooperativa, navegar) {
-  fijarConsulta({ id: cooperativa.id, nombre: cooperativa.nombre_comercial || cooperativa.razon_social });
+  fijarConsulta({
+    id: cooperativa.id,
+    nombre: cooperativa.nombre_comercial || cooperativa.razon_social,
+    es_demo: cooperativa.es_demo,
+  });
   navegar("#/inicio");
 }
 
@@ -188,6 +192,89 @@ async function tarjetaConsumo() {
   );
 }
 
+const MB = 1024 * 1024;
+const mb = (bytes) => (bytes / MB).toLocaleString("es-PE", { maximumFractionDigits: 1 });
+
+/** Parte 10: aviso al pasar de 70 % y de 90 % del límite del plan. */
+function nivelUso(pct) {
+  if (pct >= 90) return ["is-bad", "Pasó el 90 % del límite. La salida es pasar Supabase al plan de pago; lo decide el equipo."];
+  if (pct >= 70) return ["is-warn", "Pasó el 70 % del límite. Conviene revisar qué cooperativa ocupa más."];
+  return ["is-info", null];
+}
+
+function kpiUso(etiqueta, ic, usado, limiteMb, pct, detalle) {
+  const [clase, aviso] = nivelUso(pct);
+  return h(
+    "div",
+    { class: `kpi ${clase}` },
+    h("span", { class: "kpi-ic" }, icono(ic)),
+    h("span", { class: "kpi-l" }, etiqueta),
+    h("span", { class: "kpi-v" }, `${mb(usado)} MB`, h("small", {}, `de ${limiteMb.toLocaleString("es-PE")} MB · ${pct.toLocaleString("es-PE")} %`)),
+    h("span", { class: "kpi-s" }, aviso ?? detalle),
+  );
+}
+
+/** Parte 10: espacio usado en archivos y en base de datos, y análisis en cola. */
+async function panelUso() {
+  let u;
+  try {
+    u = await llamarApi("/admin/uso", { sinConsulta: true });
+  } catch {
+    return null;
+  }
+  const cola = u.analisis_en_cola;
+  return [
+    h(
+      "section",
+      { class: "kpis", "aria-label": "Espacio usado" },
+      kpiUso("Archivos (Supabase Storage)", "file", u.storage_bytes, u.limite_storage_mb, u.storage_pct, `${u.archivos.toLocaleString("es-PE")} archivos, también los anulados.`),
+      kpiUso("Base de datos", "layers", u.db_bytes, u.limite_db_mb, u.db_pct, "Tamaño total de la base, con sus índices."),
+      h(
+        "div",
+        { class: `kpi ${cola ? "is-info" : "is-ok"}` },
+        h("span", { class: "kpi-ic" }, icono("clock")),
+        h("span", { class: "kpi-l" }, "Análisis de cobertura en cola"),
+        h("span", { class: "kpi-v" }, String(cola)),
+        h("span", { class: "kpi-s" }, "La cola atiende una consulta a la vez: muchas parcelas el mismo día pueden tardar más de una hora."),
+      ),
+    ),
+    u.por_cooperativa.length > 0 &&
+      h(
+        "section",
+        { class: "panel" },
+        h(
+          "details",
+          { class: "historial-analisis" },
+          h("summary", {}, "Espacio por cooperativa"),
+          h("p", { class: "panel-sub" }, "La base de datos por cooperativa es aproximada: suma sus filas, sin índices. Sirve para comparar, no para sumar."),
+          h(
+            "div",
+            { class: "tabla-caja" },
+            h(
+              "table",
+              { class: "tabla" },
+              h("thead", {}, h("tr", {}, h("th", {}, "Cooperativa"), h("th", {}, "Archivos"), h("th", {}, "Espacio en archivos"), h("th", { class: "ocultar-sm" }, "Base de datos (aprox.)"))),
+              h(
+                "tbody",
+                {},
+                u.por_cooperativa.map((c) =>
+                  h(
+                    "tr",
+                    {},
+                    h("td", {}, c.cooperativa, c.es_demo && h("span", { class: "sec" }, "Demostración")),
+                    h("td", { class: "mono" }, c.archivos.toLocaleString("es-PE")),
+                    h("td", { class: "mono" }, `${mb(c.storage_bytes)} MB`),
+                    h("td", { class: "mono ocultar-sm" }, `${mb(c.db_bytes_aprox)} MB`),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+  ];
+}
+
 export default async function cooperativas({ navegar }) {
   const lista = h("div", {}, cargando());
   let busqueda = "";
@@ -255,7 +342,7 @@ export default async function cooperativas({ navegar }) {
     cargar();
   });
   cargar();
-  const consumo = await tarjetaConsumo();
+  const [consumo, uso] = await Promise.all([tarjetaConsumo(), panelUso()]);
 
   return {
     titulo: "Cooperativas",
@@ -265,6 +352,7 @@ export default async function cooperativas({ navegar }) {
     secciones: seccionesPlataforma(),
     accion: h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirAlta(navegar) }, icono("mas"), "Nueva cooperativa"),
     contenido: [
+      uso,
       consumo,
       h(
         "section",

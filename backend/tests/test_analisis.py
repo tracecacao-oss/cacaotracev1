@@ -103,6 +103,12 @@ def test_crear_parcela_solicita_un_analisis_por_fuente(api, sesion, operador, pr
     assert auditoria.usuario_id is None  # lo lanzó el sistema
 
 
+def test_la_interfaz_sabe_cuantos_analisis_hay_en_cola(api, sesion, operador, productor):
+    antes = api.como(operador).get("/analisis/cola").json()["en_cola"]
+    _parcela(api, sesion, operador, productor)
+    assert api.como(operador).get("/analisis/cola").json()["en_cola"] == antes + 2  # una consulta por fuente
+
+
 def test_sin_clave_de_whisp(api, sesion, operador, productor, fuentes):
     fuentes["whisp"]._clave = None
     parcela = _parcela(api, sesion, operador, productor)

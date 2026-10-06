@@ -31,6 +31,8 @@ class MeRespuesta(BaseModel):
     productor_id: uuid.UUID | None
     debe_cambiar_clave: bool
     consentimiento_pendiente: bool
+    # Parte 10: la interfaz muestra la franja "Demostración: datos ficticios".
+    es_demo: bool = False
 
 
 class CambioClave(Entrada):

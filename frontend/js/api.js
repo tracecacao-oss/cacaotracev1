@@ -4,6 +4,7 @@
 // muestra "Conectando con el servidor" y se reintenta hasta 90 segundos.
 
 import { API_URL } from "../config.js";
+import { comprimirFormulario } from "./compresion.js";
 import { enConsulta, estado } from "./estado.js";
 import { cerrarSesion, tokenActual } from "./sesion.js";
 
@@ -90,7 +91,8 @@ export async function llamarApi(ruta, opciones = {}) {
   const pedido = {
     method: metodo,
     headers: cabeceras,
-    body: formulario ?? (cuerpo === undefined ? undefined : JSON.stringify(cuerpo)),
+    // Las fotos se comprimen una vez, antes del primer intento (Parte 10).
+    body: formulario ? await comprimirFormulario(formulario) : cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
   };
 
   const inicio = Date.now();

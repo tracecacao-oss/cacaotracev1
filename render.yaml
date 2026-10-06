@@ -59,6 +59,11 @@ services:
         value: "150"
       - key: IMAGENES_CUOTA_MENSUAL_PU
         value: "30000"
+      # Parte 10: límites del plan gratuito de Supabase para el control de espacio.
+      - key: LIMITE_STORAGE_MB
+        value: "1024"
+      - key: LIMITE_DB_MB
+        value: "500"
       # Parte 5: el código QR del DOP lleva a la verificación pública de la interfaz.
       - key: URL_INTERFAZ
         value: https://cacaotrace.pages.dev

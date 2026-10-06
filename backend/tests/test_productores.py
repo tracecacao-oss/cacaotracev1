@@ -115,6 +115,19 @@ def test_productor_de_cooperativa_demo_nace_demo(api, sesion):
     assert api.como(operador).post("/productores", json=_nuevo()).json()["es_demo"] is True
 
 
+def test_un_dni_ficticio_no_choca_con_uno_real(api, sesion, coop, operador):
+    """Parte 10: el DNI es único por dni y es_demo."""
+    demo = factorias.cooperativa(sesion, es_demo=True)
+    factorias.productor(sesion, demo, dni="90000001")
+    respuesta = api.como(operador).post("/productores", json=_nuevo())
+    assert respuesta.status_code == 201 and respuesta.json()["es_demo"] is False
+    factorias.productor(sesion, coop, dni="90000002")
+    operador_demo = factorias.perfil(sesion, "operador", demo)
+    respuesta = api.como(operador_demo).post("/productores", json=_nuevo(dni="90000002"))
+    assert respuesta.status_code == 201 and respuesta.json()["es_demo"] is True
+    assert sesion.query(Productor).filter(Productor.dni.in_(["90000001", "90000002"])).count() == 4
+
+
 def test_buscar_por_dni_o_nombre(api, sesion, coop, operador):
     factorias.productor(sesion, coop, dni="91112222", nombres="Demo Buscado")
     factorias.productor(sesion, coop, dni="93334444", nombres="Demo Otro")

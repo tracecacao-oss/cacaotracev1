@@ -50,6 +50,8 @@ export default async function verificar({ parametros: [tipo, codigo] }) {
         icono(vigente ? "check" : "alert"),
         h("div", {}, h("b", {}, `${t.sigla} ${vigente ? "vigente" : "anulado"}`), h("span", {}, vigente ? t.vigente : t.anulado)),
       ),
+      // Parte 10: un documento de la cooperativa de demostración lo dice antes que cualquier dato.
+      doc.es_demo && h("p", { class: "alerta warn" }, h("b", {}, "Documento de demostración. "), "Sus datos son ficticios y no respaldan ningún cacao real."),
       rejilla([
         { etiqueta: "Código", valor: doc.codigo, mono: true },
         { etiqueta: "Cooperativa", valor: doc.cooperativa },

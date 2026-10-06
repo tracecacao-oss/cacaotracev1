@@ -148,3 +148,59 @@ def test_reiniciar_deja_todo_vacio_y_conserva_superadmins(
     with pytest.raises(DBAPIError), sesion.begin_nested():
         sesion.execute(text("UPDATE auditoria SET accion = 'otra'"))
     assert "Listo. El sistema está vacío." in capsys.readouterr().out
+
+
+# --- respaldar_storage.py ---
+
+RESPALDAR = Path(__file__).resolve().parents[1] / "scripts" / "respaldar_storage.py"
+
+
+@pytest.fixture
+def respaldar(storage_falso, monkeypatch):
+    spec = importlib.util.spec_from_file_location("respaldar_storage", RESPALDAR)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    monkeypatch.setattr(modulo, "crear_storage", lambda settings: storage_falso)
+    return modulo
+
+
+def test_respaldar_baja_el_bucket_y_luego_solo_lo_que_falta(
+    respaldar, storage_falso, tmp_path, capsys, monkeypatch
+):
+    storage_falso.archivos = {"coop/parcela/a/1.pdf": b"%PDF-uno", "coop/imagen/b/2.png": b"\x89PNG-dos"}
+    destino = tmp_path / "respaldo"
+    monkeypatch.setattr("sys.argv", ["x", "--destino", str(destino)])
+    assert respaldar.main() == 0
+    assert (destino / "coop/parcela/a/1.pdf").read_bytes() == b"%PDF-uno"
+    assert "Archivos bajados: 2" in capsys.readouterr().out
+
+    storage_falso.archivos["coop/dop/c/3.pdf"] = b"%PDF-tres"
+    descargas = []
+    original = storage_falso.descargar
+    monkeypatch.setattr(storage_falso, "descargar", lambda ruta: descargas.append(ruta) or original(ruta))
+    assert respaldar.main() == 0
+    assert descargas == ["coop/dop/c/3.pdf"]
+    assert "Ya estaban: 2" in capsys.readouterr().out
+    assert not list(destino.rglob("*.parcial"))
+
+
+def test_respaldar_avisa_lo_que_fallo_y_no_escribe_en_el_repositorio(
+    respaldar, storage_falso, tmp_path, capsys, monkeypatch
+):
+    from app.storage import ErrorStorage
+
+    storage_falso.archivos = {"coop/a.pdf": b"%PDF", "../fuera.pdf": b"%PDF"}
+
+    def falla(ruta):
+        raise ErrorStorage("sin red")
+
+    monkeypatch.setattr(storage_falso, "descargar", falla)
+    monkeypatch.setattr("sys.argv", ["x", "--destino", str(tmp_path / "respaldo")])
+    assert respaldar.main() == 1
+    salida = capsys.readouterr().out
+    assert "No se pudieron bajar 2 archivos" in salida and "../fuera.pdf" in salida
+    assert not (tmp_path / "fuera.pdf").exists()
+
+    monkeypatch.setattr("sys.argv", ["x", "--destino", str(RESPALDAR.parents[2] / "respaldo")])
+    assert respaldar.main() == 2
+    assert not (RESPALDAR.parents[2] / "respaldo").exists()

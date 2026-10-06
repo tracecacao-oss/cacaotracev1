@@ -20,8 +20,9 @@ from app.services.hallazgos.parcela import texto_fuente
 
 
 class Pdf(Documento):
-    def __init__(self, codigo: str, idioma: str):
-        super().__init__(codigo, pie=textos.obtener(idioma, "pdf.pagina"))
+    def __init__(self, codigo: str, idioma: str, demo: bool = False):
+        marca = textos.obtener(idioma, "pdf.demo") if demo else None
+        super().__init__(codigo, pie=textos.obtener(idioma, "pdf.pagina"), marca_agua=marca)
         self.idioma = idioma
 
     # ---------- Textos ----------
@@ -628,7 +629,7 @@ def documento(
     imagenes: dict[str, dict[str, bytes]] | None = None,
 ) -> Pdf:
     c = contenido
-    pdf = Pdf(c["identificacion"]["codigo"], idioma)
+    pdf = Pdf(c["identificacion"]["codigo"], idioma, demo=bool(c.get("es_demo")))
     pdf.set_title(f"{c['identificacion']['codigo']} ({idioma})")
     pdf.add_page()
     _encabezado(pdf, c, huella, url)

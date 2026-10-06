@@ -539,6 +539,23 @@ def test_el_pdf_no_usa_frases_prohibidas(api, sesion, cancha, operador, producto
     assert not PROHIBIDAS.search(escrito.replace(LEYENDA, ""))
 
 
+def test_el_pdf_de_demostracion_lleva_la_marca(api, sesion, cancha, operador, productor, parcela):
+    from app.pdf import dop as pdf_dop
+    from app.pdf.base import TEXTO_DEMO
+    from app.services.dops import url_verificacion
+
+    _, dop = _validada(api, sesion, operador, productor, parcela, cancha)
+    assert dop.contenido["es_demo"] is False
+    url = url_verificacion(dop.codigo)
+    real = pdf_dop.documento(dop.contenido, dop.contenido_sha256, url)
+    real.output()
+    assert TEXTO_DEMO not in real.textos
+    demo = pdf_dop.documento(dop.contenido | {"es_demo": True}, dop.contenido_sha256, url)
+    demo.output()
+    # Una vez por página (pasa dos veces por normalize_text: ancho y texto), más el aviso del encabezado.
+    assert demo.textos.count(TEXTO_DEMO) == 2 * demo.pages_count + 1
+
+
 # ---------- Adenda 3: documento de entrega ----------
 
 
@@ -735,6 +752,7 @@ def test_verificacion_publica(api, sesion, cancha, operador, productor, parcela,
         "emitido_en": respuesta.json()["emitido_en"],
         "contenido_sha256": dop.contenido_sha256,
         "cooperativa": coop.razon_social,
+        "es_demo": False,
     }
     assert api.get("/publico/dops/DOP-NOEXISTE-2026-000001").status_code == 404
 
