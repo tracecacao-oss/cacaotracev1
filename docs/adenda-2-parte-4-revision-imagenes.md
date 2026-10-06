@@ -255,7 +255,7 @@ El informe lleva además este texto fijo en "Lo que no pudimos verificar": "La r
 - [ ] Confirmar que, si las imágenes no permiten distinguir, la parcela queda pendiente sin otra vía.
 - [ ] Confirmar el tope de 5 % de nubes sobre la parcela.
 - [ ] Confirmar con Esri si se puede incluir una imagen de Wayback en un PDF.
-- [ ] Confirmar la consecuencia de la regla 8.1: la revisión vale solo si es posterior al último análisis, y los análisis se renuevan solos cada 180 días. Al renovarse, una parcela habilitada con la alerta pasa a `observada` hasta que el administrador registre otra revisión de imágenes.
+- [x] La revisión no vence con un análisis nuevo (decisión 5 de la sección 17).
 
 ## 17. Registro de la construcción (2026-10-05)
 
@@ -265,6 +265,7 @@ El informe lleva además este texto fijo en "Lo que no pudimos verificar": "La r
 2. **"Buscar más imágenes"** agrega hasta 3 escenas utilizables más, las más cercanas antes del 31 de diciembre de 2020 que aún no estén en el juego (dentro de 2020 y 2019), para ver mejor si había bosque en la fecha de corte, y vuelve a buscar la escena utilizable más reciente.
 3. **Cuota:** `IMAGENES_CUOTA_MENSUAL_PU` = 30000, la cuota que informó el equipo para su cuenta. La documentación pública de Copernicus indica 10,000 al mes para usuarios generales.
 4. **Imagen externa:** se guarda con `fuente` = `externa` y `papel` = `externa`, valores que la tabla de la sección 6.1 no listaba.
+5. **Una parcela revisada queda así.** La revisión de imágenes no vence cuando llega un análisis nuevo, tampoco con la renovación automática cada 180 días. En la regla 8.1 se quita "posterior al último análisis": la revisión deja de estar vigente solo si cambia la geometría de la parcela o si se anula.
 
 ### Comprobación de viabilidad (`backend/scripts/check_imagenes.py`)
 

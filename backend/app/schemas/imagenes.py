@@ -72,5 +72,5 @@ class RevisionSalida(BaseModel):
     anulada_en: datetime | None
     anulada_por_nombre: str | None
     motivo_anulacion: str | None
-    # Vigente: no anulada, de la geometría actual y posterior al último análisis.
+    # Vigente: no anulada y de la geometría actual. Un análisis nuevo no la vence.
     vigente: bool

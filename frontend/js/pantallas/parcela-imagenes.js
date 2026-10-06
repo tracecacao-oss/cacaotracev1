@@ -407,7 +407,7 @@ function historial(revisiones, ctx, puedo) {
         h("p", {}, r.descripcion),
         h("p", { class: "sec" }, `Revisó ${r.revisada_por_nombre ?? "—"} · ${r.imagenes.length === 1 ? "1 imagen" : `${r.imagenes.length} imágenes`}`),
         r.anulada_en && h("p", { class: "sec" }, `Anulada el ${fecha(r.anulada_en)}${r.anulada_por_nombre ? ` por ${r.anulada_por_nombre}` : ""}: ${r.motivo_anulacion}`),
-        !r.anulada_en && !r.vigente && h("p", { class: "sec" }, "Dejó de estar vigente porque cambió la geometría o llegó un análisis posterior."),
+        !r.anulada_en && !r.vigente && h("p", { class: "sec" }, "Dejó de estar vigente porque cambió la geometría de la parcela."),
         puedo.admin && !r.anulada_en && h("div", { class: "fila-acciones" }, h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => abrirAnulacion(r, ctx) }, "Anular")),
       ),
     ),

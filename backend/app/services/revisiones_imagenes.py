@@ -2,8 +2,8 @@
 
 Una revisión registra lo que una persona con nombre observó en imágenes identificadas; no es un veredicto
 del sistema. La registra solo un administrador. No se edita: si está mal, se anula con motivo y se registra
-otra (un trigger lo impide en la base). Deja de estar vigente si cambia la geometría de la parcela, si se
-anula o si llega un análisis posterior a ella.
+otra (un trigger lo impide en la base). Deja de estar vigente solo si cambia la geometría de la parcela o
+si se anula. Un análisis nuevo no la vence: decisión del equipo del 2026-10-05 (adenda 2, sección 17).
 """
 
 import uuid
@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.contexto import Contexto
 from app.errores import error_api, no_encontrado
 from app.fechas import ahora
-from app.models import AnalisisCobertura, Parcela, Perfil, RevisionImagenes
+from app.models import Parcela, Perfil, RevisionImagenes
 from app.schemas.imagenes import RevisionNueva, RevisionSalida
 from app.services import imagenes as servicio_imagenes
 from app.services.auditoria import registrar_auditoria
@@ -46,29 +46,13 @@ def de_parcelas(sesion: Session, parcela_ids: list[uuid.UUID]) -> dict[uuid.UUID
     return resultado
 
 
-def es_vigente(revision: RevisionImagenes, huella_actual: str, ultimo_analisis) -> bool:
-    return (
-        revision.anulada_en is None
-        and revision.geometria_sha256 == huella_actual
-        and (ultimo_analisis is None or revision.revisada_en > ultimo_analisis)
-    )
+def es_vigente(revision: RevisionImagenes, huella_actual: str) -> bool:
+    return revision.anulada_en is None and revision.geometria_sha256 == huella_actual
 
 
-def ultimo_analisis(analisis: list[AnalisisCobertura], huella_actual: str):
-    fechas = [
-        a.completado_en
-        for a in analisis
-        if a.estado == "completado" and a.geometria_sha256 == huella_actual and a.completado_en
-    ]
-    return max(fechas) if fechas else None
-
-
-def vigente(
-    revisiones: list[RevisionImagenes], huella_actual: str, analisis: list[AnalisisCobertura]
-) -> RevisionImagenes | None:
-    """La revisión vigente más reciente: no anulada, de la geometría actual y posterior al último análisis."""
-    ultimo = ultimo_analisis(analisis, huella_actual)
-    return next((r for r in revisiones if es_vigente(r, huella_actual, ultimo)), None)
+def vigente(revisiones: list[RevisionImagenes], huella_actual: str) -> RevisionImagenes | None:
+    """La revisión vigente más reciente: no anulada y de la geometría actual."""
+    return next((r for r in revisiones if es_vigente(r, huella_actual)), None)
 
 
 def resumen(revision: RevisionImagenes | None, nombre: str | None) -> dict | None:
@@ -103,11 +87,8 @@ def nombre_de(sesion: Session, revision: RevisionImagenes | None) -> str | None:
 
 
 def listar(sesion: Session, parcela: Parcela) -> list[RevisionSalida]:
-    from app.services import analisis
-
     huella_actual = servicio_imagenes.huella(parcela)
     revisiones = de_parcelas(sesion, [parcela.id])[parcela.id]
-    ultimo = ultimo_analisis(analisis.de_parcelas(sesion, [parcela.id])[parcela.id], huella_actual)
     nombres = _nombres(sesion, [r.revisada_por for r in revisiones] + [r.anulada_por for r in revisiones])
     return [
         RevisionSalida(
@@ -122,7 +103,7 @@ def listar(sesion: Session, parcela: Parcela) -> list[RevisionSalida]:
             anulada_en=r.anulada_en,
             anulada_por_nombre=nombres.get(r.anulada_por),
             motivo_anulacion=r.motivo_anulacion,
-            vigente=es_vigente(r, huella_actual, ultimo),
+            vigente=es_vigente(r, huella_actual),
         )
         for r in revisiones
     ]

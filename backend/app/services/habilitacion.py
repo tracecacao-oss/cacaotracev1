@@ -120,8 +120,9 @@ def _requisitos(
             f"{n} {'conjunto de datos que registra' if n == 1 else 'conjuntos de datos que registran'} "
             "bosque en 2020"
         )
-    # Adenda 2 (8.1): la atiende una revisión de imágenes vigente, posterior al último análisis, en la
-    # que ninguna de las dos observaciones es "no se distingue". Una visita de campo ya no la atiende.
+    # Adenda 2 (8.1): la atiende una revisión de imágenes vigente (no anulada y de la geometría actual) en
+    # la que ninguna de las dos observaciones es "no se distingue". Un análisis nuevo no la vence (decisión
+    # del equipo del 2026-10-05). Una visita de campo ya no la atiende.
     if not revision:
         r.append(Requisito(codigo="revision_atendida", cumple=True, detalle="Ninguna fuente pide revisión."))
     else:
@@ -130,7 +131,7 @@ def _requisitos(
             cumple = False
             detalle = (
                 f"Piden revisión: {motivos}. Falta que el administrador revise las imágenes de la parcela "
-                "(pestaña Imágenes) después del último análisis."
+                "(pestaña Imágenes)."
             )
         elif "no_se_distingue" in (revision_imagenes.observacion_2020, revision_imagenes.observacion_cambio):
             cumple = False
@@ -241,9 +242,7 @@ def evaluar(
     for parcela in parcelas:
         estado_analisis = servicio_analisis.resumen(fuentes, parcela, todos_analisis[parcela.id])
         revision_vigente = servicio_revisiones.vigente(
-            todas_revisiones[parcela.id],
-            servicio_analisis.huella_parcela(parcela),
-            todos_analisis[parcela.id],
+            todas_revisiones[parcela.id], servicio_analisis.huella_parcela(parcela)
         )
         exp = expedientes[parcela.id]
         productor = productores[parcela.productor_id]

@@ -317,9 +317,7 @@ def _bloque_imagenes(contexto: Contexto, tanda: Tanda) -> tuple[dict[str, Any] |
     sesion = contexto.sesion
     parcela = sesion.get(Parcela, tanda.parcela_id)
     revision = revisiones_imagenes.vigente(
-        revisiones_imagenes.de_parcelas(sesion, [parcela.id])[parcela.id],
-        analisis.huella_parcela(parcela),
-        analisis.de_parcelas(sesion, [parcela.id])[parcela.id],
+        revisiones_imagenes.de_parcelas(sesion, [parcela.id])[parcela.id], analisis.huella_parcela(parcela)
     )
     resumen = revisiones_imagenes.resumen(revision, revisiones_imagenes.nombre_de(sesion, revision))
     return imagenes.para_dop(sesion, parcela, resumen)

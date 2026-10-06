@@ -453,11 +453,13 @@ def test_cambia_la_geometria_despues_de_la_revision(api, sesion, admin, parcela,
     assert servicio.asegurar_juego(sesion, parcela) is True
 
 
-def test_un_analisis_posterior_pide_otra_revision(api, sesion, admin, parcela):
+def test_un_analisis_posterior_no_vence_la_revision(api, sesion, admin, parcela):
+    """Decisión del equipo del 2026-10-05: la parcela revisada queda así aunque se renueve el análisis."""
     revision(sesion, parcela, admin, revisada_en=ahora() - timedelta(hours=2))
     assert _requisitos(api.como(admin), parcela)["revision_atendida"] is True
     _con_alerta(sesion, parcela, hace=timedelta(hours=1))
-    assert _requisitos(api, parcela)["revision_atendida"] is False
+    assert _requisitos(api, parcela)["revision_atendida"] is True
+    assert api.get(f"/parcelas/{parcela.id}/revisiones-imagenes").json()[0]["vigente"] is True
 
 
 def test_habilitar_con_cambio_visible_exige_nota(api, sesion, operador, admin, productor, parcela):
