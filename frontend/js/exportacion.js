@@ -77,7 +77,7 @@ function valorIndicador(i) {
   }
 }
 
-/** Cifras con su nombre y una frase que explica qué miden, sin colores de aprobado o desaprobado. */
+/** Cifras con su nombre y una frase que explica qué miden, sin colores que califiquen el lote. */
 export function tarjetasIndicadores(indicadores) {
   return h(
     "div",
