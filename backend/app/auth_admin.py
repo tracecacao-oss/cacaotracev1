@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 DURACION_BLOQUEO = "876000h"
 # Errores con la forma {"code": "email_exists", "message": ...}.
 VERSION_API = "2024-01-01"
+POR_PAGINA = 200
 
 
 class ErrorAuthAdmin(Exception):
@@ -91,6 +92,20 @@ class ClienteAuthAdmin:
             raise CorreoEnUso(correo)
         self._comprobar(respuesta, "crear usuario")
         return uuid.UUID(respuesta.json()["id"])
+
+    def listar_usuarios(self) -> list[dict]:
+        """Todos los usuarios, como {"id", "email"}. GET /admin/users pagina con `page` y `per_page` y
+        devuelve {"users": [...]} (supabase/auth, openapi.yaml)."""
+        usuarios: list[dict] = []
+        pagina = 1
+        while True:
+            respuesta = self._pedir("GET", "/admin/users", params={"page": pagina, "per_page": POR_PAGINA})
+            self._comprobar(respuesta, "listar usuarios")
+            lote = respuesta.json().get("users") or []
+            usuarios += [{"id": uuid.UUID(u["id"]), "email": u.get("email")} for u in lote]
+            if len(lote) < POR_PAGINA:
+                return usuarios
+            pagina += 1
 
     def borrar_usuario(self, usuario_id: uuid.UUID) -> None:
         respuesta = self._pedir("DELETE", f"/admin/users/{usuario_id}")

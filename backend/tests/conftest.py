@@ -136,6 +136,10 @@ class AuthFalso(ClienteAuthAdmin):
         self._registrar("verificar_clave", correo)
         return any(u["correo"] == correo and u.get("clave") == clave for u in self.usuarios.values())
 
+    def listar_usuarios(self):
+        self._registrar("listar")
+        return [{"id": usuario_id, "email": u.get("correo")} for usuario_id, u in self.usuarios.items()]
+
 
 @pytest.fixture
 def auth_falso() -> AuthFalso:
@@ -164,6 +168,13 @@ class StorageFalso(ClienteStorage):
     def borrar(self, ruta):
         self.borrados.append(ruta)
         self.archivos.pop(ruta, None)
+
+    def borrar_varios(self, rutas):
+        for ruta in rutas:
+            self.borrar(ruta)
+
+    def listar(self, prefijo=""):
+        return sorted((r, len(c)) for r, c in self.archivos.items() if r.startswith(prefijo))
 
 
 @pytest.fixture

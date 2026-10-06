@@ -129,3 +129,29 @@ def test_error_de_storage_no_expone_la_clave():
     with pytest.raises(ErrorStorage) as error:
         _cliente(StorageSimulado(estado=403)).subir("a/b.pdf", PDF, "application/pdf")
     assert "sb_secret" not in str(error.value)
+
+
+def test_listar_recorre_carpetas_y_borra_en_lote():
+    """POST /object/list devuelve nombres relativos al prefijo; las carpetas vienen sin id."""
+    arbol = {
+        "": [{"name": "coop", "id": None}],
+        "coop": [{"name": "dop", "id": None}, {"name": "suelto.pdf", "id": "1", "metadata": {"size": 10}}],
+        "coop/dop": [{"name": "a.pdf", "id": "2", "metadata": {"size": 20}}],
+    }
+    borrados = []
+
+    def responder(request: httpx.Request) -> httpx.Response:
+        assert request.headers["apikey"] == "sb_secret_prueba"
+        if request.url.path == "/storage/v1/object/list/documentos":
+            cuerpo = json.loads(request.content)
+            return httpx.Response(200, json=arbol[cuerpo["prefix"]] if cuerpo["offset"] == 0 else [])
+        assert request.method == "DELETE" and request.url.path == "/storage/v1/object/documentos"
+        borrados.extend(json.loads(request.content)["prefixes"])
+        return httpx.Response(200, json=[])
+
+    http = httpx.Client(transport=httpx.MockTransport(responder))
+    cliente = ClienteStorage("https://x.supabase.co", "sb_secret_prueba", "documentos", http)
+    archivos = cliente.listar()
+    assert archivos == [("coop/dop/a.pdf", 20), ("coop/suelto.pdf", 10)]
+    cliente.borrar_varios([ruta for ruta, _ in archivos])
+    assert borrados == ["coop/dop/a.pdf", "coop/suelto.pdf"]

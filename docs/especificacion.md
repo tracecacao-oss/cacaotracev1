@@ -4062,6 +4062,13 @@ El escenario se escribe una sola vez, en `backend/app/demo/escenario.py`, y se u
 
 La cooperativa Prueba no se reinicia ni se borra, porque el sistema no borra documentos sellados ni auditoría. Si hace falta un escenario limpio, la siembra acepta `--codigo PRB2` y crea otra cooperativa de demostración junto a la primera.
 
+**Decisión del equipo del 2026-10-06:** como hasta ese día todos los datos de producción eran de prueba, el equipo pidió `backend/scripts/reiniciar_datos.py`, que deja el sistema completamente vacío. Lo corre una persona del equipo con las variables reales. Borra:
+- todas las tablas, incluidos los documentos sellados y la auditoría;
+- los archivos del bucket `documentos`;
+- los usuarios de Supabase Auth.
+
+Conserva solo a los superadministradores, con su perfil y su contraseña, y la estructura de la base con su RLS y sus triggers. Los correlativos vuelven a 1. Antes de borrar muestra lo que va a eliminar y pide escribir `VACIAR`; con `--simular` solo lo muestra. No siembra nada. Una vez que haya datos reales, no se vuelve a correr.
+
 ## Piloto con datos reales
 
 Antes de registrar al primer productor real deben estar resueltas cuatro cosas: el consentimiento, las copias de respaldo, el control de espacio y las cuentas con que el equipo cargará datos.
