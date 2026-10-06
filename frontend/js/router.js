@@ -48,6 +48,7 @@ const RUTAS = [
   { patron: /^#\/cooperativa\/configuracion$/, roles: PERSONAL, cargar: () => import("./pantallas/configuracion.js") },
   { patron: /^#\/cooperativa\/lugares$/, roles: PERSONAL, cargar: () => import("./pantallas/lugares.js") },
   { patron: /^#\/cooperativa\/plantilla-proceso$/, roles: PERSONAL, cargar: () => import("./pantallas/plantilla-proceso.js") },
+  { patron: /^#\/cooperativa\/legal$/, roles: PERSONAL, cargar: () => import("./pantallas/cooperativa-legal.js") },
   { patron: /^#\/plataforma(\/cooperativas)?$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/cooperativas.js") },
   { patron: /^#\/plataforma\/superposiciones$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/superposiciones-plataforma.js") },
   { patron: /^#\/plataforma\/cooperativas\/([0-9a-f-]{36})$/, roles: ["superadmin", "consulta"], cargar: () => import("./pantallas/cooperativa-detalle.js") },

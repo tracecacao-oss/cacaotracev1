@@ -46,7 +46,7 @@ function tabla(finales) {
               h("td", { class: "num mono" }, kilos(f.saldo_kg)),
               h("td", { class: "ocultar-sm" }, fecha(f.ingreso_stock_en, { hora: true })),
               h("td", { class: "ocultar-sm" }, f.lugar_nombre),
-              h("td", {}, insignia(ESTADOS_TANDA_FINAL[f.estado] ?? ["", f.estado])),
+              h("td", {}, insignia(ESTADOS_TANDA_FINAL[f.estado] ?? ["", f.estado]), f.retenida && h("span", { class: "badge bad", title: "Tiene cacao de una parcela excluida: no se puede asignar a un lote." }, h("span", { class: "dot" }), "Retenida")),
             ),
           ),
         ),

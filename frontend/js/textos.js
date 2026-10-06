@@ -251,6 +251,19 @@ export const TIPOS_ORGANIZACION = [
 ];
 TIPOS_DOCUMENTO.dop_pdf = "PDF del DOP";
 TIPOS_DOCUMENTO.dpp_pdf = "PDF del DPP";
+// Parte 8: expediente legal de la cooperativa y documentos de embarque del lote.
+Object.assign(TIPOS_DOCUMENTO, {
+  rnca: "Registro Nacional de Cooperativas Agrarias",
+  partida_sunarp: "Partida registral en SUNARP",
+  ficha_ruc: "Ficha RUC",
+  vigencia_poderes: "Vigencia de poderes",
+  ruc_comercio_exterior: "Sustento del RUC para comercio exterior",
+  registro_aduanas: "Registro de exportador en SUNAT Aduanas",
+  factura_comercial: "Factura comercial",
+  packing_list: "Lista de empaque",
+  certificado_origen: "Certificado de origen",
+  certificado_fitosanitario: "Certificado fitosanitario",
+});
 
 /** Pesos siempre con dos decimales y su unidad. */
 export function kilos(valor) {

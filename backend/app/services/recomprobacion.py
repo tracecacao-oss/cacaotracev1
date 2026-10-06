@@ -129,7 +129,11 @@ def comprobar(sesion: Session, lote: Lote) -> list[dict[str, Any]]:
             no_habilitadas.append(
                 Caso(
                     texto=f"La parcela {p.codigo} ({p.nombre}) está {p.habilitacion_estado}",
-                    detalle=("Requisito que no cumple: " + "; ".join(incumplidos)) if incumplidos else None,
+                    detalle=(
+                        "Requisito que no cumple: " + "; ".join(d.rstrip(".") for d in incumplidos) + "."
+                    )
+                    if incumplidos
+                    else None,
                     tipo="parcela",
                     id=str(p.id),
                     codigo=p.codigo,
