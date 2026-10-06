@@ -1,5 +1,5 @@
-"""Endpoints públicos, sin token: la verificación de un DOP (Parte 5) y de un DPP (Parte 6). Límite de 30
-consultas por minuto por dirección IP."""
+"""Endpoints públicos, sin token: la verificación de un DOP (Parte 5), de un DPP (Parte 6) y de un DEX
+(Parte 9). Límite de 30 consultas por minuto por dirección IP."""
 
 from typing import Annotated
 
@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.db import obtener_sesion
 from app.limite import limite_publico
+from app.schemas.dex import DexPublico
 from app.schemas.proceso import DppPublico
 from app.schemas.recepcion import DopPublico
-from app.services import dops, dpps
+from app.services import dex, dops, dpps
 
 router = APIRouter(prefix="/publico", tags=["publico"], dependencies=[Depends(limite_publico)])
 
@@ -23,3 +24,8 @@ def verificar_dop(codigo: str, sesion: Annotated[Session, Depends(obtener_sesion
 @router.get("/dpps/{codigo}", response_model=DppPublico)
 def verificar_dpp(codigo: str, sesion: Annotated[Session, Depends(obtener_sesion)]):
     return dpps.publico(sesion, codigo)
+
+
+@router.get("/dex/{codigo}", response_model=DexPublico)
+def verificar_dex(codigo: str, sesion: Annotated[Session, Depends(obtener_sesion)]):
+    return dex.publico(sesion, codigo)

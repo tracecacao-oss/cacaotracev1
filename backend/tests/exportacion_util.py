@@ -23,8 +23,10 @@ def tanda_final(
     peso: str,
     ingreso: datetime | None = None,
     manejo: str = "mezclado",
+    contenido: dict | None = None,
 ) -> TandaFinal:
-    """Una corrida consolidada con esas tandas (proporción por su peso de entrada) y su tanda final."""
+    """Una corrida consolidada con esas tandas (proporción por su peso de entrada) y su tanda final. Con
+    `contenido`, el DPP sella además esos bloques (rendimiento, alertas, etapas)."""
     n = next(_contador)
     ingreso = ingreso or ahora()
     corrida = Corrida(
@@ -58,7 +60,7 @@ def tanda_final(
     )
     sesion.add(final)
     sesion.flush()
-    contenido = {"tanda_final": final.codigo}
+    contenido = {"tanda_final": final.codigo} | (contenido or {})
     sesion.add(
         Dpp(
             cooperativa_id=operador.cooperativa_id,

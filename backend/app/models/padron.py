@@ -55,6 +55,15 @@ TIPOS_DOCUMENTO = (
     # Parte 8: expediente legal de la cooperativa y documentos de embarque del lote
     *documentos_legales.CODIGOS_COOPERATIVA,
     *documentos_embarque.CODIGOS,
+    # Parte 9: certificaciones de la cooperativa y archivos que genera el DEX
+    "certificacion",
+    "dex_pdf_es",
+    "dex_pdf_en",
+    "dex_geojson",
+    "dex_anexo_ii",
+    "dex_hallazgos",
+    "dex_leeme",
+    "dex_paquete",
 )
 ENTIDADES_DOCUMENTO = (
     "productor",
@@ -67,6 +76,8 @@ ENTIDADES_DOCUMENTO = (
     "dpp",
     "cooperativa",
     "lote",
+    "certificacion",
+    "dex",
 )
 ESTADOS_HABILITACION = ("pendiente", "habilitada", "observada", "excluida")
 ESTADOS_MIDAGRI = ("no_registrada", "sin_observacion", "en_revision", "validado")

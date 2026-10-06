@@ -45,8 +45,10 @@ def tanda_validada(
     peso: str = "1000.00",
     producto: str = "baba",
     recibida: datetime | None = None,
+    contenido: dict | None = None,
 ) -> Tanda:
-    """Una tanda validada con su DOP vigente, sin pasar por la validación (el PDF no hace falta aquí)."""
+    """Una tanda validada con su DOP vigente, sin pasar por la validación (el PDF no hace falta aquí). Con
+    `contenido`, el DOP sella además esos bloques (alertas, nota, documento de entrega)."""
     n = next(_contador)
     recibida = recibida or ahora() - timedelta(days=5)
     tanda = Tanda(
@@ -66,7 +68,7 @@ def tanda_validada(
     )
     sesion.add(tanda)
     sesion.flush()
-    contenido = {"tanda": {"codigo": tanda.codigo}}
+    contenido = {"tanda": {"codigo": tanda.codigo}} | (contenido or {})
     sesion.add(
         Dop(
             cooperativa_id=tanda.cooperativa_id,

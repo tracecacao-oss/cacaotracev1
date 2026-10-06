@@ -241,7 +241,7 @@ def comprobar(sesion: Session, lote: Lote) -> list[dict[str, Any]]:
 # ---------- Ejecutar ----------
 
 
-def _resultado(comprobaciones: list[dict[str, Any]]) -> str:
+def resultado_de(comprobaciones: list[dict[str, Any]]) -> str:
     return (
         "sin_observaciones"
         if all(c["resultado"] == "sin_observaciones" for c in comprobaciones)
@@ -258,7 +258,7 @@ def ultima(sesion: Session, lote_id: uuid.UUID) -> Recomprobacion | None:
     )
 
 
-def _cambiar_estado(sesion: Session, contexto: Contexto | None, lote: Lote, resultado: str) -> str | None:
+def cambiar_estado(sesion: Session, contexto: Contexto | None, lote: Lote, resultado: str) -> str | None:
     nuevo = "listo" if resultado == "sin_observaciones" else "bloqueado"
     if lote.estado == nuevo:
         return None
@@ -286,7 +286,7 @@ def recomprobar(contexto: Contexto, lote_id: uuid.UUID) -> RecomprobacionSalida:
             400, "lote_no_recomprobable", "Solo se recomprueba un lote armado, bloqueado o listo."
         )
     comprobaciones = comprobar(sesion, lote)
-    resultado = _resultado(comprobaciones)
+    resultado = resultado_de(comprobaciones)
     fila = Recomprobacion(
         lote_id=lote.id,
         ejecutada_por=contexto.usuario_id,
@@ -309,7 +309,7 @@ def recomprobar(contexto: Contexto, lote_id: uuid.UUID) -> RecomprobacionSalida:
             ],
         },
     )
-    _cambiar_estado(sesion, contexto, lote, resultado)
+    cambiar_estado(sesion, contexto, lote, resultado)
     sesion.commit()
     return salida(sesion, fila, lote.estado)
 
@@ -326,7 +326,7 @@ def tarea_diaria(sesion: Session) -> int:
         if lote is None or lote.estado not in ("listo", "bloqueado"):
             continue
         comprobaciones = comprobar(sesion, lote)
-        resultado = _resultado(comprobaciones)
+        resultado = resultado_de(comprobaciones)
         anterior = ultima(sesion, lote.id)
         if anterior is not None and anterior.detalle == {"comprobaciones": comprobaciones}:
             sesion.rollback()
@@ -349,7 +349,7 @@ def tarea_diaria(sesion: Session) -> int:
             cooperativa_id=lote.cooperativa_id,
             sesion=sesion,
         )
-        _cambiar_estado(sesion, None, lote, resultado)
+        cambiar_estado(sesion, None, lote, resultado)
         sesion.commit()
         nuevas += 1
     return nuevas

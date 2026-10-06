@@ -40,6 +40,11 @@ from app.models.acceso import (  # noqa: E402
     Perfil,
     Productor,
 )
+from app.models.dex import (  # noqa: E402
+    Certificacion,
+    ConfiguracionPlataforma,
+    Dex,
+)
 from app.models.exportacion import (  # noqa: E402
     Importador,
     Lote,
@@ -87,6 +92,9 @@ from app.models.recepcion import (  # noqa: E402
 )
 
 __all__ = [
+    "Certificacion",
+    "ConfiguracionPlataforma",
+    "Dex",
     "Importador",
     "Lote",
     "LoteAsignacion",
