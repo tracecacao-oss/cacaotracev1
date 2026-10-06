@@ -1,6 +1,6 @@
 # CacaoTrace — instrucciones para Claude Code
 
-**Especificación:** `docs/especificacion.md` es la única fuente de verdad, junto con sus adendas en `docs/` (por ejemplo `docs/adenda-parte-4-fuentes.md` y `docs/adenda-2-parte-4-revision-imagenes.md`, que mandan sobre la Parte 4 donde difieran; la adenda 2 manda sobre la primera). Lo que no está ahí no se construye sin preguntar.
+**Especificación:** `docs/especificacion.md` es la única fuente de verdad, junto con sus adendas en `docs/` (por ejemplo `docs/adenda-parte-4-fuentes.md` y `docs/adenda-2-parte-4-revision-imagenes.md`, que mandan sobre la Parte 4 donde difieran, con la adenda 2 sobre la primera; y `docs/adenda-3-parte-5-documento-entrega.md`, que manda sobre la Parte 5). Lo que no está ahí no se construye sin preguntar.
 
 **Parte en curso:** 6 — Proceso y DPP. Al empezarla, revisar en el estado de las Partes 5 y 4 (adenda 2) lo que quedó sin probar en producción: todavía no se emitió ningún DOP real, así que el PDF (fpdf2), ahora con las imágenes de la parcela, nunca se generó en Render, y ninguna parcela de producción generó imágenes de Copernicus todavía.
 
