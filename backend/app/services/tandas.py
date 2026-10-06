@@ -4,6 +4,9 @@ La registra el personal de la cooperativa. Genera su DOP solo al validarse: si a
 con un motivo, se corrige y se valida de nuevo. Validada y anulada son estados finales.
 
 Las alertas no bloquean: obligan a escribir una nota y llegan al informe de hallazgos.
+
+Adenda 3: la tanda se sustenta con un documento de entrega (guía de remisión o liquidación de compra), con
+reglas propias de cada tipo (app/catalogos/documento_entrega.py).
 """
 
 import uuid
@@ -11,15 +14,18 @@ from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.catalogos import guia_remision, variedades
+from app.catalogos import documento_entrega, variedades
 from app.contexto import Contexto, cooperativa_del_contexto
 from app.errores import error_api, no_encontrado
-from app.fechas import LIMA, ahora, dia_lima
+from app.fechas import LIMA, ahora, dia_lima, hoy_lima
 from app.models import (
     Afiliacion,
+    ConfiguracionCooperativa,
+    Cooperativa,
     DecisionTanda,
     Documento,
     Dop,
@@ -61,16 +67,18 @@ CAMPOS_DATOS = (
     "tipo_semilla",
     "cosecha_desde",
     "cosecha_hasta",
-    "gre_numero",
-    "gre_fecha_emision",
-    "gre_ruc_emisor",
-    "gre_peso_kg",
+    "doc_entrega_tipo",
+    "doc_entrega_numero",
+    "doc_entrega_fecha_emision",
+    "doc_entrega_ruc_emisor",
+    "doc_entrega_peso_kg",
 )
+CAMPOS_DOCUMENTO = CAMPOS_DATOS[-5:]
 NOMBRE_REQUISITO = {
     "parcela_habilitada": "Parcela habilitada",
     "productor_afiliado": "Productor afiliado y con consentimiento",
     "datos_completos": "Datos de la tanda completos",
-    "guia_completa": "Guía de remisión completa",
+    "documento_entrega_completo": "Documento de entrega completo",
     "configuracion_lista": "Configuración de la cooperativa lista",
 }
 
@@ -89,7 +97,53 @@ def peso_seco_equivalente(estado_producto: str, peso_kg: Decimal, factor: Decima
     return _dos_decimales(Decimal(peso_kg) * Decimal(factor))
 
 
-def _comprobar_datos(valores: dict[str, Any]) -> None:
+def _comprobar_documento(valores: dict[str, Any], cooperativa: Cooperativa, dias_max: int) -> None:
+    """Reglas del documento de entrega según su tipo (adenda 3, sección 5). Responde 422."""
+    codigo = valores.get("doc_entrega_tipo")
+    if codigo is None:
+        if any(valores.get(campo) is not None for campo in CAMPOS_DOCUMENTO[1:]):
+            raise error_api(422, "documento_tipo_requerido", "Elige el tipo de documento de entrega.")
+        return
+    tipo = documento_entrega.TIPOS[codigo]
+    if tipo.emite_la_organizacion:
+        # La emite la organización que recibe: su RUC se llena solo y no admite otro.
+        if not valores.get("doc_entrega_ruc_emisor"):
+            valores["doc_entrega_ruc_emisor"] = cooperativa.ruc
+        elif valores["doc_entrega_ruc_emisor"] != cooperativa.ruc:
+            raise error_api(
+                422,
+                "emisor_no_corresponde",
+                f"La {tipo.nombre.lower()} la emite la organización que recibe: el RUC del emisor debe ser "
+                f"{cooperativa.ruc}.",
+            )
+    fecha = valores.get("doc_entrega_fecha_emision")
+    if fecha:
+        dia_recepcion = dia_lima(valores["recibida_en"])
+        if fecha > hoy_lima():
+            raise error_api(422, "fecha_futura", "La fecha de emisión del documento no puede ser futura.")
+        if tipo.emitido_despues_de_recibir:
+            if not dia_recepcion <= fecha <= dia_recepcion + timedelta(days=dias_max):
+                raise error_api(
+                    422,
+                    "documento_fecha_invalida",
+                    f"La {tipo.nombre.lower()} se emite entre el día de la recepción y {dias_max} "
+                    "días después.",
+                )
+        elif fecha > dia_recepcion:
+            raise error_api(
+                422,
+                "documento_fecha_invalida",
+                f"La {tipo.nombre.lower()} no puede emitirse después de la recepción.",
+            )
+    if valores.get("doc_entrega_numero"):
+        valores["doc_entrega_numero"] = documento_entrega.validar_numero(
+            codigo, valores["doc_entrega_numero"]
+        )
+
+
+def _comprobar_datos(
+    valores: dict[str, Any], cooperativa: Cooperativa, conf: ConfiguracionCooperativa
+) -> None:
     """Reglas de una tanda completa (alta o resultado de una edición). Responde 422 con un mensaje claro."""
     recibida = valores["recibida_en"]
     if recibida.tzinfo is None:
@@ -101,16 +155,13 @@ def _comprobar_datos(valores: dict[str, Any]) -> None:
         raise error_api(422, "cosecha_invalida", "El inicio de la cosecha no puede ser posterior a su fin.")
     if valores["cosecha_hasta"] > dia_recepcion:
         raise error_api(422, "cosecha_invalida", "La cosecha no puede terminar después de la recepción.")
-    if valores.get("gre_fecha_emision") and valores["gre_fecha_emision"] > dia_recepcion:
-        raise error_api(422, "guia_fecha_invalida", "La guía no puede emitirse después de la recepción.")
     if valores.get("humedad_pct") is not None and valores["estado_producto"] != "seco":
         raise error_api(422, "humedad_solo_en_seco", "La humedad solo se registra para cacao seco.")
     if valores["variedad"] == "otra" and not valores.get("variedad_otra"):
         raise error_api(422, "variedad_requerida", "Escribe el nombre de la variedad.")
     if valores["variedad"] != "otra":
         valores["variedad_otra"] = None
-    if valores.get("gre_numero"):
-        valores["gre_numero"] = guia_remision.validar_numero(valores["gre_numero"])
+    _comprobar_documento(valores, cooperativa, conf.dias_max_emision_doc_entrega)
 
 
 def _lugar_de_acopio(sesion: Session, cooperativa_id: uuid.UUID, lugar_id: uuid.UUID) -> Lugar:
@@ -149,7 +200,11 @@ def registrar(contexto: Contexto, datos: TandaNueva) -> TandaDetalle:
     if parcela is None or parcela.productor_id != productor.id:
         raise error_api(422, "parcela_de_otro_productor", "La parcela no pertenece a ese productor.")
     valores = datos.model_dump(exclude={"productor_id", "parcela_id"})
-    _comprobar_datos(valores)
+    _comprobar_datos(
+        valores,
+        contexto.sesion.get(Cooperativa, cooperativa_id),
+        configuracion.de_cooperativa(contexto.sesion, cooperativa_id),
+    )
     _lugar_de_acopio(contexto.sesion, cooperativa_id, valores["lugar_id"])
 
     anio = valores["recibida_en"].astimezone(LIMA).year
@@ -206,7 +261,11 @@ def editar(contexto: Contexto, tanda_id: uuid.UUID, datos: TandaCambios) -> Tand
     valores = {campo: getattr(tanda, campo) for campo in CAMPOS_DATOS} | cambios_pedidos
     if valores["estado_producto"] != "seco" and "humedad_pct" not in cambios_pedidos:
         valores["humedad_pct"] = None
-    _comprobar_datos(valores)
+    _comprobar_datos(
+        valores,
+        contexto.sesion.get(Cooperativa, tanda.cooperativa_id),
+        configuracion.de_cooperativa(contexto.sesion, tanda.cooperativa_id),
+    )
     if "lugar_id" in cambios_pedidos:
         _lugar_de_acopio(contexto.sesion, tanda.cooperativa_id, valores["lugar_id"])
     cambios = aplicar_cambios(tanda, {k: valores[k] for k in CAMPOS_DATOS})
@@ -216,13 +275,14 @@ def editar(contexto: Contexto, tanda_id: uuid.UUID, datos: TandaCambios) -> Tand
     return obtener(contexto, tanda.id)
 
 
-def cargar_guia(
+def cargar_documento(
     contexto: Contexto, storage: ClienteStorage, tanda_id: uuid.UUID, archivo: Archivo
 ) -> TandaDetalle:
+    """El archivo del documento de entrega: foto o PDF."""
     tanda = tanda_visible(contexto, tanda_id)
     _exigir_editable(tanda)
     documentos.cargar(
-        contexto, storage, entidad="tanda", entidad_id=tanda.id, tipo="guia_remision", archivo=archivo
+        contexto, storage, entidad="tanda", entidad_id=tanda.id, tipo="documento_entrega", archivo=archivo
     )
     return obtener(contexto, tanda.id)
 
@@ -275,13 +335,13 @@ def _volumen_acumulado(sesion: Session, tanda: Tanda, factor: Decimal) -> Decima
     return total
 
 
-def _guia_vigente(sesion: Session, tanda: Tanda) -> Documento | None:
+def _documento_vigente(sesion: Session, tanda: Tanda) -> Documento | None:
     return sesion.scalar(
         select(Documento)
         .where(
             Documento.entidad == "tanda",
             Documento.entidad_id == tanda.id,
-            Documento.tipo == "guia_remision",
+            Documento.tipo == "documento_entrega",
             Documento.anulado_en.is_(None),
         )
         .order_by(Documento.creado_en.desc())
@@ -310,7 +370,7 @@ def evaluar(contexto: Contexto, tanda: Tanda) -> dict[str, Any]:
         )
     )
     lugar = sesion.get(Lugar, tanda.lugar_id)
-    guia = _guia_vigente(sesion, tanda)
+    documento = _documento_vigente(sesion, tanda)
     dia_recepcion = dia_lima(tanda.recibida_en)
 
     datos_ok = (
@@ -321,17 +381,30 @@ def evaluar(contexto: Contexto, tanda: Tanda) -> dict[str, Any]:
         and lugar.tipo == "cancha_acopio"
         and tanda.cosecha_desde <= tanda.cosecha_hasta <= dia_recepcion
     )
-    guia_ok = bool(tanda.gre_numero and tanda.gre_fecha_emision and tanda.gre_ruc_emisor and guia)
-    faltan_guia = [
+    nombre_doc = documento_entrega.nombre(tanda.doc_entrega_tipo)
+    faltan_doc = [
         nombre
         for nombre, valor in (
-            ("número", tanda.gre_numero),
-            ("fecha de emisión", tanda.gre_fecha_emision),
-            ("RUC del emisor", tanda.gre_ruc_emisor),
-            ("archivo de la guía", guia),
+            ("tipo", tanda.doc_entrega_tipo),
+            ("número", tanda.doc_entrega_numero),
+            ("fecha de emisión", tanda.doc_entrega_fecha_emision),
+            ("RUC del emisor", tanda.doc_entrega_ruc_emisor),
+            ("archivo", documento),
         )
         if not valor
     ]
+    # Las reglas de su tipo se revisan de nuevo: el plazo de la configuración o el RUC pueden haber cambiado.
+    regla_doc = None
+    if not faltan_doc:
+        try:
+            _comprobar_documento(
+                {campo: getattr(tanda, campo) for campo in (*CAMPOS_DOCUMENTO, "recibida_en")},
+                sesion.get(Cooperativa, tanda.cooperativa_id),
+                conf.dias_max_emision_doc_entrega,
+            )
+        except HTTPException as exc:
+            regla_doc = exc.detail["mensaje"]
+    doc_ok = not faltan_doc and regla_doc is None
     requisitos = [
         Requisito(
             codigo="parcela_habilitada",
@@ -355,11 +428,11 @@ def evaluar(contexto: Contexto, tanda: Tanda) -> dict[str, Any]:
             else "Revisa el lugar (una cancha de acopio activa) y las fechas de cosecha.",
         ),
         Requisito(
-            codigo="guia_completa",
-            cumple=guia_ok,
-            detalle="La guía tiene número, fecha, RUC del emisor y archivo."
-            if guia_ok
-            else f"A la guía le falta: {', '.join(faltan_guia)}.",
+            codigo="documento_entrega_completo",
+            cumple=doc_ok,
+            detalle=f"{nombre_doc}: tiene número, fecha, RUC del emisor y archivo."
+            if doc_ok
+            else regla_doc or f"Al documento de entrega le falta: {', '.join(faltan_doc)}.",
         ),
         Requisito(
             codigo="configuracion_lista",
@@ -390,25 +463,31 @@ def evaluar(contexto: Contexto, tanda: Tanda) -> dict[str, Any]:
     detalle["dias_cosecha_entrega"] = dias
     if dias > maximo:
         alertas.append("dias_cosecha_entrega_altos")
-    if tanda.gre_peso_kg is not None:
-        diferencia = abs(Decimal(tanda.gre_peso_kg) - Decimal(tanda.peso_kg)) / Decimal(tanda.peso_kg) * 100
-        detalle["diferencia_peso_guia_pct"] = diferencia.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    if tanda.doc_entrega_peso_kg is not None:
+        diferencia = (
+            abs(Decimal(tanda.doc_entrega_peso_kg) - Decimal(tanda.peso_kg)) / Decimal(tanda.peso_kg) * 100
+        )
+        detalle["diferencia_peso_documento_pct"] = diferencia.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
         if diferencia > conf.tolerancia_peso_guia_pct:
-            alertas.append("peso_difiere_de_guia")
-    if tanda.gre_numero and tanda.gre_ruc_emisor:
+            alertas.append("peso_difiere_del_documento")
+    if tanda.doc_entrega_tipo and tanda.doc_entrega_numero and tanda.doc_entrega_ruc_emisor:
         # En toda la plataforma: el fraude no respeta cooperativas. Solo se dice que existe.
         otra = sesion.scalar(
             select(func.count())
             .select_from(Tanda)
             .where(
-                Tanda.gre_numero == tanda.gre_numero,
-                Tanda.gre_ruc_emisor == tanda.gre_ruc_emisor,
+                Tanda.doc_entrega_tipo == tanda.doc_entrega_tipo,
+                Tanda.doc_entrega_numero == tanda.doc_entrega_numero,
+                Tanda.doc_entrega_ruc_emisor == tanda.doc_entrega_ruc_emisor,
                 Tanda.productor_id != tanda.productor_id,
                 Tanda.estado != "anulada",
             )
         )
         if otra:
-            alertas.append("guia_usada_por_otro_productor")
+            alertas.append("documento_usado_por_otro_productor")
+    # La liquidación de compra corresponde cuando el productor no tiene RUC (adenda 3, 6.2).
+    if tanda.doc_entrega_tipo == "liquidacion_compra" and productor.ruc:
+        alertas.append("liquidacion_con_productor_con_ruc")
     alertas_parcela = parcelas.salidas(contexto, [parcela])[0].alertas if parcela.estado == "activa" else []
     if parcela.habilitacion_estado == "habilitada" and alertas_parcela:
         alertas.append("parcela_con_alertas")
@@ -421,7 +500,7 @@ def evaluar(contexto: Contexto, tanda: Tanda) -> dict[str, Any]:
         "detalle": detalle,
         "configuracion": valores_conf,
         "peso_seco_equivalente_kg": peso_seco,
-        "guia": guia,
+        "documento": documento,
     }
 
 
@@ -609,10 +688,14 @@ def _salidas(sesion: Session, tandas: list[Tanda]) -> list[TandaSalida]:
                 tipo_semilla=t.tipo_semilla,
                 cosecha_desde=t.cosecha_desde,
                 cosecha_hasta=t.cosecha_hasta,
-                gre_numero=t.gre_numero,
-                gre_fecha_emision=t.gre_fecha_emision,
-                gre_ruc_emisor=t.gre_ruc_emisor,
-                gre_peso_kg=t.gre_peso_kg,
+                doc_entrega_tipo=t.doc_entrega_tipo,
+                doc_entrega_tipo_nombre=documento_entrega.nombre(t.doc_entrega_tipo)
+                if t.doc_entrega_tipo
+                else None,
+                doc_entrega_numero=t.doc_entrega_numero,
+                doc_entrega_fecha_emision=t.doc_entrega_fecha_emision,
+                doc_entrega_ruc_emisor=t.doc_entrega_ruc_emisor,
+                doc_entrega_peso_kg=t.doc_entrega_peso_kg,
                 registrada_por_nombre=nombres.get(t.registrada_por),
                 creado_en=t.creado_en,
                 dop=DopDeTanda(id=dop.id, codigo=dop.codigo, estado=dop.estado) if dop else None,

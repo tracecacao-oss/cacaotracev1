@@ -19,6 +19,7 @@ def cooperativa(sesion: Session, nombre: str = "Coop Prueba", **datos) -> Cooper
         departamento="SAN MARTIN",
         provincia="PICOTA",
         distrito="PICOTA",
+        tipo_organizacion=datos.pop("tipo_organizacion", "cooperativa_agraria"),
         **datos,
     )
     sesion.add(coop)

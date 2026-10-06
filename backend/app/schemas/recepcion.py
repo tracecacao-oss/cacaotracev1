@@ -14,7 +14,10 @@ Kilos = Annotated[Decimal, Field(gt=0, max_digits=10, decimal_places=2)]
 NotaLarga = Annotated[str, StringConstraints(strip_whitespace=True, max_length=4000)]
 Variedad = Literal["ccn_51", "ics_95", "imc_67", "tsh_565", "trinitario", "chuncho", "sin_variedad", "otra"]
 TipoLugar = Literal["cancha_acopio", "planta", "almacen", "otro"]
-NumeroGuia = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, max_length=20)]
+NumeroDocumento = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, max_length=20)]
+# Adenda 3: el Comprobante de Operaciones de la Ley N.° 29972 queda fuera (ley derogada).
+TipoDocEntrega = Literal["guia_remision", "liquidacion_compra"]
+TipoOrganizacion = Literal["cooperativa_agraria", "asociacion", "empresa"]
 
 # ---------- Configuración ----------
 
@@ -27,7 +30,11 @@ class ConfiguracionSalida(BaseModel):
     dias_max_cosecha_entrega_baba: int
     dias_max_cosecha_entrega_seco: int
     tolerancia_peso_guia_pct: Decimal
+    dias_max_emision_doc_entrega: int
     codigo_cooperativa: str | None
+    # Adenda 3: con la liquidación de compra, el RUC del emisor es el de la organización.
+    ruc_cooperativa: str
+    tipo_organizacion: str
     # Sin tope ni código de cooperativa no se registran tandas.
     lista: bool
 
@@ -40,6 +47,7 @@ class ConfiguracionCambio(Entrada):
     dias_max_cosecha_entrega_baba: Annotated[int, Field(ge=0, le=3650)]
     dias_max_cosecha_entrega_seco: Annotated[int, Field(ge=0, le=3650)]
     tolerancia_peso_guia_pct: Annotated[Decimal, Field(ge=0, le=100, max_digits=4, decimal_places=1)]
+    dias_max_emision_doc_entrega: Annotated[int, Field(ge=0, le=365)]
 
 
 # ---------- Lugares ----------
@@ -93,12 +101,11 @@ class DatosTanda(Entrada):
     tipo_semilla: TextoOpcional | None = None
     cosecha_desde: date
     cosecha_hasta: date
-    gre_numero: (
-        Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, max_length=20)] | None
-    ) = None
-    gre_fecha_emision: date | None = None
-    gre_ruc_emisor: Ruc | None = None
-    gre_peso_kg: Kilos | None = None
+    doc_entrega_tipo: TipoDocEntrega | None = None
+    doc_entrega_numero: NumeroDocumento | None = None
+    doc_entrega_fecha_emision: date | None = None
+    doc_entrega_ruc_emisor: Ruc | None = None
+    doc_entrega_peso_kg: Kilos | None = None
 
 
 class TandaNueva(DatosTanda):
@@ -118,12 +125,11 @@ class TandaCambios(Entrada):
     tipo_semilla: TextoOpcional | None = None
     cosecha_desde: date | None = None
     cosecha_hasta: date | None = None
-    gre_numero: (
-        Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, max_length=20)] | None
-    ) = None
-    gre_fecha_emision: date | None = None
-    gre_ruc_emisor: Ruc | None = None
-    gre_peso_kg: Kilos | None = None
+    doc_entrega_tipo: TipoDocEntrega | None = None
+    doc_entrega_numero: NumeroDocumento | None = None
+    doc_entrega_fecha_emision: date | None = None
+    doc_entrega_ruc_emisor: Ruc | None = None
+    doc_entrega_peso_kg: Kilos | None = None
 
 
 class Validacion(Entrada):
@@ -188,10 +194,12 @@ class TandaSalida(BaseModel):
     tipo_semilla: str | None
     cosecha_desde: date
     cosecha_hasta: date
-    gre_numero: str | None
-    gre_fecha_emision: date | None
-    gre_ruc_emisor: str | None
-    gre_peso_kg: Decimal | None
+    doc_entrega_tipo: str | None
+    doc_entrega_tipo_nombre: str | None
+    doc_entrega_numero: str | None
+    doc_entrega_fecha_emision: date | None
+    doc_entrega_ruc_emisor: str | None
+    doc_entrega_peso_kg: Decimal | None
     registrada_por_nombre: str | None
     creado_en: datetime
     dop: DopDeTanda | None

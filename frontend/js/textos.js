@@ -177,13 +177,18 @@ export const REQUISITOS_TANDA = {
   parcela_habilitada: "Parcela habilitada",
   productor_afiliado: "Productor afiliado y con consentimiento",
   datos_completos: "Pesaje y cosecha completos",
-  guia_completa: "Guía de remisión completa",
+  documento_entrega_completo: "Documento de entrega completo",
+  guia_completa: "Guía de remisión completa", // decisiones anteriores a la adenda 3
   configuracion_lista: "Tope de kilos por hectárea configurado",
 };
 
 export const ALERTAS_TANDA = {
   volumen_acumulado_excede_tope: "El volumen de la parcela en 365 días supera el tope por hectárea",
   dias_cosecha_entrega_altos: "Pasaron más días de los configurados entre la cosecha y la entrega",
+  peso_difiere_del_documento: "El peso del documento de entrega difiere del peso en balanza más que la tolerancia",
+  documento_usado_por_otro_productor: "El mismo documento de entrega aparece en una tanda de otro productor",
+  liquidacion_con_productor_con_ruc: "Liquidación de compra a un productor que tiene RUC",
+  // Decisiones y DOP anteriores a la adenda 3.
   peso_difiere_de_guia: "El peso de la guía difiere del peso en balanza más que la tolerancia",
   guia_usada_por_otro_productor: "La misma guía aparece en una tanda de otro productor",
   parcela_con_alertas: "La parcela está habilitada pero tiene alertas vigentes",
@@ -214,7 +219,36 @@ export const TIPOS_LUGAR = [
 
 export const PRODUCTO = { baba: "Cacao en baba", seco: "Cacao seco" };
 
-TIPOS_DOCUMENTO.guia_remision = "Guía de remisión";
+TIPOS_DOCUMENTO.documento_entrega = "Documento de entrega";
+
+// Adenda 3 de la Parte 5: los mismos tipos que backend/app/catalogos/documento_entrega.py. El Comprobante
+// de Operaciones de la Ley N.° 29972 no está: esa ley fue derogada por la Ley N.° 31335.
+export const TIPOS_DOC_ENTREGA = [
+  {
+    codigo: "guia_remision",
+    nombre: "Guía de remisión",
+    emisor: "La emite el productor, la organización que recibe o el transportista",
+    cuando: "Cuando el traslado se hizo con guía",
+    ejemplo: "T001-123",
+    emiteLaOrganizacion: false,
+  },
+  {
+    codigo: "liquidacion_compra",
+    nombre: "Liquidación de compra",
+    emisor: "La emite la organización que recibe",
+    cuando: "Cuando compra a un productor que no da comprobante por no tener RUC",
+    ejemplo: "L001-123",
+    emiteLaOrganizacion: true,
+  },
+];
+
+export const nombreDocEntrega = (codigo) => TIPOS_DOC_ENTREGA.find((x) => x.codigo === codigo)?.nombre ?? "Documento de entrega";
+
+export const TIPOS_ORGANIZACION = [
+  ["cooperativa_agraria", "Cooperativa agraria"],
+  ["asociacion", "Asociación de productores"],
+  ["empresa", "Empresa acopiadora o exportadora"],
+];
 TIPOS_DOCUMENTO.dop_pdf = "PDF del DOP";
 
 /** Pesos siempre con dos decimales y su unidad. */

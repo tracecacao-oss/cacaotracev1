@@ -7,6 +7,7 @@ import time
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from sqlalchemy import text
@@ -125,9 +126,10 @@ def _datos(productor, parcela, lugar, **cambios) -> dict:
         "variedad": "ccn_51",
         "cosecha_desde": str(dia - timedelta(days=10)),
         "cosecha_hasta": str(dia - timedelta(days=3)),
-        "gre_numero": "T001-123",
-        "gre_fecha_emision": str(dia),
-        "gre_ruc_emisor": RUC,
+        "doc_entrega_tipo": "guia_remision",
+        "doc_entrega_numero": "T001-123",
+        "doc_entrega_fecha_emision": str(dia),
+        "doc_entrega_ruc_emisor": RUC,
     } | cambios
 
 
@@ -159,8 +161,10 @@ def test_configuracion_inicial_y_cambio(api, sesion, admin, operador):
     )
     assert (inicial["dias_max_cosecha_entrega_baba"], inicial["dias_max_cosecha_entrega_seco"]) == (7, 90)
     assert inicial["tolerancia_peso_guia_pct"] == "5.0"
+    assert inicial["dias_max_emision_doc_entrega"] == 7
+    assert (inicial["ruc_cooperativa"], inicial["tipo_organizacion"]) == (otra.ruc, "cooperativa_agraria")
     cambio = inicial | {"tope_kg_seco_ha_anio": "1800.00"}
-    for clave in ("lista", "codigo_cooperativa"):
+    for clave in ("lista", "codigo_cooperativa", "ruc_cooperativa", "tipo_organizacion"):
         cambio.pop(clave)
     operador_b = factorias.perfil(sesion, "operador", otra)
     assert api.como(operador_b).put("/configuracion", json=cambio).status_code == 403
@@ -235,9 +239,10 @@ def test_fechas_de_cosecha_y_guia(api, cancha, operador, productor, parcela):
         "cosecha_hasta": str(recibida - timedelta(days=5)),
     }
     assert api.post("/tandas", json=invertida).status_code == 422
-    guia_futura = base | {"gre_fecha_emision": str(recibida + timedelta(days=1))}
+    guia_futura = base | {"doc_entrega_fecha_emision": str(recibida + timedelta(days=1))}
     respuesta = api.post("/tandas", json=guia_futura)
-    assert respuesta.status_code == 422 and respuesta.json()["error"]["codigo"] == "guia_fecha_invalida"
+    assert respuesta.status_code == 422
+    assert respuesta.json()["error"]["codigo"] in ("documento_fecha_invalida", "fecha_futura")
     futura = base | {"recibida_en": (ahora() + timedelta(days=1)).isoformat()}
     assert api.post("/tandas", json=futura).status_code == 422
 
@@ -247,17 +252,17 @@ def test_fechas_de_cosecha_y_guia(api, cancha, operador, productor, parcela):
     [("T001-123", "T001-123"), ("eg07-00045", "EG07-45"), ("001-0000456", "0001-456"), ("V0A1-9", "V0A1-9")],
 )
 def test_numero_de_guia_valido(api, cancha, operador, productor, parcela, escrito, guardado):
-    tanda = _tanda(api, operador, productor, parcela, cancha, guia=False, gre_numero=escrito)
-    assert tanda["gre_numero"] == guardado
+    tanda = _tanda(api, operador, productor, parcela, cancha, guia=False, doc_entrega_numero=escrito)
+    assert tanda["doc_entrega_numero"] == guardado
 
 
 @pytest.mark.parametrize("escrito", ["ABC-1", "T001-0", "T001", "T001-123456789", "0000-5", "EG09-1"])
 def test_numero_de_guia_invalido(api, cancha, operador, productor, parcela, escrito):
     respuesta = api.como(operador).post(
-        "/tandas", json=_datos(productor, parcela, cancha, gre_numero=escrito)
+        "/tandas", json=_datos(productor, parcela, cancha, doc_entrega_numero=escrito)
     )
     assert respuesta.status_code == 422
-    assert respuesta.json()["error"]["codigo"] == "guia_numero_invalido"
+    assert respuesta.json()["error"]["codigo"] == "documento_numero_invalido"
 
 
 def test_codigo_de_tanda_y_peso_seco_equivalente(api, cancha, operador, productor, parcela):
@@ -292,7 +297,7 @@ def test_validar_sin_archivo_de_guia(api, cancha, operador, productor, parcela):
     tanda = _tanda(api, operador, productor, parcela, cancha, guia=False)
     respuesta = api.post(f"/tandas/{tanda['id']}/validar", json={})
     assert respuesta.status_code == 400
-    assert respuesta.json()["error"]["faltan"] == ["guia_completa"]
+    assert respuesta.json()["error"]["faltan"] == ["documento_entrega_completo"]
 
 
 def test_volumen_acumulado_y_tanda_anulada(api, cancha, operador, productor, parcela):
@@ -323,9 +328,9 @@ def test_dias_entre_cosecha_y_entrega(api, cancha, operador, productor, parcela)
 
 
 def test_peso_de_la_guia_distinto(api, cancha, operador, productor, parcela):
-    tanda = _tanda(api, operador, productor, parcela, cancha, gre_peso_kg="110.00")
-    assert "peso_difiere_de_guia" in tanda["alertas"]
-    assert tanda["alertas_detalle"]["diferencia_peso_guia_pct"] == "10.0"
+    tanda = _tanda(api, operador, productor, parcela, cancha, doc_entrega_peso_kg="110.00")
+    assert "peso_difiere_del_documento" in tanda["alertas"]
+    assert tanda["alertas_detalle"]["diferencia_peso_documento_pct"] == "10.0"
 
 
 def test_parcela_habilitada_con_alertas(api, sesion, cancha, operador, productor, parcela):
@@ -343,14 +348,14 @@ def test_misma_guia_en_otro_productor(api, sesion, admin, coop, cancha, operador
     otro = factorias.productor(sesion, coop)
     de_otro = _habilitada(api, sesion, admin, operador, otro, nombre="Parcela del Vecino", este=500)
     tanda = _tanda(api, operador, otro, de_otro, cancha, guia=False)
-    assert "guia_usada_por_otro_productor" in tanda["alertas"]
+    assert "documento_usado_por_otro_productor" in tanda["alertas"]
 
 
 # ---------- Decisiones y DOP ----------
 
 
 def test_validar_con_alertas_exige_nota(api, cancha, operador, productor, parcela):
-    tanda = _tanda(api, operador, productor, parcela, cancha, gre_peso_kg="150.00")
+    tanda = _tanda(api, operador, productor, parcela, cancha, doc_entrega_peso_kg="150.00")
     assert tanda["nota_obligatoria"] is True
     respuesta = api.post(f"/tandas/{tanda['id']}/validar", json={"nota": "corta"})
     assert respuesta.status_code == 422 and respuesta.json()["error"]["codigo"] == "nota_requerida"
@@ -401,7 +406,7 @@ def test_validar_emite_el_dop(api, sesion, coop, cancha, operador, productor, pa
     # Tras emitir, la tanda ya no cambia.
     assert api.patch(f"/tandas/{tanda['id']}", json={"peso_kg": "99.00"}).status_code == 400
     assert api.post(f"/tandas/{tanda['id']}/anular", json={"motivo": "x"}).status_code == 400
-    guia = next(d for d in tanda["documentos"] if d["tipo"] == "guia_remision")
+    guia = next(d for d in tanda["documentos"] if d["tipo"] == "documento_entrega")
     assert api.post(f"/documentos/{guia['id']}/anular", json={"motivo": "x"}).status_code == 400
 
 
@@ -524,6 +529,188 @@ def test_el_pdf_no_usa_frases_prohibidas(api, sesion, cancha, operador, producto
     assert not PROHIBIDAS.search(escrito.replace(LEYENDA, ""))
 
 
+# ---------- Adenda 3: documento de entrega ----------
+
+
+def _liquidacion(productor, parcela, lugar, coop, *, dias_recepcion=0, dias_emision=0, **cambios) -> dict:
+    """Tanda recibida hace `dias_recepcion` días; su liquidación, `dias_emision` días después."""
+    recibida = ahora() - timedelta(days=dias_recepcion, hours=1)
+    dia = dia_lima(recibida)
+    return (
+        _datos(
+            productor,
+            parcela,
+            lugar,
+            recibida_en=recibida.isoformat(),
+            cosecha_desde=str(dia - timedelta(days=10)),
+            cosecha_hasta=str(dia - timedelta(days=3)),
+            doc_entrega_tipo="liquidacion_compra",
+            doc_entrega_numero="L001-45",
+            doc_entrega_fecha_emision=str(dia + timedelta(days=dias_emision)),
+            doc_entrega_ruc_emisor=coop.ruc,
+        )
+        | cambios
+    )
+
+
+def _registrada(api, operador, datos, *, archivo=True) -> dict:
+    respuesta = api.como(operador).post("/tandas", json=datos)
+    assert respuesta.status_code == 201, respuesta.text
+    tanda = respuesta.json()
+    if archivo:
+        subida = api.post(
+            f"/tandas/{tanda['id']}/documentos",
+            files={"archivo": ("liquidacion.pdf", PDF, "application/pdf")},
+        )
+        assert subida.status_code == 201, subida.text
+        tanda = subida.json()
+    return tanda
+
+
+@pytest.mark.parametrize("tipo", ["guia_remision", "liquidacion_compra"])
+def test_cada_tipo_de_documento_completo_se_valida(
+    api, sesion, coop, cancha, operador, productor, parcela, storage_falso, tipo
+):
+    from app.pdf import dop as pdf_dop
+    from app.services.dops import url_verificacion
+
+    if tipo == "guia_remision":
+        tanda = _tanda(api, operador, productor, parcela, cancha)
+        numero = "T001-123"
+    else:
+        tanda = _registrada(api, operador, _liquidacion(productor, parcela, cancha, coop))
+        numero = "L001-45"
+    assert tanda["doc_entrega_tipo"] == tipo
+    assert tanda["alertas"] == [], tanda["alertas"]
+    respuesta = api.post(f"/tandas/{tanda['id']}/validar", json={})
+    assert respuesta.status_code == 200, respuesta.text
+    dop = sesion.query(Dop).filter_by(tanda_id=uuid.UUID(tanda["id"])).one()
+    bloque = dop.contenido["tanda"]["documento_entrega"]
+    nombre = "Guía de remisión" if tipo == "guia_remision" else "Liquidación de compra"
+    assert (bloque["tipo"], bloque["nombre_tipo"], bloque["numero"]) == (tipo, nombre, numero)
+    assert "guia_remision" not in dop.contenido["tanda"]
+    documento = pdf_dop.documento(dop.contenido, dop.contenido_sha256, url_verificacion(dop.codigo))
+    documento.output()
+    assert f"{nombre}, {numero}" in "\n".join(documento.textos)
+
+
+def test_sin_documento_de_entrega_se_guarda_y_no_se_valida(api, cancha, operador, productor, parcela):
+    sin_documento = {
+        k: v for k, v in _datos(productor, parcela, cancha).items() if not k.startswith("doc_entrega_")
+    }
+    tanda = _registrada(api, operador, sin_documento, archivo=False)
+    requisito = next(r for r in tanda["requisitos"] if r["codigo"] == "documento_entrega_completo")
+    assert requisito["cumple"] is False and "tipo" in requisito["detalle"]
+    respuesta = api.post(f"/tandas/{tanda['id']}/validar", json={})
+    assert respuesta.status_code == 400
+    assert respuesta.json()["error"]["faltan"] == ["documento_entrega_completo"]
+    # Un número sin tipo no se acepta.
+    sin_tipo = sin_documento | {"doc_entrega_numero": "T001-9"}
+    respuesta = api.post("/tandas", json=sin_tipo)
+    assert respuesta.status_code == 422 and respuesta.json()["error"]["codigo"] == "documento_tipo_requerido"
+
+
+def test_liquidacion_con_ruc_de_otro_emisor(api, coop, cancha, operador, productor, parcela):
+    datos = _liquidacion(productor, parcela, cancha, coop, doc_entrega_ruc_emisor="20111111111")
+    respuesta = api.como(operador).post("/tandas", json=datos)
+    assert respuesta.status_code == 422
+    assert respuesta.json()["error"]["codigo"] == "emisor_no_corresponde"
+    # Sin RUC, se llena con el de la organización.
+    datos = _liquidacion(productor, parcela, cancha, coop, doc_entrega_ruc_emisor=None)
+    assert _registrada(api, operador, datos, archivo=False)["doc_entrega_ruc_emisor"] == coop.ruc
+
+
+def test_el_comprobante_de_la_ley_29972_no_se_acepta(api, cancha, operador, productor, parcela):
+    """La Ley N.° 29972 está derogada (adenda 3, sección 12): ese tipo no existe en CacaoTrace."""
+    datos = _datos(productor, parcela, cancha, doc_entrega_tipo="comprobante_operaciones_29972")
+    assert api.como(operador).post("/tandas", json=datos).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("dias_recepcion", "dias_emision", "estado"), [(5, 3, 201), (12, 10, 422), (3, -1, 422)]
+)
+def test_plazo_de_la_liquidacion(
+    api, coop, cancha, operador, productor, parcela, dias_recepcion, dias_emision, estado
+):
+    datos = _liquidacion(
+        productor, parcela, cancha, coop, dias_recepcion=dias_recepcion, dias_emision=dias_emision
+    )
+    respuesta = api.como(operador).post("/tandas", json=datos)
+    assert respuesta.status_code == estado, respuesta.text
+    if estado == 422:
+        assert respuesta.json()["error"]["codigo"] == "documento_fecha_invalida"
+
+
+def test_el_plazo_de_la_configuracion_se_revisa_al_validar(
+    api, sesion, coop, cancha, operador, admin, productor, parcela
+):
+    tanda = _registrada(
+        api, operador, _liquidacion(productor, parcela, cancha, coop, dias_recepcion=6, dias_emision=5)
+    )
+    conf = sesion.get(ConfiguracionCooperativa, coop.id)
+    conf.dias_max_emision_doc_entrega = 3
+    sesion.flush()
+    requisito = next(
+        r
+        for r in api.get(f"/tandas/{tanda['id']}").json()["requisitos"]
+        if r["codigo"] == "documento_entrega_completo"
+    )
+    assert requisito["cumple"] is False and "3 días" in requisito["detalle"]
+
+
+def test_liquidacion_a_productor_con_ruc(api, sesion, coop, cancha, operador, productor, parcela):
+    productor.ruc = "10456789012"
+    sesion.flush()
+    tanda = _registrada(api, operador, _liquidacion(productor, parcela, cancha, coop))
+    assert "liquidacion_con_productor_con_ruc" in tanda["alertas"]
+    assert tanda["nota_obligatoria"] is True
+    sin_nota = api.post(f"/tandas/{tanda['id']}/validar", json={})
+    assert sin_nota.status_code == 422 and sin_nota.json()["error"]["codigo"] == "nota_requerida"
+
+
+def test_misma_liquidacion_en_otro_productor(api, sesion, admin, coop, cancha, operador, productor, parcela):
+    _registrada(api, operador, _liquidacion(productor, parcela, cancha, coop), archivo=False)
+    otro = factorias.productor(sesion, coop)
+    de_otro = _habilitada(api, sesion, admin, operador, otro, nombre="Parcela del Vecino", este=500)
+    tanda = _registrada(api, operador, _liquidacion(otro, de_otro, cancha, coop), archivo=False)
+    assert "documento_usado_por_otro_productor" in tanda["alertas"]
+    # Una guía con el mismo número no es el mismo documento.
+    guia = _datos(otro, de_otro, cancha, doc_entrega_numero="L001-45", doc_entrega_ruc_emisor=coop.ruc)
+    respuesta = api.post("/tandas", json=guia)
+    assert respuesta.status_code == 422  # "L001" no es una serie de guía
+
+
+def test_un_dop_de_antes_de_la_adenda_se_sigue_leyendo(api, sesion, cancha, operador, productor, parcela):
+    """Los DOP emitidos antes guardan el bloque "guia_remision": la pantalla y el PDF lo siguen mostrando."""
+    from app.pdf import dop as pdf_dop
+    from app.services.dops import url_verificacion
+
+    _, dop = _validada(api, sesion, operador, productor, parcela, cancha)
+    antes = json.loads(json.dumps(dop.contenido))
+    bloque = antes["tanda"].pop("documento_entrega")
+    antes["tanda"]["guia_remision"] = {
+        k: bloque[k]
+        for k in ("numero", "fecha_emision", "ruc_emisor", "peso_kg", "documento_sha256", "nivel")
+    } | {"registro_consultable": False}
+    huella = sello.huella(antes)
+    documento = pdf_dop.documento(antes, huella, url_verificacion(dop.codigo))
+    documento.output()
+    assert "Guía de remisión" in "\n".join(documento.textos)
+    assert sello.huella(antes) == huella
+
+
+def test_las_pantallas_dicen_documento_de_entrega():
+    """Adenda 3 (7.5): "guía" solo aparece cuando el tipo es una guía, no en las pantallas de la tanda."""
+    raiz = Path(__file__).resolve().parents[2] / "frontend" / "js"
+    pantallas = ("tanda-nueva.js", "tanda.js", "recepcion.js", "mis-entregas.js", "configuracion.js")
+    con_guia = [
+        n
+        for n in pantallas
+        if re.search(r"gu[ií]a", (raiz / "pantallas" / n).read_text(encoding="utf-8"), re.I)
+    ]
+    assert con_guia == []
+
+
 # ---------- Verificación pública ----------
 
 
@@ -626,6 +813,7 @@ def test_correlativos_simultaneos_no_se_repiten(base_disponible):
             departamento="SAN MARTIN",
             provincia="PICOTA",
             distrito="PICOTA",
+            tipo_organizacion="cooperativa_agraria",
         )
         s.add(coop)
         s.commit()

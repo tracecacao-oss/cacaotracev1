@@ -1,4 +1,4 @@
-// Detalle de tanda, con el inspector del diseño: datos, guía, requisitos, alertas, historial de
+// Detalle de tanda, con el inspector del diseño: datos, documento de entrega, requisitos, alertas, historial de
 // decisiones y enlace a su DOP. Mientras está registrada u observada se edita y se decide; una vez
 // validada o anulada ya no tiene ningún botón de edición.
 
@@ -14,7 +14,7 @@ const DECISION = { validar: "Validó la tanda y emitió su DOP", observar: "Obse
 function abrirEdicion(t, lugares, configuracion, alGuardar) {
   const campos = camposTanda(t, { lugares, configuracion });
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-tanda" }, "Guardar cambios");
-  const formulario = h("form", { class: "form", id: "form-tanda" }, h("b", {}, "Pesaje y cosecha"), campos.pesaje, h("b", {}, "Guía de remisión"), campos.guia);
+  const formulario = h("form", { class: "form", id: "form-tanda" }, h("b", {}, "Pesaje y cosecha"), campos.pesaje, h("b", {}, "Documento de entrega"), campos.documento);
   const { cerrar } = abrirModal({
     titulo: "Corregir la tanda",
     subtitulo: `${t.codigo} · cada cambio queda en la auditoría con su valor anterior`,
@@ -87,7 +87,8 @@ export default async function tanda({ parametros: [id], recargar }) {
   const registro = ["admin_cooperativa", "operador"].includes(rolEfectivo());
   const abierta = ["registrada", "observada"].includes(t.estado);
   const editable = registro && abierta;
-  const guias = t.documentos.filter((d) => d.tipo === "guia_remision");
+  const archivosDoc = t.documentos.filter((d) => d.tipo === "documento_entrega");
+  const nombreDoc = t.doc_entrega_tipo_nombre ?? "Documento de entrega";
   const faltan = t.requisitos.filter((r) => !r.cumple).map((r) => REQUISITOS_TANDA[r.codigo] ?? r.codigo);
 
   const accion = t.dop
@@ -132,21 +133,22 @@ export default async function tanda({ parametros: [id], recargar }) {
     ]),
   });
 
-  const guia = seccion({
-    titulo: "Guía de remisión",
-    sub: "Sin cotejo en un registro público: queda como documentada.",
-    acciones: t.gre_numero && insigniaNivel("documentado"),
+  const documento = seccion({
+    titulo: nombreDoc,
+    sub: t.doc_entrega_tipo ? "Documento de entrega de la tanda. Sin cotejo en su fuente: queda como documentado." : "Sin documento de entrega la tanda se guarda, pero no se valida.",
+    acciones: t.doc_entrega_numero && insigniaNivel("documentado"),
     contenido: [
       rejilla([
-        { etiqueta: "Serie y número", valor: t.gre_numero, mono: true },
-        { etiqueta: "Fecha de emisión", valor: t.gre_fecha_emision ? fecha(t.gre_fecha_emision) : null },
-        { etiqueta: "RUC del emisor", valor: t.gre_ruc_emisor, mono: true },
-        { etiqueta: "Peso declarado", valor: t.gre_peso_kg == null ? null : kilos(t.gre_peso_kg), mono: true },
+        { etiqueta: "Tipo", valor: t.doc_entrega_tipo_nombre },
+        { etiqueta: "Serie y número", valor: t.doc_entrega_numero, mono: true },
+        { etiqueta: "Fecha de emisión", valor: t.doc_entrega_fecha_emision ? fecha(t.doc_entrega_fecha_emision) : null },
+        { etiqueta: "RUC del emisor", valor: t.doc_entrega_ruc_emisor, mono: true },
+        { etiqueta: "Peso declarado", valor: t.doc_entrega_peso_kg == null ? null : kilos(t.doc_entrega_peso_kg), mono: true },
       ]),
-      listaDocumentos(guias, { puedeAnular: editable, alCambiar: recargar }),
+      listaDocumentos(archivosDoc, { puedeAnular: editable, alCambiar: recargar }),
       editable &&
-        !guias.some((d) => d.vigente) &&
-        formularioCarga({ tipos: [["guia_remision", "Guía de remisión"]], ruta: `/tandas/${t.id}/documentos`, alCargar: recargar, textoBoton: "Cargar la guía" }),
+        !archivosDoc.some((d) => d.vigente) &&
+        formularioCarga({ tipos: [["documento_entrega", nombreDoc]], ruta: `/tandas/${t.id}/documentos`, alCargar: recargar, textoBoton: "Cargar el documento" }),
     ],
   });
 
@@ -212,7 +214,7 @@ export default async function tanda({ parametros: [id], recargar }) {
       dop,
       evaluacion,
       datos,
-      guia,
+      documento,
       decisiones,
     ),
   };

@@ -17,6 +17,7 @@ import {
   sinVacios,
   vacio,
 } from "../ui.js";
+import { TIPOS_ORGANIZACION } from "../textos.js";
 import { camposUbigeo } from "../ubigeo.js";
 
 export function seccionesPlataforma() {
@@ -62,6 +63,13 @@ function abrirAlta(navegar) {
       autocomplete: "off",
       required: true,
       ayuda: "De 3 a 6 letras. Va en el código de cada DOP y no cambia después.",
+    }),
+    campo({
+      etiqueta: "Tipo de organización",
+      name: "tipo_organizacion",
+      opciones: [["", "Elige el tipo…"], ...TIPOS_ORGANIZACION],
+      required: true,
+      ayuda: "Cooperativa agraria (Ley N.° 31335), asociación de productores o empresa. Se puede corregir después.",
     }),
     h(
       "div",
@@ -123,6 +131,7 @@ function abrirAlta(navegar) {
       nombre_comercial: datos.nombre_comercial,
       ruc: datos.ruc,
       codigo: datos.codigo.trim().toUpperCase(),
+      tipo_organizacion: datos.tipo_organizacion,
       departamento: datos.departamento,
       provincia: datos.provincia,
       distrito: datos.distrito,

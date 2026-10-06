@@ -21,6 +21,8 @@ CAMPOS = (
     "dias_max_cosecha_entrega_baba",
     "dias_max_cosecha_entrega_seco",
     "tolerancia_peso_guia_pct",
+    # Adenda 3 de la Parte 5.
+    "dias_max_emision_doc_entrega",
 )
 
 
@@ -65,11 +67,13 @@ def exigir_lista(sesion: Session, cooperativa_id: uuid.UUID) -> None:
 
 def _salida(sesion: Session, cooperativa_id: uuid.UUID) -> ConfiguracionSalida:
     fila = de_cooperativa(sesion, cooperativa_id)
-    codigo = sesion.get(Cooperativa, cooperativa_id).codigo
+    cooperativa = sesion.get(Cooperativa, cooperativa_id)
     return ConfiguracionSalida(
         **valores(fila),
-        codigo_cooperativa=codigo,
-        lista=fila.tope_kg_seco_ha_anio is not None and bool(codigo),
+        codigo_cooperativa=cooperativa.codigo,
+        ruc_cooperativa=cooperativa.ruc,
+        tipo_organizacion=cooperativa.tipo_organizacion,
+        lista=fila.tope_kg_seco_ha_anio is not None and bool(cooperativa.codigo),
     )
 
 

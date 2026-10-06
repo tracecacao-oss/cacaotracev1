@@ -55,6 +55,14 @@ ESTADO_CASILLA = {
 ALERTAS = {
     "volumen_acumulado_excede_tope": "El volumen de la parcela en 365 días supera el tope por hectárea",
     "dias_cosecha_entrega_altos": "Pasaron más días de los configurados entre la cosecha y la entrega",
+    # Adenda 3 de la Parte 5; las dos que siguen quedan para los DOP emitidos antes.
+    "peso_difiere_del_documento": (
+        "El peso del documento de entrega difiere del peso en balanza más que la tolerancia"
+    ),
+    "documento_usado_por_otro_productor": (
+        "El mismo documento de entrega aparece en una tanda de otro productor"
+    ),
+    "liquidacion_con_productor_con_ruc": "Liquidación de compra a un productor que tiene RUC",
     "peso_difiere_de_guia": "El peso de la guía difiere del peso en balanza más que la tolerancia",
     "guia_usada_por_otro_productor": "La misma guía aparece en una tanda de otro productor",
     "parcela_con_alertas": "La parcela está habilitada pero tiene alertas vigentes",
@@ -432,12 +440,26 @@ def documento(
     pdf.dato("Variedad", t["variedad"])
     pdf.dato("Tipo de semilla", t.get("tipo_semilla"))
     pdf.dato("Cosecha", f"Del {_fecha(t['cosecha_desde'])} al {_fecha(t['cosecha_hasta'])}")
-    g = t["guia_remision"]
-    pdf.dato("Guía de remisión", g["numero"], nivel=NIVEL[g["nivel"]], mono=True)
-    pdf.dato("Emisión de la guía", _fecha(g["fecha_emision"]))
-    pdf.dato("RUC del emisor", g["ruc_emisor"], mono=True)
-    pdf.dato("Peso declarado en la guía", _kg(g.get("peso_kg")))
-    pdf.dato("Huella del archivo de la guía", g.get("documento_sha256"), mono=True)
+    if "documento_entrega" in t:
+        # Adenda 3: con su nombre completo, por ejemplo "Liquidación de compra, L001-123".
+        d = t["documento_entrega"]
+        pdf.dato(
+            "Documento de entrega",
+            f"{d['nombre_tipo']}, {d['numero']}" if d.get("numero") else d["nombre_tipo"],
+            nivel=NIVEL[d["nivel"]],
+        )
+        pdf.dato("Emisión del documento", _fecha(d["fecha_emision"]))
+        pdf.dato("RUC del emisor", d["ruc_emisor"], mono=True)
+        pdf.dato("Peso declarado en el documento", _kg(d.get("peso_kg")))
+        pdf.dato("Huella del archivo del documento", d.get("documento_sha256"), mono=True)
+    else:
+        # DOP emitidos antes de la adenda 3: su contenido sellado guarda la guía de remisión.
+        g = t["guia_remision"]
+        pdf.dato("Guía de remisión", g["numero"], nivel=NIVEL[g["nivel"]], mono=True)
+        pdf.dato("Emisión de la guía", _fecha(g["fecha_emision"]))
+        pdf.dato("RUC del emisor", g["ruc_emisor"], mono=True)
+        pdf.dato("Peso declarado en la guía", _kg(g.get("peso_kg")))
+        pdf.dato("Huella del archivo de la guía", g.get("documento_sha256"), mono=True)
 
     # Alertas y nota
     al = c["alertas"]

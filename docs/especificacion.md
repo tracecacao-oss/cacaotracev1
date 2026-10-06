@@ -1965,6 +1965,8 @@ Una tanda es el cacao de una sola parcela que un productor entrega y la cooperat
 Esta parte abre la etapa 2 del flujo operativo, "Acopio y procesamiento".
 
 > **Estado:** cerrada el 2026-10-05 por decisión del equipo. El detalle de lo probado en producción y lo pendiente está en `CLAUDE.md`, sección "Estado por parte".
+>
+> **Adenda 3 del 2026-10-06:** `docs/adenda-3-parte-5-documento-entrega.md` reemplaza la guía de remisión obligatoria por un documento de entrega de uno de tres tipos (guía de remisión, Comprobante de Operaciones de la Ley N.º 29972 o liquidación de compra) y agrega el tipo de organización. Donde difiera de esta especificación, manda la adenda 3.
 
 ### Decisiones tomadas por el equipo
 

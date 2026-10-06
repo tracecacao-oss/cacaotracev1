@@ -1,8 +1,8 @@
 // Piezas de la Parte 5 que comparten el asistente, el detalle de la tanda, el DOP y "Mis entregas":
-// campos de pesaje, cosecha y guía; requisitos y alertas; huella, código QR y descarga del PDF.
+// campos de pesaje, cosecha y documento de entrega; requisitos y alertas; huella, código QR y PDF.
 
 import { llamarApi } from "./api.js";
-import { ALERTAS, ALERTAS_TANDA, REQUISITOS_TANDA, VARIEDADES, kilos } from "./textos.js";
+import { ALERTAS, ALERTAS_TANDA, REQUISITOS_TANDA, TIPOS_DOC_ENTREGA, VARIEDADES, kilos } from "./textos.js";
 import { campo, h, icono, toast } from "./ui.js";
 
 export function seccionesLotes() {
@@ -37,9 +37,16 @@ const conDesfase = (local) => `${local}:00-05:00`;
 
 // ---------- Campos de la tanda ----------
 
+/** Suma días a una fecha "AAAA-MM-DD". */
+function masDias(dia, n) {
+  const fecha = new Date(`${dia}T12:00:00Z`);
+  fecha.setUTCDate(fecha.getUTCDate() + n);
+  return fecha.toISOString().slice(0, 10);
+}
+
 /**
- * Campos de pesaje y cosecha, y de la guía de remisión. t: tanda actual (para editar) o vacío.
- * Devuelve { pesaje, guia, actualizar } para ubicarlos en el asistente o en un formulario.
+ * Campos de pesaje y cosecha, y del documento de entrega (adenda 3). t: tanda actual (para editar) o vacío.
+ * Devuelve { pesaje, documento, actualizar } para ubicarlos en el asistente o en un formulario.
  */
 export function camposTanda(t = {}, { lugares, configuracion }) {
   const canchas = lugares.filter((l) => l.tipo === "cancha_acopio" && (l.activo || l.id === t.lugar_id));
@@ -63,7 +70,26 @@ export function camposTanda(t = {}, { lugares, configuracion }) {
   const cosechaHasta = campo({ etiqueta: "Cosecha hasta", name: "cosecha_hasta", type: "date", required: true, value: t.cosecha_hasta ?? "" });
   const cosechaDesde = campo({ etiqueta: "Cosecha desde", name: "cosecha_desde", type: "date", required: true, value: t.cosecha_desde ?? "" });
   const recepcion = campo({ etiqueta: "Fecha y hora del pesaje", name: "recibida_en", type: "datetime-local", required: true, value: recibida, max: momentoLima() });
-  const guiaFecha = campo({ etiqueta: "Fecha de emisión", name: "gre_fecha_emision", type: "date", value: t.gre_fecha_emision ?? "" });
+  const docFecha = campo({ etiqueta: "Fecha de emisión", name: "doc_entrega_fecha_emision", type: "date", value: t.doc_entrega_fecha_emision ?? "" });
+  const docNumero = campo({
+    etiqueta: "Serie y número",
+    name: "doc_entrega_numero",
+    value: t.doc_entrega_numero ?? "",
+    maxlength: 20,
+    autocomplete: "off",
+    autocapitalize: "characters",
+    class: "input mono",
+    ayuda: "Como figura en el documento.",
+  });
+  const docRuc = campo({ etiqueta: "RUC del emisor", name: "doc_entrega_ruc_emisor", value: t.doc_entrega_ruc_emisor ?? "", inputmode: "numeric", pattern: "[0-9]{11}", maxlength: 11, title: "11 dígitos", class: "input mono" });
+  const tipos = TIPOS_DOC_ENTREGA.map((tipo) =>
+    h(
+      "label",
+      { class: "opcion opcion-doc" },
+      h("input", { type: "radio", name: "doc_entrega_tipo", value: tipo.codigo, checked: t.doc_entrega_tipo === tipo.codigo, onchange: () => actualizar() }),
+      h("span", {}, h("b", {}, tipo.nombre), h("span", { class: "sec" }, `${tipo.emisor}. ${tipo.cuando}.`)),
+    ),
+  );
 
   function elegirProducto(valor) {
     producto.value = valor;
@@ -87,8 +113,29 @@ export function camposTanda(t = {}, { lugares, configuracion }) {
     variedadOtra.hidden = !otra;
     variedadOtra.querySelector("input").required = otra;
     const dia = recepcion.querySelector("input").value.slice(0, 10) || hoyLima();
-    for (const c of [cosechaDesde, cosechaHasta, guiaFecha]) c.querySelector("input").max = dia;
+    for (const c of [cosechaDesde, cosechaHasta]) c.querySelector("input").max = dia;
     cosechaDesde.querySelector("input").max = cosechaHasta.querySelector("input").value || dia;
+    // Documento de entrega: cada tipo con su emisor y su plazo (adenda 3, sección 5).
+    const tipo = TIPOS_DOC_ENTREGA.find((x) => x.codigo === tipos.find((o) => o.querySelector("input").checked)?.querySelector("input").value);
+    const fecha = docFecha.querySelector("input");
+    const ruc = docRuc.querySelector("input");
+    docNumero.querySelector("input").placeholder = tipo?.ejemplo ?? "";
+    if (tipo?.emiteLaOrganizacion) {
+      fecha.min = dia;
+      const limite = masDias(dia, Number(configuracion.dias_max_emision_doc_entrega ?? 7));
+      fecha.max = limite < hoyLima() ? limite : hoyLima();
+      ruc.value = configuracion.ruc_cooperativa ?? "";
+      ruc.readOnly = true;
+      docRuc.querySelector("small")?.remove();
+      docRuc.append(h("small", {}, `La emite la organización que recibe: su RUC se llena solo. Se emite el día de la recepción o hasta ${configuracion.dias_max_emision_doc_entrega ?? 7} días después.`));
+    } else {
+      fecha.removeAttribute("min");
+      fecha.max = dia;
+      if (ruc.readOnly) ruc.value = "";
+      ruc.readOnly = false;
+      docRuc.querySelector("small")?.remove();
+      docRuc.append(h("small", {}, "Del productor, de la organización o del transportista, según quién la emitió."));
+    }
   }
   for (const c of [peso, variedad, recepcion, cosechaHasta]) c.addEventListener("input", actualizar);
   humedad.hidden = producto.value !== "seco";
@@ -116,35 +163,21 @@ export function camposTanda(t = {}, { lugares, configuracion }) {
     h("p", { class: "panel-sub" }, "El intervalo de cosecha es el que pide el artículo 9 del Reglamento: desde cuándo y hasta cuándo se cosechó este cacao."),
   );
 
-  const guia = h(
+  const documento = h(
     "div",
     { class: "form" },
+    h("div", { class: "field" }, "Tipo de documento", h("div", { class: "opciones", role: "radiogroup", "aria-label": "Tipo de documento de entrega" }, tipos)),
+    h("div", { class: "grid2" }, docNumero, docFecha),
     h(
       "div",
       { class: "grid2" },
-      campo({
-        etiqueta: "Serie y número",
-        name: "gre_numero",
-        value: t.gre_numero ?? "",
-        maxlength: 20,
-        autocomplete: "off",
-        autocapitalize: "characters",
-        placeholder: "T001-123",
-        class: "input mono",
-        ayuda: "Serie de 4 caracteres y número, como figura en la guía.",
-      }),
-      guiaFecha,
-    ),
-    h(
-      "div",
-      { class: "grid2" },
-      campo({ etiqueta: "RUC del emisor", name: "gre_ruc_emisor", value: t.gre_ruc_emisor ?? "", inputmode: "numeric", pattern: "[0-9]{11}", maxlength: 11, title: "11 dígitos", class: "input mono", ayuda: "Del productor o de la cooperativa, según quién la emitió." }),
-      campo({ etiqueta: "Peso declarado en la guía (kg, opcional)", name: "gre_peso_kg", type: "number", step: "0.01", min: "0.01", inputmode: "decimal", value: t.gre_peso_kg ?? "", class: "input mono" }),
+      docRuc,
+      campo({ etiqueta: "Peso declarado en el documento (kg, opcional)", name: "doc_entrega_peso_kg", type: "number", step: "0.01", min: "0.01", inputmode: "decimal", value: t.doc_entrega_peso_kg ?? "", class: "input mono" }),
     ),
   );
 
   actualizar();
-  return { pesaje, guia, actualizar };
+  return { pesaje, documento, actualizar };
 }
 
 /**
@@ -165,21 +198,22 @@ export function cuerpoTanda(datos, anterior = null) {
     tipo_semilla: opcional(datos.tipo_semilla),
     cosecha_desde: datos.cosecha_desde,
     cosecha_hasta: datos.cosecha_hasta,
-    gre_numero: opcional(datos.gre_numero?.trim()),
-    gre_fecha_emision: opcional(datos.gre_fecha_emision),
-    gre_ruc_emisor: opcional(datos.gre_ruc_emisor),
-    gre_peso_kg: opcional(datos.gre_peso_kg),
+    doc_entrega_tipo: opcional(datos.doc_entrega_tipo),
+    doc_entrega_numero: opcional(datos.doc_entrega_numero?.trim()),
+    doc_entrega_fecha_emision: opcional(datos.doc_entrega_fecha_emision),
+    doc_entrega_ruc_emisor: opcional(datos.doc_entrega_ruc_emisor),
+    doc_entrega_peso_kg: opcional(datos.doc_entrega_peso_kg),
   };
   if (anterior && momentoLima(anterior.recibida_en) === datos.recibida_en) delete cuerpo.recibida_en;
   return cuerpo;
 }
 
-/** Selector de la foto o el PDF de la guía. En el celular ofrece tomar la foto con la cámara. */
-export function campoArchivoGuia({ requerido = false } = {}) {
+/** Selector de la foto o el PDF del documento de entrega. En el celular ofrece tomar la foto con la cámara. */
+export function campoArchivoDocumento({ requerido = false } = {}) {
   return h(
     "label",
     { class: "field" },
-    "Foto o PDF de la guía (hasta 10 MB)",
+    "Foto o PDF del documento de entrega (hasta 10 MB)",
     h("input", { class: "input", type: "file", name: "archivo", accept: "image/jpeg,image/png,application/pdf", required: requerido }),
     h("small", {}, "En el celular puedes tomar la foto con la cámara."),
   );
@@ -210,8 +244,12 @@ function cifrasDeAlerta(codigo, detalle = {}, configuracion) {
       return `${kilos(detalle.kg_seco_por_ha_365_dias)} secos por hectárea en 365 días; el tope es ${kilos(conf.tope_kg_seco_ha_anio)} por hectárea al año.`;
     case "dias_cosecha_entrega_altos":
       return `${detalle.dias_cosecha_entrega} días entre el fin de la cosecha y la entrega.`;
-    case "peso_difiere_de_guia":
+    case "peso_difiere_del_documento":
+      return `Diferencia de ${detalle.diferencia_peso_documento_pct} %; la tolerancia es ${conf.tolerancia_peso_guia_pct ?? "—"} %.`;
+    case "peso_difiere_de_guia": // decisiones anteriores a la adenda 3
       return `Diferencia de ${detalle.diferencia_peso_guia_pct} %; la tolerancia es ${conf.tolerancia_peso_guia_pct ?? "—"} %.`;
+    case "liquidacion_con_productor_con_ruc":
+      return "La liquidación de compra corresponde cuando el productor no tiene RUC; la ficha del productor tiene uno.";
     case "parcela_con_alertas":
       return detalle.alertas_parcela ? `${detalle.alertas_parcela.map((a) => ALERTAS[a] ?? a).join("; ")}.` : null;
     default:
