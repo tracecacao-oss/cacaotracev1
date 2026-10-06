@@ -35,6 +35,10 @@ python -m http.server 5500 --directory frontend        # interfaz (desde la raí
 Las pruebas que necesitan Postgres se saltan en local si Docker no está arriba; en CI son obligatorias.
 Las pruebas nunca llaman a Supabase: el Auth admin se simula con `AuthFalso` (tests/conftest.py) y cada prueba corre en una transacción que se revierte.
 
+Scripts de operación en `backend/scripts/`: los corre una persona del equipo con las variables reales en su terminal, nunca Claude Code.
+- `crear_superadmin.py` crea un superadministrador.
+- `reiniciar_datos.py` deja el sistema vacío (decisión del 2026-10-06, especificación, Parte 10, "Reinicio"): conserva solo a los superadministradores y no se corre cuando ya haya datos reales.
+
 ## Convenciones del código
 
 - Permisos: `requiere_rol(...)` en el router; la cooperativa siempre de `obtener_contexto`, nunca del cuerpo, la ruta o la query.

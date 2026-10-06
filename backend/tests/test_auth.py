@@ -1,9 +1,11 @@
 import time
+import uuid
 
 import httpx
 import jwt
 import pytest
 
+from app import auth_admin
 from app.auth import (
     AutenticacionNoDisponible,
     TokenInvalido,
@@ -182,3 +184,24 @@ def test_me_responde_503_si_no_hay_claves(claves):
         respuesta = c.get("/me", headers=_bearer(claves.firmar()))
     assert respuesta.status_code == 503
     assert respuesta.json()["error"]["codigo"] == "autenticacion_no_disponible"
+
+
+def test_listar_usuarios_recorre_las_paginas(monkeypatch):
+    """GET /admin/users pagina con page y per_page y devuelve {"users": [...]}."""
+    monkeypatch.setattr(auth_admin, "POR_PAGINA", 2)
+    ids = [str(uuid.uuid4()) for _ in range(3)]
+    paginas = []
+
+    def responder(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/auth/v1/admin/users" and request.headers["apikey"] == "sb_secret_prueba"
+        pagina = int(request.url.params["page"])
+        paginas.append(pagina)
+        lote = ids[(pagina - 1) * 2 : pagina * 2]
+        usuarios = [{"id": i, "email": f"{i}@x"} for i in lote]
+        return httpx.Response(200, json={"aud": "authenticated", "users": usuarios})
+
+    cliente = auth_admin.ClienteAuthAdmin(
+        "https://x.supabase.co", "sb_secret_prueba", httpx.Client(transport=httpx.MockTransport(responder))
+    )
+    usuarios = cliente.listar_usuarios()
+    assert [str(u["id"]) for u in usuarios] == ids and paginas == [1, 2]

@@ -16,6 +16,7 @@ from app.errores import error_api
 
 TAMANO_MAXIMO_DOCUMENTO = 10 * 1024 * 1024
 VIGENCIA_URL_FIRMADA = 300
+TAMANO_PAGINA_LISTA = 1000
 
 # Tipo real del contenido según sus primeros bytes, no según la extensión ni el navegador.
 FIRMAS = {
@@ -109,9 +110,45 @@ class ClienteStorage:
         return f"{self._base}{relativa}{sufijo}"
 
     def borrar(self, ruta: str) -> None:
+        self.borrar_varios([ruta])
+
+    def borrar_varios(self, rutas: list[str]) -> None:
         url = f"{self._base}/object/{self.bucket}"
-        respuesta = self._http.request("DELETE", url, json={"prefixes": [ruta]}, headers=self._cabeceras())
+        respuesta = self._http.request("DELETE", url, json={"prefixes": rutas}, headers=self._cabeceras())
         self._comprobar(respuesta, "borrar")
+
+    def listar(self, prefijo: str = "") -> list[tuple[str, int | None]]:
+        """Todos los archivos bajo `prefijo`, con su tamaño en bytes, recorriendo las carpetas.
+
+        Usa POST /object/list/{bucket} de Supabase Storage: devuelve los nombres relativos al prefijo y
+        las carpetas vienen sin `id` (supabase/storage, src/http/routes/object/listObjects.ts).
+        """
+        url = f"{self._base}/object/list/{self.bucket}"
+        archivos: list[tuple[str, int | None]] = []
+        pendientes = [prefijo.strip("/")]
+        while pendientes:
+            carpeta = pendientes.pop()
+            desde = 0
+            while True:
+                cuerpo = {
+                    "prefix": carpeta,
+                    "limit": TAMANO_PAGINA_LISTA,
+                    "offset": desde,
+                    "sortBy": {"column": "name", "order": "asc"},
+                }
+                respuesta = self._http.post(url, json=cuerpo, headers=self._cabeceras())
+                self._comprobar(respuesta, "listar")
+                entradas = respuesta.json()
+                for entrada in entradas:
+                    ruta = f"{carpeta}/{entrada['name']}" if carpeta else entrada["name"]
+                    if entrada.get("id") is None:
+                        pendientes.append(ruta)
+                    else:
+                        archivos.append((ruta, (entrada.get("metadata") or {}).get("size")))
+                if len(entradas) < TAMANO_PAGINA_LISTA:
+                    break
+                desde += TAMANO_PAGINA_LISTA
+        return sorted(archivos)
 
 
 def crear_storage(settings: Settings) -> ClienteStorage | None:
