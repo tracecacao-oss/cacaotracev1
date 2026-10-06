@@ -134,6 +134,8 @@ La tercera existe porque la liquidación de compra corresponde cuando el product
 
 ## 12. Registro de la construcción (2026-10-06)
 
+**Estado:** cerrada el 2026-10-06 por decisión del equipo (PR #22). El detalle de lo probado está en `CLAUDE.md`, sección "Estado por parte".
+
 ### La Ley N.° 29972 está derogada
 
 La Segunda Disposición Complementaria Derogatoria de la Ley N.° 31335, Ley de perfeccionamiento de la asociatividad de los productores agrarios en cooperativas agrarias (El Peruano, 10/08/2021), dice: "Derógase la Ley 29972, Ley que promueve la inclusión de los productores agrarios a través de las cooperativas, y normas complementarias". El tipo `comprobante_operaciones_29972` corresponde a esa ley.
