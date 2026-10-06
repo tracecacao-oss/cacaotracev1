@@ -1962,6 +1962,8 @@ Una tanda es el cacao de una sola parcela que un productor entrega y la cooperat
 
 Esta parte abre la etapa 2 del flujo operativo, "Acopio y procesamiento".
 
+> **Estado:** cerrada el 2026-10-05 por decisión del equipo. El detalle de lo probado en producción y lo pendiente está en `CLAUDE.md`, sección "Estado por parte".
+
 ### Decisiones tomadas por el equipo
 
 | Tema | Decisión |
