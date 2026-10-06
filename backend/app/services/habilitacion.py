@@ -439,6 +439,10 @@ def excluir(contexto: Contexto, parcela: Parcela, datos: ExcluirEntrada) -> Habi
             "evidencia_analisis_id": datos.evidencia_analisis_id,
         },
     )
+    # Parte 8: los lotes ya cerrados con cacao de esta parcela reciben su alerta (el DEX no cambia).
+    from app.services import recomprobacion  # evita importación circular
+
+    recomprobacion.exclusion_posterior_al_cierre(contexto, parcela)
     contexto.sesion.commit()
     return obtener(contexto, parcela)
 

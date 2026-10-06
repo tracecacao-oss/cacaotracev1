@@ -241,6 +241,8 @@ class TandaFinalSalida(BaseModel):
     ingreso_stock_en: datetime
     estado: str
     dpp: Referencia | None
+    # Parte 8: tiene cacao de una parcela excluida; no se sugiere ni se acepta en un lote.
+    retenida: bool = False
 
 
 class ComponenteDeTandaFinal(BaseModel):

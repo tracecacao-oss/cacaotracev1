@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.schemas.comunes import Correo, Entrada, Texto, TextoOpcional
+from app.schemas.cooperativa import RecomprobacionSalida
 from app.schemas.proceso import Referencia
 from app.schemas.recepcion import Kilos, NotaLarga, ProductorDeTanda
 
@@ -204,6 +205,9 @@ class LoteDetalle(LoteSalida):
     motivo_anulacion: str | None
     asignaciones: list[AsignacionSalida]
     indicadores: list[Indicador] | None
+    # Parte 8: alertas posteriores al cierre y la última recomprobación, si la hay.
+    alertas: list[dict[str, Any]] = []
+    recomprobacion: RecomprobacionSalida | None = None
 
 
 class ParcelaDeGenealogia(BaseModel):

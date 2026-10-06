@@ -17,15 +17,16 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base, ConFechas
 from app.models.padron import _en
 
 ESTADOS_ORDEN = ("abierta", "con_lote", "cerrada", "anulada")
-# Las Partes 8 y 9 agregan los estados siguientes del lote.
-ESTADOS_LOTE = ("en_armado", "armado", "anulado")
+# Parte 8: bloqueado y listo los fija la recomprobación; cerrado, la emisión del DEX (Parte 9).
+ESTADOS_LOTE = ("en_armado", "armado", "bloqueado", "listo", "cerrado", "anulado")
+RESULTADOS_RECOMPROBACION = ("sin_observaciones", "con_observaciones")
 PARTIDA_SA = "1801"
 MOTIVO_DESVIACION_MINIMO = 30
 
@@ -130,6 +131,8 @@ class Lote(ConFechas, Base):
     anulado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     anulado_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))
     motivo_anulacion: Mapped[str | None] = mapped_column(Text)
+    # Parte 8: alertas que llegan después de cerrar el lote, como exclusion_posterior_al_cierre.
+    alertas: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
 
 
 class LoteAsignacion(Base):
@@ -172,3 +175,21 @@ class LoteGenealogia(Base):
     kg_atribuidos: Mapped[Decimal] = mapped_column(Numeric(12, 4))
     proporcion_lote: Mapped[Decimal] = mapped_column(Numeric(9, 6))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+
+
+class Recomprobacion(Base):
+    """Las nueve comprobaciones de un lote con la fecha del día (Parte 8). No se edita ni se borra."""
+
+    __tablename__ = "recomprobaciones"
+    __table_args__ = (
+        CheckConstraint(f"resultado IN ({_en(RESULTADOS_RECOMPROBACION)})", name="resultado_valido"),
+        Index("ix_recomprobaciones_lote_ejecutada", "lote_id", "ejecutada_en"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lote_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("lotes.id"))
+    # Nulo cuando la ejecutó el sistema (tarea diaria).
+    ejecutada_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))
+    ejecutada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resultado: Mapped[str] = mapped_column(Text)
+    detalle: Mapped[dict] = mapped_column(JSONB)

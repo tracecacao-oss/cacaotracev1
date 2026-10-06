@@ -455,6 +455,9 @@ def _salidas_finales(sesion: Session, finales: list[TandaFinal]) -> list[TandaFi
         d.tanda_final_id: d
         for d in sesion.scalars(select(Dpp).where(Dpp.tanda_final_id.in_([t.id for t in finales])))
     }
+    from app.services import recomprobacion  # evita importación circular
+
+    retenidas = recomprobacion.retenidas(sesion, [t.id for t in finales])
     return [
         TandaFinalSalida(
             id=t.id,
@@ -474,6 +477,7 @@ def _salidas_finales(sesion: Session, finales: list[TandaFinal]) -> list[TandaFi
             dpp=Referencia(id=dpps[t.id].id, codigo=dpps[t.id].codigo, estado=dpps[t.id].estado)
             if t.id in dpps
             else None,
+            retenida=t.id in retenidas,
         )
         for t in finales
     ]

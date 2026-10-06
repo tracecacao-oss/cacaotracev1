@@ -17,6 +17,7 @@ from app.contexto import CABECERA_COOPERATIVA
 from app.limite import LimitePorIp
 from app.routers import (
     auditoria,
+    cooperativa,
     documentos,
     exportacion,
     habilitacion,
@@ -159,6 +160,7 @@ def crear_app(
         recepcion,
         proceso,
         exportacion,
+        cooperativa,
         publico,
     ):
         app.include_router(modulo.router)

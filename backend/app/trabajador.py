@@ -2,7 +2,8 @@
 
 El plan gratuito de Render no ofrece un proceso trabajador aparte, así que un único hilo dentro de
 la API procesa la cola de análisis, una consulta externa a la vez, y corre la tarea diaria:
-pasar a observada la parcela habilitada que dejó de cumplir y renovar análisis por caducar.
+pasar a observada la parcela habilitada que dejó de cumplir, renovar análisis por caducar y, desde la
+Parte 8, recomprobar los lotes listo y bloqueado.
 Render reinicia el servicio con frecuencia: al arrancar se recupera lo que quedó a medias.
 """
 
@@ -12,7 +13,7 @@ import time
 
 from app.db import SesionLocal
 from app.scripts import reprocesar_whisp
-from app.services import analisis, habilitacion, imagenes
+from app.services import analisis, habilitacion, imagenes, recomprobacion
 from app.services.fuentes import Fuente
 from app.storage import ClienteStorage
 
@@ -40,11 +41,16 @@ class Trabajador(threading.Thread):
             renovados = analisis.renovar_por_caducar(sesion, self.fuentes)
         with SesionLocal() as sesion:
             juegos = imagenes.encolar_pendientes(sesion)
+        # Parte 8: los lotes listo y bloqueado se recomprueban; solo queda fila si algo cambió.
+        with SesionLocal() as sesion:
+            recomprobados = recomprobacion.tarea_diaria(sesion)
         log.info(
-            "Tarea diaria: %s parcelas observadas, %s análisis renovados, %s juegos de imágenes encolados",
+            "Tarea diaria: %s parcelas observadas, %s análisis renovados, %s juegos de imágenes encolados, "
+            "%s lotes con recomprobación nueva",
             observadas,
             renovados,
             juegos,
+            recomprobados,
         )
 
     def run(self) -> None:

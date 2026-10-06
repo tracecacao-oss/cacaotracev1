@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from sqlalchemy import and_, exists, select
 from sqlalchemy.orm import Session
 
-from app.catalogos import documentos_legales
+from app.catalogos import documentos_embarque, documentos_legales
 from app.contexto import Contexto
 from app.errores import error_api, no_encontrado
 from app.models import (
@@ -50,6 +50,9 @@ TIPOS_POR_ENTIDAD = {
     "dop": ("dop_pdf",),
     "dpp": ("dpp_pdf",),
     "imagen": ("imagen_satelital", "imagen_externa"),
+    # Parte 8
+    "cooperativa": documentos_legales.CODIGOS_COOPERATIVA,
+    "lote": documentos_embarque.CODIGOS,
 }
 NOMBRES_TIPO = {
     "dni": "copia del DNI",
@@ -64,7 +67,11 @@ NOMBRES_TIPO = {
     "imagen_satelital": "imagen satelital",
     "imagen_externa": "imagen externa",
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
+    **{t.codigo: t.nombre for t in documentos_legales.TIPOS_COOPERATIVA},
+    **{t.codigo: t.nombre for t in documentos_embarque.TIPOS},
 }
+# Parte 8: un documento de embarque solo se carga o se anula en un lote confirmado y sin DEX.
+ESTADOS_LOTE_CON_EMBARQUE = ("armado", "bloqueado", "listo")
 # Los genera el sistema o forman parte de un registro que no se edita: no se anulan a mano.
 NO_ANULABLES = (
     "respuesta_analisis",
@@ -249,6 +256,11 @@ def documento_visible(contexto: Contexto, documento_id: uuid.UUID) -> Documento:
     documento = contexto.sesion.get(Documento, documento_id)
     if documento is None:
         raise no_encontrado("El documento no existe.")
+    if documento.entidad in ("cooperativa", "lote"):
+        # Parte 8: los de la cooperativa y los de embarque los ve el personal de esa cooperativa.
+        if contexto.rol == "productor" or documento.cooperativa_id != contexto.cooperativa_id:
+            raise no_encontrado("El documento no existe.")
+        return documento
     productor_id = _productor_del_documento(contexto.sesion, documento)
     if contexto.rol == "productor":
         # El productor ve el resultado del análisis, no la respuesta completa de la fuente.
@@ -286,6 +298,20 @@ def anular(contexto: Contexto, documento_id: uuid.UUID, motivo: str) -> Document
         raise error_api(
             400, "documento_no_anulable", f"La {NOMBRES_TIPO[documento.tipo]} no se anula a mano."
         )
+    if documento.entidad == "cooperativa" and contexto.rol != "admin_cooperativa":
+        raise error_api(
+            403, "solo_administrador", "Solo un administrador anula los documentos legales de la cooperativa."
+        )
+    if documento.entidad == "lote":
+        from app.models import Lote  # evita importación circular
+
+        lote = contexto.sesion.get(Lote, documento.entidad_id)
+        if lote.estado not in ESTADOS_LOTE_CON_EMBARQUE:
+            raise error_api(
+                400,
+                "lote_cerrado",
+                "El lote ya tiene DEX o fue anulado: sus documentos de embarque no cambian.",
+            )
     if documento.entidad == "tanda":
         # La guía de una tanda validada respalda su DOP: ya no se anula.
         tanda = contexto.sesion.get(Tanda, documento.entidad_id)

@@ -360,9 +360,15 @@ PROHIBIDAS = re.compile(
 )
 
 
+# La Parte 8 nombra dos documentos de embarque que emiten terceros; son nombres de documentos, no una
+# afirmación del sistema, y solo se admiten con este texto exacto.
+DOCUMENTOS_CON_NOMBRE_PROPIO = ("Certificado de origen", "Certificado fitosanitario")
+
+
 def _sin_leyenda_del_dop(texto: str) -> str:
     """Las leyendas que la Parte 5 y la Parte 6 mandan poner en el DOP y en el DPP niegan serlo ("No es una
-    constancia ni un certificado"): son la única excepción, y solo con su texto exacto."""
+    constancia ni un certificado"): son la excepción, y solo con su texto exacto. También los nombres de los
+    dos documentos de embarque de la Parte 8."""
     from app.services.dops import LEYENDA
     from app.services.dpps import LEYENDA as LEYENDA_DPP
 
@@ -379,6 +385,8 @@ def _sin_leyenda_del_dop(texto: str) -> str:
         LEYENDA_DPP[corte:],
     ):
         texto = texto.replace(f'"{parte}"', "")
+    for nombre in DOCUMENTOS_CON_NOMBRE_PROPIO:
+        texto = texto.replace(nombre, "")
     return texto.replace(LEYENDA, "").replace(LEYENDA_DPP, "")
 
 

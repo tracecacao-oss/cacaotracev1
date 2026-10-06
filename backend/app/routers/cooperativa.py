@@ -1,0 +1,119 @@
+"""Parte 8: datos y expediente legal de la cooperativa, documentos de embarque del lote, recomprobación y
+pendientes. Los documentos de la cooperativa los carga solo un administrador; los de embarque, el
+administrador o el operador."""
+
+import uuid
+from datetime import date
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+
+from app.catalogos import documentos_embarque, documentos_legales
+from app.contexto import Contexto, cooperativa_del_contexto, requiere_rol
+from app.routers.comun import leer_archivo
+from app.schemas.cooperativa import (
+    CooperativaCambios,
+    CooperativaPropia,
+    EmbarqueSalida,
+    ExpedienteCooperativa,
+    PendientesSalida,
+    RecomprobacionSalida,
+)
+from app.schemas.parcelas import DocumentoSalida
+from app.services import cooperativa, documentos, embarque, pendientes, recomprobacion
+from app.services.expediente import validar_datos_legales
+from app.services.productores import documento_salida
+from app.storage import ClienteStorage, obtener_storage
+
+router = APIRouter(tags=["cooperativa"])
+Lectura = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa", "operador", "lector", "superadmin"))]
+Registro = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa", "operador"))]
+Administrador = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa"))]
+Storage = Annotated[ClienteStorage, Depends(obtener_storage)]
+TipoLegalCooperativa = Literal[documentos_legales.CODIGOS_COOPERATIVA]
+TipoEmbarque = Literal[documentos_embarque.CODIGOS]
+
+# ---------- Cooperativa ----------
+
+
+@router.get("/cooperativa", response_model=CooperativaPropia)
+def datos_de_la_cooperativa(contexto: Lectura):
+    return cooperativa.obtener(contexto)
+
+
+@router.patch("/cooperativa", response_model=CooperativaPropia)
+def editar_cooperativa(datos: CooperativaCambios, contexto: Administrador):
+    return cooperativa.editar(contexto, datos)
+
+
+@router.get("/cooperativa/expediente", response_model=ExpedienteCooperativa)
+def expediente_de_la_cooperativa(contexto: Lectura):
+    return cooperativa.expediente(contexto)
+
+
+@router.post("/cooperativa/documentos", response_model=DocumentoSalida, status_code=201)
+def cargar_documento_de_la_cooperativa(
+    contexto: Administrador,
+    storage: Storage,
+    tipo: Annotated[TipoLegalCooperativa, Form()],
+    archivo: Annotated[UploadFile, File()],
+    numero: Annotated[str | None, Form()] = None,
+    entidad_emisora: Annotated[str | None, Form()] = None,
+    fecha_emision: Annotated[date | None, Form()] = None,
+    fecha_vencimiento: Annotated[date | None, Form()] = None,
+):
+    """Uno de los 6 documentos legales de la cooperativa, con número, entidad emisora y fechas."""
+    datos_legales = validar_datos_legales(tipo, numero, entidad_emisora, fecha_emision, fecha_vencimiento)
+    documento = documentos.cargar(
+        contexto,
+        storage,
+        entidad="cooperativa",
+        entidad_id=cooperativa_del_contexto(contexto),
+        tipo=tipo,
+        archivo=leer_archivo(archivo),
+        datos_legales=datos_legales,
+    )
+    return documento_salida(documento, None)
+
+
+# ---------- Lote: embarque y recomprobación ----------
+
+
+@router.post("/lotes/{lote_id}/documentos", response_model=DocumentoSalida, status_code=201)
+def cargar_documento_de_embarque(
+    lote_id: uuid.UUID,
+    contexto: Registro,
+    storage: Storage,
+    tipo: Annotated[TipoEmbarque, Form()],
+    archivo: Annotated[UploadFile, File()],
+    numero: Annotated[str | None, Form()] = None,
+    entidad_emisora: Annotated[str | None, Form()] = None,
+    fecha_emision: Annotated[date | None, Form()] = None,
+):
+    documento = embarque.cargar(
+        contexto, storage, lote_id, tipo, leer_archivo(archivo), numero, entidad_emisora, fecha_emision
+    )
+    return documento_salida(documento, None)
+
+
+@router.get("/lotes/{lote_id}/documentos", response_model=EmbarqueSalida)
+def documentos_de_embarque(lote_id: uuid.UUID, contexto: Lectura):
+    return embarque.listar(contexto, lote_id)
+
+
+@router.post("/lotes/{lote_id}/recomprobar", response_model=RecomprobacionSalida)
+def recomprobar_lote(lote_id: uuid.UUID, contexto: Registro):
+    return recomprobacion.recomprobar(contexto, lote_id)
+
+
+@router.get("/lotes/{lote_id}/recomprobaciones", response_model=list[RecomprobacionSalida])
+def historial_de_recomprobaciones(lote_id: uuid.UUID, contexto: Lectura):
+    return recomprobacion.historial(contexto, lote_id)
+
+
+# ---------- Pendientes ----------
+
+
+@router.get("/pendientes", response_model=PendientesSalida)
+def pendientes_de_la_cooperativa(contexto: Lectura):
+    return pendientes.pendientes(contexto)
