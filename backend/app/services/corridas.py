@@ -28,6 +28,8 @@ from app.models import (
     CorridaTanda,
     Dop,
     Dpp,
+    Lote,
+    LoteGenealogia,
     Lugar,
     Parcela,
     Perfil,
@@ -1025,7 +1027,9 @@ def anular(contexto: Contexto, corrida_id: uuid.UUID, motivo: str) -> CorridaDet
 
 
 def proceso_de_tandas(sesion: Session, tanda_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, Any]]:
-    """En qué fase está la corrida de cada tanda, o si ya entró al stock. Sin datos de otros productores."""
+    """En qué fase está la corrida de cada tanda, si ya entró al stock o, desde la Parte 7, si parte de su
+    cacao entró a un lote de exportación confirmado. Sin importador, orden ni kilos del lote, y sin datos de
+    otros productores."""
     if not tanda_ids:
         return {}
     filas = sesion.execute(
@@ -1036,8 +1040,22 @@ def proceso_de_tandas(sesion: Session, tanda_ids: list[uuid.UUID]) -> dict[uuid.
     if not filas:
         return {}
     etapas = etapas_de(sesion, [c.id for _, c in filas])
+    en_lote = set(
+        sesion.scalars(
+            select(LoteGenealogia.tanda_id)
+            .join(Lote, Lote.id == LoteGenealogia.lote_id)
+            .where(LoteGenealogia.tanda_id.in_(tanda_ids), Lote.estado.not_in(("en_armado", "anulado")))
+        )
+    )
     resultado = {}
     for tanda_id, corrida in filas:
+        if tanda_id in en_lote:
+            resultado[tanda_id] = {
+                "estado": "en_lote_de_exportacion",
+                "fase": "exportacion",
+                "fase_nombre": "En un lote de exportación",
+            }
+            continue
         clave, nombre, _ = fase(corrida, etapas[corrida.id])
         resultado[tanda_id] = {"estado": corrida.estado, "fase": clave, "fase_nombre": nombre}
     return resultado

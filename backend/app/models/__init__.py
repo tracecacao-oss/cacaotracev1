@@ -40,6 +40,13 @@ from app.models.acceso import (  # noqa: E402
     Perfil,
     Productor,
 )
+from app.models.exportacion import (  # noqa: E402
+    Importador,
+    Lote,
+    LoteAsignacion,
+    LoteGenealogia,
+    OrdenCompra,
+)
 from app.models.habilitacion import (  # noqa: E402
     AnalisisCobertura,
     DecisionHabilitacion,
@@ -79,6 +86,11 @@ from app.models.recepcion import (  # noqa: E402
 )
 
 __all__ = [
+    "Importador",
+    "Lote",
+    "LoteAsignacion",
+    "LoteGenealogia",
+    "OrdenCompra",
     "Calidad",
     "Corrida",
     "CorridaEtapa",
