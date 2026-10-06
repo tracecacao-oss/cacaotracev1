@@ -4,7 +4,7 @@
 import { llamarApi } from "../api.js";
 import { estadoLote, nombreProductor, porcentaje, seccionesTrazabilidad } from "../exportacion.js";
 import { PRODUCTO, kilos } from "../textos.js";
-import { buscador, cargando, conRetraso, errorDeCarga, fecha, h, icono, reemplazar, seccion, vacio } from "../ui.js";
+import { cargando, conRetraso, errorDeCarga, fecha, h, icono, reemplazar, seccion, vacio } from "../ui.js";
 
 let origen = null;
 
@@ -138,7 +138,20 @@ export default async function trazabilidadOrigen() {
     }
   }
 
-  const caja = buscador({ placeholder: "Productor (nombre o DNI), parcela (PA-…) o DOP (DOP-…)", etiqueta: "Buscar el origen", alEscribir: conRetraso(buscar) });
+  const entrada = h("input", { placeholder: "Productor (nombre o DNI), parcela (PA-…) o DOP (DOP-…)", spellcheck: "false", autocomplete: "off", "aria-label": "Buscar el origen" });
+  entrada.addEventListener("input", conRetraso(() => buscar(entrada.value)));
+  const caja = h(
+    "form",
+    {
+      class: "trace-bar",
+      autocomplete: "off",
+      onsubmit: (e) => {
+        e.preventDefault();
+        buscar(entrada.value);
+      },
+    },
+    h("label", { class: "trace-in" }, icono("branch"), entrada, h("button", { class: "btn btn-primary btn-sm", type: "submit" }, "Trazar")),
+  );
   if (origen) await abrir(origen.tipo, origen.id, origen.etiqueta);
   else reemplazar(vista, vacio({ titulo: "Busca un origen", texto: "Escribe el nombre o el DNI de un productor, el código de una parcela o el de un DOP." }));
 
@@ -148,6 +161,6 @@ export default async function trazabilidadOrigen() {
     descripcion: "Desde un productor, una parcela o un DOP, a qué lotes de exportación llegó su cacao.",
     migas: [["Trazabilidad", "#/trazabilidad"], ["Rastreo por origen"]],
     secciones: seccionesTrazabilidad(),
-    contenido: h("section", { class: "panel inspector" }, h("div", { class: "barra-lista" }, caja), resultados, vista),
+    contenido: h("section", { class: "panel inspector" }, caja, resultados, vista),
   };
 }
