@@ -80,9 +80,9 @@ function pestanaGenealogia(l) {
   if (l.estado === "en_armado") return seccion({ titulo: "Genealogía", contenido: h("p", { class: "panel-sub" }, "La genealogía se calcula al confirmar el lote.") });
   const caja = h("div", {}, cargando());
   llamarApi(`/lotes/${l.id}/genealogia`)
-    .then((g) => reemplazar(caja, vistaGenealogia(g)))
+    .then((g) => reemplazar(caja, vistaGenealogia(g, { lote: l, incrustada: true })))
     .catch((error) => reemplazar(caja, errorDeCarga(error)));
-  return seccion({ titulo: "Genealogía", sub: "De los kilos del lote, cuántos vienen de cada parcela, con las proporciones que fijó cada corrida.", contenido: caja });
+  return [seccion({ titulo: "Genealogía", sub: "De los kilos del lote, cuántos vienen de cada parcela, con las proporciones que fijó cada corrida." }), caja];
 }
 
 function pestanaIndicadores(l) {
