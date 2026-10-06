@@ -36,8 +36,10 @@ function activo(ruta, hash) {
   const base = ruta === PLATAFORMA.ruta ? "#/plataforma" : ruta;
   // El detalle de una parcela pertenece al módulo Productores.
   if (ruta === "#/productores" && hash.startsWith("#/parcelas/")) return true;
-  // El detalle de una tanda o de un DOP pertenece al módulo Lotes y proceso.
-  if (ruta === "#/lotes" && (hash.startsWith("#/tandas/") || hash.startsWith("#/dops/"))) return true;
+  // Los detalles de tanda, DOP, corrida, DPP y tanda final pertenecen al módulo Lotes y proceso.
+  if (ruta === "#/lotes" && ["#/tandas/", "#/dops/", "#/corridas/", "#/dpps/", "#/tandas-finales/"].some((p) => hash.startsWith(p))) return true;
+  // Los detalles de orden y de lote de exportación pertenecen al módulo Exportación.
+  if (ruta === "#/exportacion" && (hash.startsWith("#/ordenes/") || hash.startsWith("#/lotes-exportacion/"))) return true;
   return hash === base || hash.startsWith(`${base}/`);
 }
 

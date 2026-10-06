@@ -175,7 +175,8 @@ class DecisionTandaSalida(BaseModel):
 
 
 class ProcesoDeTanda(BaseModel):
-    """Parte 6: en qué fase está la corrida de la tanda, o si ya entró al stock."""
+    """Parte 6: en qué fase está la corrida de la tanda, o si ya entró al stock. Parte 7: estado
+    "en_lote_de_exportacion" cuando parte de su cacao entró a un lote confirmado."""
 
     estado: str
     fase: str
