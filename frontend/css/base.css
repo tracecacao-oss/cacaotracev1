@@ -1067,6 +1067,21 @@ body.side-min .side-contraer .ic {
   top: var(--nav-h);
   z-index: 45;
 }
+/* Parte 10: la cooperativa de demostración lo dice en cada pantalla. */
+.franja-demo {
+  background: var(--amber-soft);
+  color: var(--amber-ink);
+  border-bottom-color: color-mix(in srgb, var(--amber) 30%, transparent);
+  letter-spacing: 0.02em;
+}
+.franjas {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 45;
+}
+.franjas .franja {
+  position: static;
+}
 .contenido {
   max-width: 1760px;
   padding: 22px 24px 48px;
@@ -2044,6 +2059,20 @@ textarea.input.texto-libre {
   display: block;
   font-size: 10.5px;
   color: var(--ink-4);
+}
+/* Parte 10: cuántas consultas esperan en la cola de análisis. */
+.nota-cola {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.nota-cola svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
 }
 .historial-analisis summary {
   cursor: pointer;
@@ -3407,7 +3436,7 @@ button.tira-item:hover {
 /* Parte 8: franja fija del lote bloqueado, comprobaciones de la recomprobación y panel de pendientes. */
 .franja-fija {
   position: sticky;
-  top: var(--nav-h);
+  top: calc(var(--nav-h) + var(--franjas-h, 0px));
   z-index: 5;
   border-radius: 0;
 }

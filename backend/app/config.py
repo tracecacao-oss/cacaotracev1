@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     imagenes_nubes_max_pct: float = Field(5, gt=0, le=100)
     imagenes_margen_m: int = Field(150, ge=0, le=2000)
     imagenes_cuota_mensual_pu: float = Field(10_000, gt=0)
+    # Parte 10: límites del plan gratuito de Supabase para el control de espacio (GET /admin/uso).
+    limite_storage_mb: int = Field(1024, gt=0)
+    limite_db_mb: int = Field(500, gt=0)
 
     @field_validator(
         "supabase_secret_key",

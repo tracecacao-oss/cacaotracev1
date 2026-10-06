@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from app.fechas import LIMA
-from app.pdf.base import AMBAR, TINTA, TINTA_3, Documento
+from app.pdf.base import AMBAR, TEXTO_DEMO, TINTA, TINTA_3, Documento
 
 NIVEL = {
     "declarado": "Declarado",
@@ -238,7 +238,7 @@ def documento(
     contenido: dict[str, Any], huella: str, url: str, imagenes: dict[str, bytes] | None = None
 ) -> Documento:
     c = contenido
-    pdf = Documento(c["identificacion"]["codigo"])
+    pdf = Documento(c["identificacion"]["codigo"], marca_agua=TEXTO_DEMO if c.get("es_demo") else None)
     pdf.add_page()
     _encabezado(pdf, c, huella, url)
     pdf.recuadro(c["leyenda"] + ".")

@@ -17,6 +17,12 @@ TipoExencion = Literal["cusaf", "autorizacion_serfor", "sunafil", "sunat", "zoni
 # ---------- Análisis de cobertura ----------
 
 
+class ColaAnalisis(BaseModel):
+    """Parte 10: cuántas consultas esperan en la cola de toda la plataforma."""
+
+    en_cola: int
+
+
 class FuenteSalida(BaseModel):
     fuente: Literal["whisp", "gfw", "mapbiomas"]
     nombre: str

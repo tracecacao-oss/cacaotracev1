@@ -868,7 +868,8 @@ def test_verificacion_publica_sin_token(api, sesion, admin, operador, basico):
     api.headers.pop("Authorization", None)
     respuesta = api.get(f"/publico/dex/{dex['codigo'].lower()}")
     assert respuesta.status_code == 200
-    assert set(respuesta.json()) == {"codigo", "estado", "emitido_en", "contenido_sha256", "cooperativa"}
+    publicos = {"codigo", "estado", "emitido_en", "contenido_sha256", "cooperativa", "es_demo"}
+    assert set(respuesta.json()) == publicos
     assert (
         respuesta.json()["estado"] == "vigente"
         and respuesta.json()["contenido_sha256"] == dex["contenido_sha256"]
@@ -1033,3 +1034,17 @@ def test_otra_cooperativa_no_ve_ni_opera(api, sesion, admin, operador, basico):
     assert api.patch(f"/certificaciones/{cert['id']}", json={"numero": "X"}).status_code == 404
     documento = sesion.scalar(select(Documento).where(Documento.entidad == "dex"))
     assert api.get(f"/documentos/{documento.id}/url").status_code in (403, 404)
+
+
+def test_el_pdf_del_dex_de_demostracion_lleva_la_marca_en_su_idioma():
+    marcas = {"es": "DEMOSTRACIÓN — DATOS FICTICIOS", "en": "DEMONSTRATION — FICTITIOUS DATA"}
+    for idioma, marca in marcas.items():
+        pdf = pdf_dex.Pdf("DEX-PRUEBA", idioma, demo=True)
+        pdf.add_page()
+        pdf.add_page()
+        pdf.output()
+        assert pdf.textos.count(marca) == 4  # dos páginas; su ancho y su texto pasan por normalize_text
+        real = pdf_dex.Pdf("DEX-PRUEBA", idioma)
+        real.add_page()
+        real.output()
+        assert marca not in real.textos

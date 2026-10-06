@@ -254,10 +254,12 @@ class DopDetalle(DopSalida):
 
 
 class DopPublico(BaseModel):
-    """Solo cinco datos: ni datos personales, ni geometría, ni pesos."""
+    """Solo cinco datos: ni datos personales, ni geometría, ni pesos. Más la marca de demostración."""
 
     codigo: str
     estado: str
     emitido_en: datetime
     contenido_sha256: str
     cooperativa: str
+    # Parte 10: la página pública avisa que es un documento de demostración.
+    es_demo: bool = False

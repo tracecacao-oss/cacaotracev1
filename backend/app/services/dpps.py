@@ -49,7 +49,8 @@ from app.services.documentos import Archivo
 from app.services.dops import matriz_qr
 from app.storage import ClienteStorage, ErrorStorage
 
-VERSION_CONTENIDO = 1
+# 2: Parte 10, el contenido dice si es de una cooperativa de demostración (es_demo).
+VERSION_CONTENIDO = 2
 LEYENDA = (
     "Este documento reúne el registro del procesamiento de un lote de cacao tal como estaba al consolidarse. "
     "No es una constancia ni un certificado"
@@ -195,6 +196,7 @@ def construir_contenido(
     contenido = {
         "version": VERSION_CONTENIDO,
         "leyenda": LEYENDA,
+        "es_demo": bool(cooperativa.es_demo),
         "identificacion": {
             "codigo": codigo,
             "cooperativa": {
@@ -415,19 +417,20 @@ def anular(contexto: Contexto, dpp_id: uuid.UUID, motivo: str) -> DppDetalle:
 def publico(sesion: Session, codigo: str) -> DppPublico:
     """Sin token: solo código, estado, fecha de emisión, huella y razón social."""
     fila = sesion.execute(
-        select(Dpp, Cooperativa.razon_social)
+        select(Dpp, Cooperativa.razon_social, Cooperativa.es_demo)
         .join(Cooperativa, Cooperativa.id == Dpp.cooperativa_id)
         .where(Dpp.codigo == codigo.strip().upper())
     ).first()
     if fila is None:
         raise no_encontrado("No existe un DPP con ese código.")
-    dpp, razon_social = fila
+    dpp, razon_social, es_demo = fila
     return DppPublico(
         codigo=dpp.codigo,
         estado=dpp.estado,
         emitido_en=dpp.emitido_en,
         contenido_sha256=dpp.contenido_sha256,
         cooperativa=razon_social,
+        es_demo=bool(es_demo),
     )
 
 

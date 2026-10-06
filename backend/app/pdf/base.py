@@ -24,15 +24,19 @@ LINEA = (229, 231, 235)
 FONDO = (246, 247, 249)
 ESMERALDA = (5, 150, 105)
 AMBAR = (180, 83, 9)
+MARCA_AGUA = (232, 232, 232)
+TEXTO_DEMO = "DEMOSTRACIÓN — DATOS FICTICIOS"
 
 
 class Documento(FPDF):
     """Página A4 con pie de código y número de página."""
 
-    def __init__(self, codigo: str, pie: str = "Página {n} de {total}"):
+    def __init__(self, codigo: str, pie: str = "Página {n} de {total}", marca_agua: str | None = None):
         super().__init__(orientation="P", unit="mm", format="A4")
         self.codigo = codigo
         self.pie = pie
+        # Parte 10: los documentos de una cooperativa de demostración llevan la marca en cada página.
+        self.marca_agua = marca_agua
         self.set_margins(16, 16, 16)
         self.set_auto_page_break(auto=True, margin=18)
         variable = str(FUENTES / "PlusJakartaSans-Variable.ttf")
@@ -49,7 +53,19 @@ class Documento(FPDF):
         self.textos.append(text)
         return super().normalize_text(text)
 
-    # ---------- Pie ----------
+    # ---------- Encabezado y pie ----------
+
+    def header(self) -> None:
+        """La marca de agua va al empezar cada página, debajo de todo lo demás."""
+        if not self.marca_agua:
+            return
+        with self.local_context():
+            self.set_font("Jakarta", "B", 34)
+            self.set_text_color(*MARCA_AGUA)
+            ancho = self.get_string_width(self.marca_agua)
+            centro_x, centro_y = self.w / 2, self.h / 2
+            with self.rotation(angle=40, x=centro_x, y=centro_y):
+                self.text(centro_x - ancho / 2, centro_y, self.marca_agua)
 
     def footer(self) -> None:
         self.set_y(-12)

@@ -1,8 +1,11 @@
 """Plataforma: cooperativas y administradores, gestionados por el superadmin."""
 
+import uuid
+
 import pytest
 
-from app.models import Auditoria, Cooperativa, Perfil
+from app.config import get_settings
+from app.models import Auditoria, Cooperativa, Documento, Perfil
 from app.services import cuentas
 from tests import factorias
 
@@ -220,3 +223,45 @@ def test_tipo_de_organizacion(api, sesion, superadmin):
         api.patch(f"/admin/cooperativas/{creada['id']}", json={"tipo_organizacion": "otra"}).status_code
         == 422
     )
+
+
+# --- Parte 10: control de espacio ---
+
+
+def test_uso_de_espacio_en_total_y_por_cooperativa(api, sesion, superadmin):
+    con_archivos = factorias.cooperativa(sesion, nombre_comercial="Coop Con Archivos")
+    sin_archivos = factorias.cooperativa(sesion)
+    for n in range(2):
+        sesion.add(
+            Documento(
+                cooperativa_id=con_archivos.id,
+                entidad="imagen",
+                entidad_id=uuid.uuid4(),
+                tipo="imagen_satelital",
+                ruta=f"prueba/{n}.png",
+                nombre_original=f"{n}.png",
+                tipo_mime="image/png",
+                tamano_bytes=3 * 1024 * 1024,
+                sha256=f"{n + 1:064x}",
+            )
+        )
+    sesion.flush()
+    datos = api.como(superadmin).get("/admin/uso").json()
+    settings = get_settings()
+    assert datos["limite_storage_mb"] == settings.limite_storage_mb
+    assert datos["limite_db_mb"] == settings.limite_db_mb
+    filas = {f["cooperativa_id"]: f for f in datos["por_cooperativa"]}
+    assert filas[str(con_archivos.id)]["archivos"] == 2
+    assert filas[str(con_archivos.id)]["storage_bytes"] == 6 * 1024 * 1024
+    assert filas[str(con_archivos.id)]["db_bytes_aprox"] > 0
+    assert filas[str(sin_archivos.id)]["storage_bytes"] == 0
+    assert datos["storage_bytes"] >= 6 * 1024 * 1024
+    limite = settings.limite_storage_mb * 1024 * 1024
+    assert datos["storage_pct"] == round(datos["storage_bytes"] / limite * 100, 1)
+    assert datos["db_bytes"] > 0 and datos["db_pct"] > 0
+    assert datos["analisis_en_cola"] >= 0
+
+
+def test_uso_de_espacio_solo_para_superadmin(api, sesion):
+    coop = factorias.cooperativa(sesion)
+    assert api.como(factorias.perfil(sesion, "admin_cooperativa", coop)).get("/admin/uso").status_code == 403

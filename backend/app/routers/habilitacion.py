@@ -13,6 +13,7 @@ from app.schemas.habilitacion import (
     AnalisisDetalle,
     AnalisisSalida,
     AnalisisSolicitado,
+    ColaAnalisis,
     ConvergenciaSalida,
     CotejoNuevo,
     ExcluirEntrada,
@@ -44,6 +45,12 @@ Storage = Annotated[ClienteStorage, Depends(obtener_storage)]
 @router.get("/analisis/fuentes", response_model=list[FuenteSalida])
 def fuentes(contexto: Lectura):
     return analisis.fuentes_salida(registro.actuales())
+
+
+@router.get("/analisis/cola", response_model=ColaAnalisis)
+def cola_de_analisis(contexto: Lectura):
+    """Parte 10: la cola atiende una consulta a la vez; la interfaz muestra cuántas esperan."""
+    return ColaAnalisis(en_cola=analisis.en_cola(contexto.sesion))
 
 
 @router.post("/parcelas/{parcela_id}/analisis", response_model=AnalisisSolicitado, status_code=202)

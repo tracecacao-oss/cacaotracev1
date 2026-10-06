@@ -24,7 +24,9 @@ function leerConsulta() {
 
 /** Superadministrador viendo una cooperativa en solo lectura. */
 export function fijarConsulta(cooperativa) {
-  estado.consulta = cooperativa ? { id: cooperativa.id, nombre: cooperativa.nombre } : null;
+  estado.consulta = cooperativa
+    ? { id: cooperativa.id, nombre: cooperativa.nombre, es_demo: Boolean(cooperativa.es_demo) }
+    : null;
   try {
     if (estado.consulta) sessionStorage.setItem("consulta", JSON.stringify(estado.consulta));
     else sessionStorage.removeItem("consulta");
@@ -51,6 +53,11 @@ const PERMISOS = {
 /** Solo decide qué botones se muestran; la API rechaza igual lo que el rol no puede hacer. */
 export function puede(accion) {
   return PERMISOS[accion]?.includes(rolEfectivo()) ?? false;
+}
+
+/** Parte 10: cuenta de una cooperativa de demostración, o el superadmin consultando una. */
+export function esDemo() {
+  return enConsulta() ? Boolean(estado.consulta.es_demo) : Boolean(estado.usuario?.es_demo);
 }
 
 export function nombreCooperativa() {

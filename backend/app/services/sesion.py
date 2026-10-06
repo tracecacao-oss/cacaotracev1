@@ -26,6 +26,7 @@ def datos_me(contexto: Contexto) -> MeRespuesta:
         productor_id=perfil.productor_id,
         debe_cambiar_clave=perfil.debe_cambiar_clave,
         consentimiento_pendiente=bool(productor and productor.consentimiento_datos_en is None),
+        es_demo=bool(productor.es_demo if productor else perfil.cooperativa and perfil.cooperativa.es_demo),
     )
 
 

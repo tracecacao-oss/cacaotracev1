@@ -8,9 +8,16 @@ from fastapi import APIRouter, Depends, Query
 from app.auth_admin import ClienteAuthAdmin, obtener_auth_admin
 from app.contexto import Contexto, requiere_rol
 from app.schemas.comunes import ClaveTemporal, Pagina
-from app.schemas.plataforma import CooperativaCambios, CooperativaCreada, CooperativaNueva, CooperativaSalida
+from app.schemas.plataforma import (
+    CooperativaCambios,
+    CooperativaCreada,
+    CooperativaNueva,
+    CooperativaSalida,
+    UsoSalida,
+)
 from app.schemas.usuarios import AdministradorNuevo, CuentaCreada, UsuarioSalida
 from app.services import plataforma as servicio
+from app.services import uso as servicio_uso
 from app.services.paginacion import ParametrosPaginacion
 
 router = APIRouter(prefix="/admin", tags=["plataforma"])
@@ -54,6 +61,12 @@ def crear_administrador(
 ):
     perfil, clave = servicio.crear_administrador(contexto, auth, cooperativa_id, datos)
     return CuentaCreada(usuario=UsuarioSalida.model_validate(perfil), clave_temporal=clave)
+
+
+@router.get("/uso", response_model=UsoSalida)
+def uso(contexto: Superadmin):
+    """Parte 10: espacio en archivos y en base de datos, en total y por cooperativa."""
+    return servicio_uso.uso(contexto)
 
 
 @router.post("/usuarios/{usuario_id}/restablecer-clave", response_model=ClaveTemporal)

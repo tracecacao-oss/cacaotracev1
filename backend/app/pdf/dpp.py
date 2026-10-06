@@ -9,7 +9,7 @@ from typing import Any
 
 from app.catalogos import etapas_proceso as catalogo
 from app.fechas import LIMA
-from app.pdf.base import AMBAR, ESMERALDA, FONDO, LINEA, TINTA, TINTA_2, TINTA_3, Documento
+from app.pdf.base import AMBAR, ESMERALDA, FONDO, LINEA, TEXTO_DEMO, TINTA, TINTA_2, TINTA_3, Documento
 from app.pdf.dop import _fecha, _kg
 
 ALERTAS = {
@@ -219,7 +219,7 @@ def generar(contenido: dict[str, Any], huella: str, url: str) -> bytes:
 def documento(contenido: dict[str, Any], huella: str, url: str) -> Documento:
     c = contenido
     ident = c["identificacion"]
-    pdf = Documento(ident["codigo"])
+    pdf = Documento(ident["codigo"], marca_agua=TEXTO_DEMO if c.get("es_demo") else None)
     pdf.add_page()
     _encabezado(pdf, c, huella, url)
     pdf.recuadro(c["leyenda"] + ".")

@@ -33,6 +33,30 @@ class CooperativaSalida(Salida):
     productores: int = 0
 
 
+class UsoCooperativa(Salida):
+    cooperativa_id: uuid.UUID
+    cooperativa: str
+    es_demo: bool
+    archivos: int
+    storage_bytes: int
+    # Suma del tamaño de sus filas, sin índices: sirve para comparar cooperativas, no para sumar.
+    db_bytes_aprox: int
+
+
+class UsoSalida(Salida):
+    """Parte 10: espacio usado contra los límites del plan. La interfaz avisa al pasar de 70 % y de 90 %."""
+
+    archivos: int
+    storage_bytes: int
+    limite_storage_mb: int
+    storage_pct: float
+    db_bytes: int
+    limite_db_mb: int
+    db_pct: float
+    analisis_en_cola: int
+    por_cooperativa: list[UsoCooperativa]
+
+
 class CooperativaNueva(Entrada):
     razon_social: Texto
     nombre_comercial: TextoOpcional | None = None

@@ -4225,6 +4225,73 @@ La versión corta usa los bloques 1, 3 y 5, y cabe en 3 minutos. La versión com
 - [ ] Definir dónde se guardan las copias de respaldo y quién responde por ellas.
 - [ ] Fijar la duración de la demo, para elegir los bloques.
 
+### Construcción (2026-10-06)
+
+Construido en `feat/parte-10-piloto`:
+
+- **Marca de demostración.**
+  - La migración 0013 cambia la unicidad del DNI a `dni` y `es_demo`. El registro, la edición y la carga masiva buscan el DNI solo entre los productores del mismo tipo.
+  - La interfaz muestra la franja "Demostración: datos ficticios" a las cuentas de la cooperativa y al superadministrador que la consulta. `GET /me` trae `es_demo`.
+  - Cada página de DOP, DPP y DEX lleva la marca de agua. El DEX en inglés dice "DEMONSTRATION — FICTITIOUS DATA".
+  - `es_demo` va sellado en el DOP (ya lo estaba), en el DPP (versión 2 de su contenido) y en el DEX. También va en el GeoJSON, en `anexo_ii.json` y en `hallazgos.json`.
+  - La verificación pública devuelve `es_demo` y la página avisa "Documento de demostración".
+- **Compresión de imágenes:** `frontend/js/compresion.js`. `api.js` la aplica a todo formulario con archivos.
+- **Control de espacio:**
+  - `GET /admin/uso`, con `LIMITE_STORAGE_MB` y `LIMITE_DB_MB`.
+  - Panel en Plataforma › Cooperativas, con aviso al 70 % y al 90 %.
+- **Ritmo de los análisis:** `GET /analisis/cola`. La pestaña Cobertura forestal dice cuántas consultas esperan mientras alguna está en curso. El panel de plataforma también lo muestra.
+- **Copias de respaldo:**
+  - `backend/scripts/respaldar_storage.py`. Su encabezado trae las órdenes de `pg_dump` y del ensayo de restauración.
+  - El ensayo se probó en local con PostGIS en el esquema `extensions`, como en Supabase. Funcionaron el volcado, la restauración, `alembic current` y una consulta de PostGIS.
+- **Escenario:** `backend/app/demo/escenario.py`, con `construir(sesion, superadmin, auth=…, storage=…, fuentes=…)`.
+  - Llama a los mismos servicios que los endpoints, con los mismos esquemas de entrada y el rol de cada paso.
+  - Procesa la cola de análisis como el hilo de la API.
+  - Si un paso no puede cumplirse, se detiene con `EscenarioDetenido`, que nombra el paso y el requisito que faltó.
+  - Los archivos que carga son PDF generados que dicen "DOCUMENTO DE DEMOSTRACIÓN — SIN VALOR".
+- **Prueba de extremo a extremo:** `backend/tests/e2e/test_flujo_completo.py`, con las respuestas reales de Whisp y GFW guardadas en `backend/tests/datos/`. Comprueba:
+  - los estados de las nueve parcelas, los saldos de las tandas finales (0, 100 y 0) y los estados de las corridas, las órdenes y los lotes;
+  - la genealogía del lote 1, el contenido del DEX y los registros detenidos;
+  - la marca de agua en cada página de los PDF de DOP, DPP y DEX, y `es_demo` en los archivos y en la verificación pública;
+  - que una segunda cooperativa no ve nada de Prueba, que un DNI real igual a uno de demostración no choca, y que una parcela real encima de PA-00001 no abre superposición.
+
+  Dos pruebas más comprueban que el escenario se detiene sin las claves de Whisp y GFW, y con el código `PRB` ya usado.
+
+**Difiere de la especificación** (para que el equipo decida):
+
+- **Genealogía esperada del lote 1.**
+  - La tabla de esta parte dice 88.8889, 66.6667 y 44.4444 para PA-00002, PA-00005 y PA-00006. Esas cifras salen de fracciones exactas.
+  - Las reglas de las Partes 6 y 7 dan 88.8888, 66.6666 y 44.4446: proporciones de 6 decimales en la corrida (0.444444, 0.333333 y la última ajustada a 0.222223) por los 200 kg.
+  - Los totales (400, 200 y 600) y las filas de la tanda final 1 coinciden. La prueba comprueba lo que dan las reglas.
+  - Hay que corregir la tabla o cambiar la regla de redondeo de la Parte 6.
+- **Visitas de campo.** Desde la adenda 2 de la Parte 4 ya no existen. PA-00001 no muestra "perímetro recorrido" y PA-00004 queda habilitada sin visita ni fotos. Si una parcela que debe habilitarse recibe `analisis_requiere_revision`, el escenario se detiene y lo explica, porque esa alerta solo la atiende una revisión de imágenes hecha por una persona.
+- **Geometrías.** Se arman en el escenario, en el mismo lugar de San Martín que usan las pruebas y con las áreas de la tabla, porque `app/` no lee `tests/`.
+- **Clasificación del país.** El escenario no la registra: es un dato regulatorio de toda la plataforma y lo fija el equipo. Mientras falte, el DEX dice "clasificación del país no registrada".
+- **Contraseñas.** Las cuentas de demostración se crean con contraseña temporal, que cada persona cambia al entrar por primera vez.
+
+**No se construyó:**
+
+- **La siembra en producción** (`python -m app.demo.sembrar`).
+  - El 2026-10-06 el equipo vació producción con `reiniciar_datos.py` y decidió cargar la simulación a mano.
+  - El escenario recibe la sesión, Auth, Storage y las fuentes como parámetros, así que un comando puede usarlo si el equipo lo pide.
+- **La regla `consentimiento_no_definido`.** El texto de consentimiento está en la versión 1 desde el 2026-10-06, así que la regla nunca se cumpliría.
+
+**Decisiones de construcción por confirmar** (la especificación no las dice):
+
+- **`GET /me`:** para la cuenta del productor, `es_demo` es el del productor. Para el personal, es el de su cooperativa.
+- **Compresión de imágenes:**
+  - Un JPEG de 1,600 píxeles o menos se sube tal cual si comprimirlo lo haría pesar más.
+  - Un PNG pasa a JPEG sobre fondo blanco y pierde la transparencia.
+  - Un archivo que el navegador no puede leer se sube sin cambios.
+- **Medición del espacio:**
+  - Los archivos se miden con `documentos.tamano_bytes`, e incluyen los anulados, que siguen guardados.
+  - La base de datos se mide con `pg_database_size`.
+  - Por cooperativa, la base es una aproximación: la suma de sus filas, sin índices.
+- **Cola de análisis:** cuenta las consultas pendientes y en curso de toda la plataforma. El productor no la ve.
+- **`respaldar_storage.py`:**
+  - Exige `--destino` y no escribe dentro del repositorio.
+  - No vuelve a bajar un archivo que ya está en la carpeta con el mismo tamaño.
+- **Choque de correos de acceso.** El correo técnico del productor (`{dni}@productores.cacaotrace.local`) es el mismo para la demostración y para lo real. Mientras un productor de demostración con DNI `00000001` a `00000007` tenga acceso, un productor real con el mismo DNI no podría recibirlo.
+
 ## Cómo entregar este documento a Claude Code
 
 El documento se usa en dos formatos: Markdown dentro del repositorio, para que Claude Code lo consulte en cada sesión, y PDF para el equipo.

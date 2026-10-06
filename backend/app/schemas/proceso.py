@@ -285,10 +285,12 @@ class DppDetalle(DppSalida):
 
 
 class DppPublico(BaseModel):
-    """Solo cinco datos, como el DOP: ni datos personales, ni pesos."""
+    """Solo cinco datos, como el DOP: ni datos personales, ni pesos. Más la marca de demostración."""
 
     codigo: str
     estado: str
     emitido_en: datetime
     contenido_sha256: str
     cooperativa: str
+    # Parte 10: la página pública avisa que es un documento de demostración.
+    es_demo: bool = False

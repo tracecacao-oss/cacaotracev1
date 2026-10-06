@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.contexto import Contexto
 from app.errores import error_api
-from app.models import Afiliacion, Productor
+from app.models import Afiliacion, Cooperativa, Productor
 from app.schemas.productores import CargaMasiva, FilaCarga, ProductorNuevo
 from app.services import productores
 from app.services.auditoria import registrar_auditoria
@@ -175,7 +175,11 @@ def _revisar(contexto: Contexto, archivo: Archivo) -> tuple[Filas, list[str]]:
         contexto.sesion.execute(
             select(Productor.dni, Afiliacion.cooperativa_id)
             .join(Afiliacion, Afiliacion.productor_id == Productor.id)
-            .where(Productor.dni.in_(list(vistos)), Afiliacion.estado == "activa")
+            .where(
+                Productor.dni.in_(list(vistos)),
+                Productor.es_demo == _es_demo(contexto),
+                Afiliacion.estado == "activa",
+            )
         ).all()
     )
     for fila, _ in filas:
@@ -234,3 +238,9 @@ def registrar(contexto: Contexto, archivo: Archivo) -> CargaMasiva:
             "Alguien registró a uno de estos productores mientras tanto. Revisa el archivo de nuevo.",
         ) from exc
     return resumen
+
+
+def _es_demo(contexto: Contexto) -> bool:
+    """Parte 10: los DNI de una cooperativa de demostración solo se comparan con los de demostración."""
+    cooperativa = contexto.sesion.get(Cooperativa, contexto.cooperativa_id)
+    return bool(cooperativa and cooperativa.es_demo)

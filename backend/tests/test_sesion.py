@@ -73,6 +73,15 @@ def test_me_del_productor(api, sesion):
     assert datos["consentimiento_pendiente"] is True
 
 
+def test_me_dice_si_la_cuenta_es_de_demostracion(api, sesion):
+    demo = factorias.cooperativa(sesion, es_demo=True)
+    real = factorias.cooperativa(sesion)
+    assert api.como(factorias.perfil(sesion, "operador", demo)).get("/me").json()["es_demo"] is True
+    assert api.como(factorias.perfil(sesion, "operador", real)).get("/me").json()["es_demo"] is False
+    _, cuenta = factorias.productor_con_acceso(sesion, demo)
+    assert api.como(cuenta).get("/me").json()["es_demo"] is True
+
+
 def test_me_del_superadmin(api, sesion):
     superadmin = factorias.perfil(sesion, "superadmin")
     datos = api.como(superadmin).get("/me").json()

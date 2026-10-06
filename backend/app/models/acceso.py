@@ -15,6 +15,7 @@ from sqlalchemy import (
     Index,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -86,10 +87,12 @@ class Productor(ConFechas, Base):
         ),
         CheckConstraint("ruc IS NULL OR ruc ~ '^[0-9]{11}$'", name="ruc_11_digitos"),
         CheckConstraint("ppa_registrado OR ppa_codigo IS NULL", name="ppa_codigo_solo_si_registrado"),
+        # Parte 10: un DNI ficticio de demostración nunca choca con el de un productor real.
+        UniqueConstraint("dni", "es_demo", name="uq_productores_dni_es_demo"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    dni: Mapped[str] = mapped_column(String(8), unique=True)
+    dni: Mapped[str] = mapped_column(String(8))
     nombres: Mapped[str] = mapped_column(Text)
     apellidos: Mapped[str] = mapped_column(Text)
     telefono: Mapped[str | None] = mapped_column(Text)

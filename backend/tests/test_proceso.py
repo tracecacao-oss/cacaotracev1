@@ -458,7 +458,8 @@ def test_el_dpp_no_cambia_y_se_verifica_sin_token(api, sesion, operador, planta,
     dpp = sesion.get(Dpp, dpp_id)
     publico = api.get(f"/publico/dpps/{dpp.codigo.lower()}")
     assert publico.status_code == 200
-    assert set(publico.json()) == {"codigo", "estado", "emitido_en", "contenido_sha256", "cooperativa"}
+    publicos = {"codigo", "estado", "emitido_en", "contenido_sha256", "cooperativa", "es_demo"}
+    assert set(publico.json()) == publicos
 
 
 def test_anular_el_dpp_y_consolidar_de_nuevo(api, sesion, admin, operador, planta, almacen, grado, tanda):
@@ -523,6 +524,24 @@ def test_el_pdf_del_dpp_muestra_el_diagrama(api, sesion, operador, planta, almac
         "Almacenamiento hasta consolidar el lote de exportación",
     ):
         assert nombre in escrito.replace("\n", " ")
+
+
+def test_el_dpp_de_demostracion_lo_sella_y_lo_marca(api, sesion, operador, planta, almacen, grado, tanda):
+    from app.pdf import dpp as pdf_dpp
+    from app.pdf.base import TEXTO_DEMO
+    from app.services.dpps import url_verificacion
+
+    corrida = _lista(api, operador, [tanda], planta, grado)
+    dpp = sesion.get(Dpp, uuid.UUID(_consolidar(api, corrida, almacen).json()["dpp"]["id"]))
+    assert dpp.contenido["version"] == 2 and dpp.contenido["es_demo"] is False
+    url = url_verificacion(dpp.codigo)
+    demo = pdf_dpp.documento(dpp.contenido | {"es_demo": True}, dpp.contenido_sha256, url)
+    demo.output()
+    # Una vez por página; la marca pasa dos veces por normalize_text (su ancho y su texto).
+    assert demo.textos.count(TEXTO_DEMO) == 2 * demo.pages_count >= 2
+    real = pdf_dpp.documento(dpp.contenido, dpp.contenido_sha256, url)
+    real.output()
+    assert TEXTO_DEMO not in real.textos
 
 
 # ---------- Calidades, productor y otra cooperativa ----------

@@ -161,6 +161,15 @@ def solicitar_a_pedido(
 # ---------- Vigencia, salida y alertas ----------
 
 
+def en_cola(sesion: Session) -> int:
+    """Parte 10: consultas pendientes o en curso en toda la plataforma. La cola atiende una a la vez."""
+    return sesion.scalar(
+        select(func.count())
+        .select_from(AnalisisCobertura)
+        .where(AnalisisCobertura.estado.in_(("pendiente", "en_proceso")))
+    )
+
+
 def obsoleto(analisis: AnalisisCobertura, huella_actual: str) -> bool:
     return analisis.geometria_sha256 != huella_actual
 
