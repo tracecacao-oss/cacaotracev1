@@ -150,3 +150,5 @@ class DecisionHabilitacion(Base):
     geometria_sha256: Mapped[str] = mapped_column(String(64))
     evidencia_visita_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("visitas_campo.id"))
     evidencia_analisis_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("analisis_cobertura.id"))
+    # Adenda 2: la exclusión puede citar una revisión de imágenes.
+    evidencia_revision_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("revisiones_imagenes.id"))

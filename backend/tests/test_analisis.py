@@ -281,9 +281,13 @@ def _gfw_completado(api, parcela) -> dict:
 
 def test_alertas_dist_piden_revision_solo_si_hubo_bosque_en_2020(api, sesion, operador, productor):
     # Decisión del equipo del 2026-10-05: DIST marca cualquier cambio de vegetación (poda, cosecha,
-    # renovación del cultivo); sin bosque en la parcela el 31/12/2020 no pide visita.
-    sin_bosque = {"alertas_desde_2021": 0, "perdida_ha_total": 0, "bosque_natural_2020_ha": 0,
-                  "alertas_dist_desde_2021": 18}
+    # renovación del cultivo); sin bosque en la parcela el 31/12/2020 no pide revisión.
+    sin_bosque = {
+        "alertas_desde_2021": 0,
+        "perdida_ha_total": 0,
+        "bosque_natural_2020_ha": 0,
+        "alertas_dist_desde_2021": 18,
+    }
     gfw = fuentes_configuradas()["gfw"]
     assert not gfw.requiere_revision(None, sin_bosque, hubo_bosque_2020=False)
     assert gfw.requiere_revision(None, sin_bosque, hubo_bosque_2020=True)

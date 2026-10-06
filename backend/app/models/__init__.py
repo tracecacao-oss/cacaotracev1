@@ -46,6 +46,11 @@ from app.models.habilitacion import (  # noqa: E402
     ExencionDocumento,
     VisitaCampo,
 )
+from app.models.imagenes import (  # noqa: E402
+    ConsumoImagenes,
+    ImagenParcela,
+    RevisionImagenes,
+)
 from app.models.padron import (  # noqa: E402
     ESTADOS_HABILITACION,
     ESTADOS_MIDAGRI,
@@ -65,6 +70,9 @@ from app.models.recepcion import (  # noqa: E402
 )
 
 __all__ = [
+    "ConsumoImagenes",
+    "ImagenParcela",
+    "RevisionImagenes",
     "ConfiguracionCooperativa",
     "Correlativo",
     "DecisionTanda",

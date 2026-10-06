@@ -2010,7 +2010,7 @@ textarea.input.texto-libre {
   gap: 16px;
 }
 .fuente,
-.visita,
+.revision,
 .casilla {
   display: grid;
   gap: 8px;
@@ -2020,7 +2020,7 @@ textarea.input.texto-libre {
   background: var(--surface);
 }
 .fuente-h,
-.visita-h,
+.revision-h,
 .casilla-h {
   display: flex;
   justify-content: space-between;
@@ -2052,7 +2052,7 @@ textarea.input.texto-libre {
   color: var(--ink-2);
   padding: 4px 0 8px;
 }
-.visitas,
+.revisiones,
 .casillas,
 .requisitos {
   display: grid;
@@ -2061,14 +2061,11 @@ textarea.input.texto-libre {
   margin: 0;
   padding: 0;
 }
-.visita p {
+.revision p {
   font-size: 13px;
 }
-.visita.anulada {
+.revision.no-vigente {
   opacity: 0.65;
-}
-.visita.anulada > p:first-of-type {
-  text-decoration: line-through;
 }
 .casilla-doc {
   display: flex;
@@ -2530,4 +2527,114 @@ button.kpi[aria-pressed="true"] {
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: 12.5px;
+}
+
+/* ---------- Adenda 2 de la Parte 4: imágenes de la parcela ---------- */
+.tira {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 168px;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+}
+.tira-item {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  scroll-snap-align: start;
+}
+button.tira-item {
+  cursor: pointer;
+}
+button.tira-item:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-sm);
+}
+.tira-item img,
+.tira-sin-vista {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.tira-sin-vista {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.tira-hueco {
+  border-style: dashed;
+  background: var(--surface-2);
+  min-height: 120px;
+  align-content: center;
+}
+.tira-fecha,
+.fecha-grande {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.tira-papel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.comparador,
+.wayback {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.comp-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.comp-lados {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+.comp-lado {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+}
+.comp-mapa {
+  height: 340px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: #0b1220;
+}
+.comp-pie {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+.mapa-wayback {
+  height: 380px;
+}
+@media (max-width: 640px) {
+  .comp-mapa {
+    height: 260px;
+  }
+  .mapa-wayback {
+    height: 300px;
+  }
 }

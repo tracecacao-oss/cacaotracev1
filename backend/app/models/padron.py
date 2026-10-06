@@ -46,8 +46,11 @@ TIPOS_DOCUMENTO = (
     # Parte 5
     "guia_remision",
     "dop_pdf",
+    # Adenda 2 de la Parte 4
+    "imagen_satelital",
+    "imagen_externa",
 )
-ENTIDADES_DOCUMENTO = ("productor", "parcela", "visita", "analisis", "tanda", "dop")
+ENTIDADES_DOCUMENTO = ("productor", "parcela", "visita", "analisis", "tanda", "dop", "imagen")
 ESTADOS_HABILITACION = ("pendiente", "habilitada", "observada", "excluida")
 ESTADOS_MIDAGRI = ("no_registrada", "sin_observacion", "en_revision", "validado")
 ESTADOS_PARCELA = ("activa", "inactiva")
@@ -69,9 +72,10 @@ class Documento(Base):
         CheckConstraint(f"entidad IN ({_en(ENTIDADES_DOCUMENTO)})", name="entidad_valida"),
         CheckConstraint(f"tipo IN ({_en(TIPOS_DOCUMENTO)})", name="tipo_valido"),
         CheckConstraint("sha256 ~ '^[0-9a-f]{64}$'", name="sha256_hex"),
-        # Solo la respuesta de un análisis la guarda el sistema, sin persona que la suba.
+        # Solo la respuesta de un análisis y las imágenes satelitales las guarda el sistema, sin persona.
         CheckConstraint(
-            "subido_por IS NOT NULL OR tipo = 'respuesta_analisis'", name="subido_por_si_no_sistema"
+            "subido_por IS NOT NULL OR tipo IN ('respuesta_analisis', 'imagen_satelital')",
+            name="subido_por_si_no_sistema",
         ),
         CheckConstraint(
             "fecha_vencimiento IS NULL OR fecha_emision IS NULL OR fecha_vencimiento > fecha_emision",

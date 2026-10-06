@@ -6,7 +6,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, StringConstraints
 
-from app.schemas.comunes import Entrada, Salida, Texto
+from app.schemas.comunes import Entrada, Salida
 from app.schemas.parcelas import DocumentoSalida
 
 TextoLargo30 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=30, max_length=4000)]
@@ -88,39 +88,7 @@ class ConvergenciaSalida(BaseModel):
     area_ha: float | None
 
 
-# ---------- Visitas de campo ----------
-
-
-class VisitaNueva(Entrada):
-    fecha: date
-    realizada_por_nombre: Texto
-    realizada_por_cargo: Texto
-    motivo: Literal["analisis_requiere_revision", "verificacion_de_coordenadas", "otro"]
-    perimetro_recorrido: bool
-    uso_observado: Literal["cacao_bajo_sombra", "cacao_sin_sombra", "bosque", "otro_cultivo", "mixto"]
-    descripcion: TextoLargo30
-
-
-class VisitaSalida(BaseModel):
-    id: uuid.UUID
-    parcela_id: uuid.UUID
-    fecha: date
-    realizada_por_nombre: str
-    realizada_por_cargo: str
-    registrada_por_nombre: str | None
-    motivo: str
-    perimetro_recorrido: bool
-    uso_observado: str
-    descripcion: str
-    creado_en: datetime
-    anulada_en: datetime | None
-    motivo_anulacion: str | None
-    vigente: bool
-    fotos: list[DocumentoSalida]
-
-
-class Anulacion(Entrada):
-    motivo: Texto
+# ---------- Procedencia ----------
 
 
 class Procedencia(BaseModel):
@@ -190,6 +158,7 @@ class DecisionSalida(Salida):
     requisitos: dict[str, Any]
     evidencia_visita_id: uuid.UUID | None
     evidencia_analisis_id: uuid.UUID | None
+    evidencia_revision_id: uuid.UUID | None = None
 
 
 class HabilitacionSalida(BaseModel):
@@ -208,7 +177,8 @@ class HabilitarEntrada(Entrada):
 
 class ExcluirEntrada(Entrada):
     descripcion: TextoLargo50
-    evidencia_visita_id: uuid.UUID | None = None
+    # Adenda 2 (8.5): la evidencia es una revisión de imágenes o un análisis; ya no una visita.
+    evidencia_revision_id: uuid.UUID | None = None
     evidencia_analisis_id: uuid.UUID | None = None
     confirmacion: str
 

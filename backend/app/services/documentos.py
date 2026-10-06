@@ -16,7 +16,17 @@ from sqlalchemy.orm import Session
 from app.catalogos import documentos_legales
 from app.contexto import Contexto
 from app.errores import error_api, no_encontrado
-from app.models import Afiliacion, AnalisisCobertura, Documento, Dop, Parcela, Perfil, Tanda, VisitaCampo
+from app.models import (
+    Afiliacion,
+    AnalisisCobertura,
+    Documento,
+    Dop,
+    ImagenParcela,
+    Parcela,
+    Perfil,
+    Tanda,
+    VisitaCampo,
+)
 from app.services.auditoria import registrar_auditoria
 from app.services.geometria import ErrorArchivo
 from app.storage import (
@@ -38,6 +48,7 @@ TIPOS_POR_ENTIDAD = {
     "analisis": ("respuesta_analisis",),
     "tanda": ("guia_remision",),
     "dop": ("dop_pdf",),
+    "imagen": ("imagen_satelital", "imagen_externa"),
 }
 NOMBRES_TIPO = {
     "dni": "copia del DNI",
@@ -48,10 +59,12 @@ NOMBRES_TIPO = {
     "respuesta_analisis": "respuesta completa del análisis",
     "guia_remision": "guía de remisión",
     "dop_pdf": "PDF del DOP",
+    "imagen_satelital": "imagen satelital",
+    "imagen_externa": "imagen externa",
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
 }
 # Los genera el sistema o forman parte de un registro que no se edita: no se anulan a mano.
-NO_ANULABLES = ("respuesta_analisis", "foto_visita", "dop_pdf")
+NO_ANULABLES = ("respuesta_analisis", "foto_visita", "dop_pdf", "imagen_satelital", "imagen_externa")
 
 
 @dataclass(frozen=True)
@@ -210,6 +223,8 @@ def _parcela_del_documento(sesion: Session, documento: Documento) -> uuid.UUID |
         return sesion.scalar(select(Tanda.parcela_id).where(Tanda.id == documento.entidad_id))
     if documento.entidad == "dop":
         return sesion.scalar(select(Dop.parcela_id).where(Dop.id == documento.entidad_id))
+    if documento.entidad == "imagen":
+        return sesion.scalar(select(ImagenParcela.parcela_id).where(ImagenParcela.id == documento.entidad_id))
     return None
 
 

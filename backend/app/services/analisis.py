@@ -497,6 +497,13 @@ def procesar_siguiente(
     fila.respuesta_documento_id = documento.id
     fila.completado_en = ahora()
     sesion.commit()
+    try:
+        from app.services import imagenes  # evita importación circular
+
+        imagenes.asegurar_juego(sesion, sesion.get(Parcela, fila.parcela_id))
+    except Exception:
+        sesion.rollback()
+        log.exception("No se pudo encolar el juego de imágenes de la parcela %s", fila.parcela_id)
     return True
 
 

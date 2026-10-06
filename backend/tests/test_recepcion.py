@@ -29,7 +29,13 @@ from app.models import (
 from app.services import correlativos, sello
 from tests import factorias
 from tests.factorias import crear_parcela, rectangulo
-from tests.habilitacion_util import PDF, expediente_completo, fuentes_configuradas, productor_listo
+from tests.habilitacion_util import (
+    PDF,
+    documento_legal,
+    expediente_completo,
+    fuentes_configuradas,
+    productor_listo,
+)
 from tests.habilitacion_util import analisis_completado as analisis_hecho
 
 NOTA = "Se valida: el técnico confirmó en cancha el peso y la procedencia de la parcela del productor."
@@ -397,6 +403,22 @@ def test_validar_emite_el_dop(api, sesion, coop, cancha, operador, productor, pa
     assert api.post(f"/tandas/{tanda['id']}/anular", json={"motivo": "x"}).status_code == 400
     guia = next(d for d in tanda["documentos"] if d["tipo"] == "guia_remision")
     assert api.post(f"/documentos/{guia['id']}/anular", json={"motivo": "x"}).status_code == 400
+
+
+def test_el_dop_lleva_la_decision_de_habilitar_vigente(
+    api, sesion, admin, cancha, operador, productor, parcela
+):
+    """Una parcela habilitada dos veces: el DOP copia la decisión más reciente, no la primera."""
+    titulo = sesion.query(Documento).filter_by(entidad_id=parcela.id, tipo="titulo_sunarp").one()
+    titulo.fecha_vencimiento = dia_lima(ahora()) - timedelta(days=1)
+    sesion.flush()
+    assert api.como(admin).get(f"/parcelas/{parcela.id}").json()["habilitacion_estado"] == "observada"
+    documento_legal(sesion, parcela, "titulo_sunarp", operador, vence=dia_lima(ahora()) + timedelta(days=365))
+    nueva = "Se habilita de nuevo: el título vencido se reemplazó por uno vigente de la misma partida."
+    assert api.post(f"/parcelas/{parcela.id}/habilitar", json={"nota": nueva}).status_code == 200
+    _, dop = _validada(api, sesion, operador, productor, parcela, cancha)
+    assert dop.contenido["habilitacion"]["decision"]["nota"] == nueva
+    assert "evidencia_revision_id" not in dop.contenido["habilitacion"]["decision"]
 
 
 def test_falla_el_pdf_y_nada_queda(api, sesion, cancha, operador, productor, parcela, monkeypatch):

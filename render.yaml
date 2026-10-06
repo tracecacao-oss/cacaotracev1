@@ -47,6 +47,18 @@ services:
         value: "2024"
       - key: UMBRAL_BOSQUE_2020_PCT
         value: "10"
+      # Adenda 2 de la Parte 4: imágenes de Sentinel-2 (Copernicus Data Space) para la revisión de imágenes.
+      # El equipo cargó el cliente OAuth en el panel; la cuota del plan es de 30 000 unidades al mes.
+      - key: COPERNICUS_CLIENT_ID
+        sync: false
+      - key: COPERNICUS_CLIENT_SECRET
+        sync: false
+      - key: IMAGENES_NUBES_MAX_PCT
+        value: "5"
+      - key: IMAGENES_MARGEN_M
+        value: "150"
+      - key: IMAGENES_CUOTA_MENSUAL_PU
+        value: "30000"
       # Parte 5: el código QR del DOP lleva a la verificación pública de la interfaz.
       - key: URL_INTERFAZ
         value: https://cacaotrace.pages.dev

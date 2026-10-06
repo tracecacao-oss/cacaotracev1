@@ -1,6 +1,5 @@
-"""Parte 4: visitas de campo, procedencia y compuerta de habilitación."""
+"""Parte 4: procedencia y compuerta de habilitación (con la revisión de imágenes de la adenda 2)."""
 
-import json
 import uuid
 from datetime import timedelta
 
@@ -13,7 +12,6 @@ from app.models import Auditoria, DecisionHabilitacion, Documento, Parcela
 from tests import factorias
 from tests.factorias import crear_parcela, rectangulo
 from tests.habilitacion_util import (
-    JPG,
     PDF,
     analisis_completado,
     documento_legal,
@@ -22,9 +20,9 @@ from tests.habilitacion_util import (
     productor_listo,
     visita,
 )
+from tests.imagenes_util import revision
 
-NOTA = "Se habilita: la visita de campo confirmó cacao bajo sombra en toda la parcela recorrida."
-DESCRIPCION = "Cacao bajo sombra de guaba; se recorrió el lindero completo con GPS del celular."
+NOTA = "Se habilita: la revisión de imágenes muestra cacao bajo sombra antes y después del corte."
 
 
 @pytest.fixture
@@ -71,75 +69,15 @@ def _requisitos(api, parcela) -> dict:
     return {r["codigo"]: r["cumple"] for r in datos["requisitos"]}
 
 
-# ---------- Visitas de campo ----------
-
-
-def _visita(api, parcela, fotos=(("foto.jpg", JPG),), **cambios):
-    datos = {
-        "fecha": str(hoy_lima()),
-        "realizada_por_nombre": "Técnico Demo",
-        "realizada_por_cargo": "Técnico de campo",
-        "motivo": "verificacion_de_coordenadas",
-        "perimetro_recorrido": True,
-        "uso_observado": "cacao_bajo_sombra",
-        "descripcion": DESCRIPCION,
-        **cambios,
-    }
-    archivos = [("fotos", f) for f in fotos]
-    return api.post(
-        f"/parcelas/{parcela.id}/visitas", data={"datos": json.dumps(datos)}, files=archivos or None
-    )
-
-
-def test_registrar_visita_con_foto(api, sesion, operador, productor, storage_falso):
-    parcela = _parcela(api, sesion, operador, productor)
-    respuesta = _visita(api.como(operador), parcela)
-    assert respuesta.status_code == 201, respuesta.text
-    visita_creada = respuesta.json()
-    assert len(visita_creada["fotos"]) == 1
-    assert visita_creada["fotos"][0]["tipo"] == "foto_visita"
-    assert any(r.endswith(".jpg") for r in storage_falso.archivos)
-    assert sesion.query(Auditoria).filter_by(accion="visita.registrar").count() == 1
-
-
-@pytest.mark.parametrize(
-    ("fotos", "cambios", "codigo"),
-    [
-        ((), {}, "foto_requerida"),
-        ((("foto.jpg", JPG),), {"descripcion": "Muy corta"}, "datos_invalidos"),
-        ((("foto.pdf", PDF),), {}, "formato_no_admitido"),
-        ((("foto.jpg", JPG),), {"fecha": str(hoy_lima() + timedelta(days=1))}, "fecha_futura"),
-    ],
-)
-def test_visita_invalida(api, sesion, operador, productor, fotos, cambios, codigo):
-    parcela = _parcela(api, sesion, operador, productor)
-    respuesta = _visita(api.como(operador), parcela, fotos=fotos, **cambios)
-    assert respuesta.status_code == 422
-    assert respuesta.json()["error"]["codigo"] == codigo
-
-
-def test_el_productor_ve_pero_no_registra_visitas(api, sesion, coop, operador):
-    productor, cuenta = factorias.productor_con_acceso(sesion, coop)
-    parcela = _parcela(api, sesion, operador, productor)
-    assert _visita(api.como(operador), parcela).status_code == 201
-    api.como(cuenta)
-    assert _visita(api, parcela).status_code == 403
-    assert len(api.get(f"/mi/parcelas/{parcela.id}/visitas").json()) == 1
-
-
-def test_anular_visita(api, sesion, operador, admin, productor):
-    parcela = _parcela(api, sesion, operador, productor)
-    visita_id = _visita(api.como(operador), parcela).json()["id"]
-    assert api.post(f"/visitas/{visita_id}/anular", json={"motivo": "Fecha equivocada"}).status_code == 403
-    respuesta = api.como(admin).post(f"/visitas/{visita_id}/anular", json={"motivo": "Fecha equivocada"})
-    assert respuesta.json()["vigente"] is False
+# ---------- Procedencia ----------
 
 
 def test_procedencia_recorrida_en_campo(api, sesion, operador, productor):
+    """Las visitas ya registradas siguen contando para la procedencia; ya no se registran nuevas."""
     parcela = _parcela(api, sesion, operador, productor)
     api.como(operador)
     assert api.get(f"/parcelas/{parcela.id}").json()["procedencia"]["recorrida_en_campo"] is False
-    assert _visita(api, parcela).status_code == 201
+    visita(sesion, parcela, operador, motivo="verificacion_de_coordenadas")
     procedencia = api.get(f"/parcelas/{parcela.id}").json()["procedencia"]
     assert procedencia["recorrida_en_campo"] is True
     assert procedencia["fecha_recorrido"] == str(hoy_lima())
@@ -182,14 +120,17 @@ def test_sin_fuentes_configuradas_no_hay_analisis_vigente(api, sesion, operador,
     assert api.post(f"/parcelas/{parcela.id}/habilitar", json={}).status_code == 400
 
 
-def test_revision_de_whisp_exige_visita_y_nota(api, sesion, operador, admin, productor):
+def test_revision_de_whisp_exige_revision_de_imagenes_y_nota(api, sesion, operador, admin, productor):
     parcela = _parcela(api, sesion, operador, productor)
     _lista(sesion, parcela, operador, productor, whisp="more_info_needed")
     api.como(admin)
     assert "analisis_requiere_revision" in api.get(f"/parcelas/{parcela.id}").json()["alertas"]
     assert _requisitos(api, parcela)["revision_atendida"] is False
 
+    # Adenda 2: una visita de campo ya no atiende la alerta; la atiende la revisión de imágenes.
     visita(sesion, parcela, operador, motivo="analisis_requiere_revision")
+    assert _requisitos(api, parcela)["revision_atendida"] is False
+    revision(sesion, parcela, admin)
     assert _requisitos(api, parcela)["revision_atendida"] is True
     sin_nota = api.post(f"/parcelas/{parcela.id}/habilitar", json={})
     assert sin_nota.status_code == 422
@@ -245,9 +186,11 @@ def test_habilitada_cuya_geometria_cambia_pasa_a_observada(api, sesion, operador
 
 def test_excluir(api, sesion, operador, admin, productor):
     parcela = _parcela(api, sesion, operador, productor)
-    evidencia = visita(sesion, parcela, operador, motivo="analisis_requiere_revision")
+    evidencia = revision(
+        sesion, parcela, admin, observacion_2020="bosque", observacion_cambio="cambio_visible"
+    )
     api.como(admin)
-    descripcion = "Se confirmó en campo tala y quema de bosque en 2023 dentro del polígono de la parcela."
+    descripcion = "Las imágenes muestran bosque en 2020 y tala con quema en 2023 dentro del polígono."
     sin_evidencia = api.post(
         f"/parcelas/{parcela.id}/excluir", json={"descripcion": descripcion, "confirmacion": "EXCLUIR"}
     )
@@ -256,7 +199,7 @@ def test_excluir(api, sesion, operador, admin, productor):
         f"/parcelas/{parcela.id}/excluir",
         json={
             "descripcion": descripcion,
-            "evidencia_visita_id": str(evidencia.id),
+            "evidencia_revision_id": str(evidencia.id),
             "confirmacion": "excluir",
         },
     )
@@ -266,7 +209,7 @@ def test_excluir(api, sesion, operador, admin, productor):
         f"/parcelas/{parcela.id}/excluir",
         json={
             "descripcion": descripcion,
-            "evidencia_visita_id": str(evidencia.id),
+            "evidencia_revision_id": str(evidencia.id),
             "confirmacion": "EXCLUIR",
         },
     )
@@ -357,5 +300,6 @@ def test_otra_cooperativa_no_ve_ni_decide(api, sesion, operador, productor):
     api.como(admin_b)
     assert api.get(f"/parcelas/{parcela.id}/habilitacion").status_code == 404
     assert api.post(f"/parcelas/{parcela.id}/habilitar", json={"nota": NOTA}).status_code == 404
-    assert api.get(f"/parcelas/{parcela.id}/visitas").status_code == 404
+    assert api.get(f"/parcelas/{parcela.id}/imagenes").status_code == 404
+    assert api.get(f"/parcelas/{parcela.id}/revisiones-imagenes").status_code == 404
     assert api.get("/habilitacion/resumen").json()["por_estado"]["pendiente"] == 0

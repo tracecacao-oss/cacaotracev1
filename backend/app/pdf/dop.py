@@ -5,6 +5,7 @@ en el mismo orden; la parcela con un croquis dibujado desde su geometría, sin m
 cada página, el código y el número de página.
 """
 
+import io
 from datetime import datetime
 from typing import Any
 
@@ -28,10 +29,22 @@ REQUISITO = {
     "parcela_activa": "Parcela activa",
     "sin_superposiciones_abiertas": "Sin superposiciones abiertas",
     "analisis_vigente": "Análisis de cobertura vigente",
-    "revision_atendida": "Revisión atendida en campo",
+    "revision_atendida": "Revisión de imágenes atendida",
     "expediente_completo": "Expediente legal completo",
     "productor_listo": "Productor con DNI y consentimiento",
 }
+OBSERVACION_2020 = {
+    "bosque": "bosque",
+    "cultivo_o_uso_agricola": "cultivo o uso agrícola",
+    "mixto": "mixto",
+    "no_se_distingue": "no se distingue",
+}
+OBSERVACION_CAMBIO = {
+    "sin_cambio_visible": "sin cambio visible",
+    "cambio_visible": "cambio visible",
+    "no_se_distingue": "no se distingue",
+}
+PAPEL_IMAGEN = {"anterior_al_corte": "Anterior al corte", "reciente": "Reciente"}
 ESTADO_CASILLA = {
     "vigente": "Vigente",
     "por_vencer": "Por vencer",
@@ -50,7 +63,7 @@ ALERTAS = {
     "superposicion": "Se superpone con otra parcela",
     "sin_sustento_midagri": "Falta el sustento del estado en MIDAGRI",
     "sin_analisis_vigente": "Falta un análisis de cobertura vigente",
-    "analisis_requiere_revision": "Una fuente o un conjunto de datos pide revisión en campo",
+    "analisis_requiere_revision": "Una fuente o un conjunto de datos pide revisar imágenes de la parcela",
     "analisis_con_error": "El último análisis de una fuente falló",
     "expediente_incompleto": "El expediente legal está incompleto",
     "documento_por_vencer": "Un documento legal vence pronto",
@@ -126,11 +139,96 @@ def _encabezado(pdf: Documento, c: dict[str, Any], huella: str, url: str) -> Non
     pdf.ln(1)
 
 
-def generar(contenido: dict[str, Any], huella: str, url: str) -> bytes:
-    return bytes(documento(contenido, huella, url).output())
+def generar(
+    contenido: dict[str, Any], huella: str, url: str, imagenes: dict[str, bytes] | None = None
+) -> bytes:
+    return bytes(documento(contenido, huella, url, imagenes).output())
 
 
-def documento(contenido: dict[str, Any], huella: str, url: str) -> Documento:
+def _imagenes(pdf: Documento, bloque: dict[str, Any], png: dict[str, bytes]) -> None:
+    """Adenda 2 (12): las dos imágenes de Sentinel-2 en color natural con el lindero, su fecha de captura,
+    y la revisión de imágenes. Wayback se lista solo con sus datos."""
+    papeles = [p for p in ("anterior_al_corte", "reciente") if bloque.get(p)]
+    ancho = (pdf.ancho - 6) / 2
+    alto_max = ancho * 1.15
+    # El título no queda solo al pie de una página: va con las imágenes.
+    if papeles and pdf.get_y() + 18 + alto_max + 22 > pdf.page_break_trigger:
+        pdf.add_page()
+    pdf.ln(1)
+    pdf.set_font("Jakarta", "B", 9.5)
+    pdf.set_text_color(*TINTA)
+    pdf.cell(0, 6, "Imágenes de la parcela", new_x="LMARGIN", new_y="NEXT")
+    pdf.parrafo(
+        "La parcela tuvo la alerta de análisis: el administrador revisó imágenes satelitales anteriores y "
+        "posteriores al 31/12/2020. Resolución real de Sentinel-2: 10 m.",
+        tamano=8,
+        color=TINTA_3,
+    )
+    if papeles:
+        y = pdf.get_y()
+        for i, papel in enumerate(papeles):
+            dato = bloque[papel]
+            x = pdf.l_margin + i * (ancho + 6)
+            alto = alto_max
+            if png.get(papel):
+                imagen = pdf.image(io.BytesIO(png[papel]), x=x, y=y, w=ancho)
+                alto = imagen.rendered_height
+            pdf.set_xy(x, y + alto + 1)
+            pdf.set_font("Jakarta", "B", 9)
+            pdf.set_text_color(*TINTA)
+            pdf.multi_cell(
+                ancho,
+                4.4,
+                f"{PAPEL_IMAGEN[papel]}: {_fecha(dato['fecha_captura'])} "
+                f"({dato['dias_respecto_al_corte']:+d} días)",
+                new_x="RIGHT",
+                new_y="NEXT",
+            )
+            pdf.set_x(x)
+            pdf.set_font("Jakarta", "", 7.5)
+            pdf.set_text_color(*TINTA_3)
+            nubes = dato.get("nubes_parcela_pct")
+            pdf.multi_cell(
+                ancho,
+                3.6,
+                f"{dato.get('proveedor') or 'Sentinel-2'} · resolución {dato.get('resolucion_m') or 10:g} m"
+                + (f" · nubes sobre la parcela {nubes:g} %" if nubes is not None else "")
+                + f"\n{dato['atribucion']}",
+                new_x="RIGHT",
+                new_y="NEXT",
+            )
+            pdf.set_x(x)
+            pdf.set_font("Mono", "", 6)
+            pdf.multi_cell(ancho, 3, "SHA-256 de la imagen\n" + dato["sha256"], new_x="RIGHT", new_y="NEXT")
+            fin = pdf.get_y()
+            if i == 0:
+                fin_primera = fin
+        pdf.set_xy(pdf.l_margin, max(fin, fin_primera) + 2)
+    revision = bloque.get("revision")
+    if revision:
+        pdf.dato("Revisó las imágenes", revision.get("revisada_por"))
+        pdf.dato("Fecha de la revisión", _fecha(revision.get("revisada_en"), hora=True))
+        pdf.dato("En la imagen anterior al corte", OBSERVACION_2020.get(revision["observacion_2020"]))
+        pdf.dato("Cambio después del corte", OBSERVACION_CAMBIO.get(revision["observacion_cambio"]))
+        pdf.dato("Lo que observó", revision.get("descripcion"))
+    else:
+        pdf.dato("Revisión de imágenes", "Sin revisión vigente al emitirse")
+    altas = bloque.get("alta_resolucion") or []
+    if altas:
+        pdf.dato(
+            "Alta resolución (Esri Wayback)",
+            "; ".join(
+                f"{_fecha(a['fecha_captura'])}, {a.get('proveedor') or 'sin proveedor'}"
+                + (f", {a['resolucion_m']:g} m" if a.get("resolucion_m") is not None else "")
+                for a in altas
+            )
+            + f". Se listan solo sus datos. {bloque.get('atribucion_alta_resolucion') or ''}".rstrip(),
+        )
+
+
+def documento(
+    contenido: dict[str, Any], huella: str, url: str, imagenes: dict[str, bytes] | None = None
+) -> Documento:
     c = contenido
     pdf = Documento(c["identificacion"]["codigo"])
     pdf.add_page()
@@ -286,6 +384,8 @@ def documento(contenido: dict[str, Any], huella: str, url: str) -> Documento:
             tamano=6.5,
         )
         pdf.parrafo(conv["frase"], tamano=8.5)
+    if c.get("imagenes"):
+        _imagenes(pdf, c["imagenes"], imagenes or {})
 
     # Expediente legal
     exp = c["expediente"]

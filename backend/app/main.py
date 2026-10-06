@@ -20,6 +20,7 @@ from app.routers import (
     documentos,
     habilitacion,
     health,
+    imagenes,
     mi,
     parcelas,
     plataforma,
@@ -31,6 +32,7 @@ from app.routers import (
     ubigeos,
     usuarios,
 )
+from app.services import imagenes as servicio_imagenes
 from app.services.fuentes import Fuente, registro
 from app.storage import ClienteStorage, crear_storage
 
@@ -58,6 +60,7 @@ def crear_app(
     auth_admin: ClienteAuthAdmin | None = None,
     storage: ClienteStorage | None = None,
     fuentes: dict[str, Fuente] | None = None,
+    imagenes_proveedores: servicio_imagenes.Proveedores | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     con_docs = not settings.es_produccion
@@ -94,6 +97,8 @@ def crear_app(
     app.state.storage = storage or crear_storage(settings)
     app.state.fuentes = fuentes if fuentes is not None else registro.construir(settings)
     registro.fijar(app.state.fuentes)
+    # Adenda 2 de la Parte 4: Sentinel-2 (Copernicus) y Esri Wayback. Las pruebas fijan los suyos, simulados.
+    servicio_imagenes.fijar(imagenes_proveedores or servicio_imagenes.construir(settings))
     app.state.limite_publico = LimitePorIp()
 
     app.add_middleware(
@@ -148,6 +153,7 @@ def crear_app(
         auditoria,
         ubigeos,
         habilitacion,
+        imagenes,
         recepcion,
         publico,
     ):
