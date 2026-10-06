@@ -55,6 +55,8 @@ def test_me_del_personal(api, sesion):
     assert datos["rol"] == "admin_cooperativa"
     assert datos["cooperativa"]["id"] == str(coop.id)
     assert datos["cooperativa"]["nombre_comercial"] == "Coop Comercial"
+    # La pantalla de consentimiento nombra a la titular del banco de datos con su RUC y su domicilio.
+    assert datos["cooperativa"]["ruc"] == coop.ruc and datos["cooperativa"]["distrito"] == coop.distrito
     assert datos["dni"] is None
     assert datos["consentimiento_pendiente"] is False
     assert admin.ultimo_acceso_en is not None

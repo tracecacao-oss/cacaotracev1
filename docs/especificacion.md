@@ -833,6 +833,7 @@ CacaoTrace guarda DNI, nombres, teléfono y ubicación de parcelas, que son dato
 3. En ambos casos se guarda `consentimiento_datos_en` y una fila de auditoría con la versión del texto aceptado.
 4. El texto vive en un solo archivo, `frontend/textos/consentimiento.md`, con número de versión en la primera línea.
 5. Claude Code no redacta el texto legal. Hasta que el equipo lo entregue, el archivo contiene la frase "TEXTO PENDIENTE DE REVISIÓN LEGAL" y la interfaz la muestra tal cual.
+   **Decisión del equipo del 2026-10-06:** el equipo pidió a Claude Code redactar el texto. La versión 1 sigue el artículo 18 de la Ley N.° 29733 (finalidad, destinatarios, banco de datos y su titular, encargados, datos obligatorios, transferencias, consecuencias, plazo de conservación y derechos) y su artículo 15.7, que permite enviar los datos fuera del Perú con consentimiento. Cubre que el nombre del productor y la ubicación de su parcela se entreguen al comprador (Parte 9). La titular del banco de datos es la cooperativa del productor: la pantalla pone su razón social, su RUC y su domicilio en lugar de los marcadores `{cooperativa}`, `{ruc}` y `{domicilio}`, con los datos que `GET /me` devuelve de ella. Falta la revisión de un asesor legal antes del primer dato real (Parte 10).
 6. Un DOP no puede validarse si su productor no tiene consentimiento registrado. Esta regla se aplica en la Parte 5.
 
 ## Pruebas y aceptación de la Parte 2
@@ -3880,7 +3881,7 @@ Cada endpoint con token tiene además la prueba de las dos cooperativas definida
 
 **Para el equipo:**
 
-- El texto de consentimiento de la Parte 2 sigue en la versión 0 ("pendiente de revisión legal"). Todavía no cubre que el nombre del productor y la ubicación de su parcela se entreguen al comprador.
+- El texto de consentimiento pasó a la versión 1 el 2026-10-06, a pedido del equipo (Parte 2, regla 5). Cubre la entrega del nombre del productor y de la ubicación de su parcela al comprador. Falta la revisión de un asesor legal.
 - La clasificación de riesgo del Perú no está registrada. El informe dice "clasificación del país no registrada" hasta que el superadministrador la cargue con su referencia oficial.
 
 ## Parte 10 — Datos de demostración y pruebas finales

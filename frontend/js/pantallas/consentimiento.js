@@ -1,7 +1,8 @@
 // Consentimiento de datos: solo productor, en su primer ingreso.
 
 import { llamarApi } from "../api.js";
-import { textoConsentimiento } from "../consentimiento.js";
+import { completarTexto, textoConsentimiento } from "../consentimiento.js";
+import { estado } from "../estado.js";
 import { h, marca } from "../ui.js";
 
 export default async function consentimiento({ navegar, recargarUsuario, salir }) {
@@ -35,7 +36,7 @@ export default async function consentimiento({ navegar, recargarUsuario, salir }
         marca(),
         h("h1", { id: "titulo-consentimiento" }, "Uso de tus datos personales"),
         h("p", { class: "sub" }, `Versión ${version}`),
-        h("div", { class: "texto-legal", tabindex: "0" }, texto),
+        h("div", { class: "texto-legal", tabindex: "0" }, completarTexto(texto, estado.usuario?.cooperativa)),
         boton,
         mensaje,
         h("button", { class: "btn btn-ghost btn-block", type: "button", onclick: () => salir() }, "Cerrar sesión"),

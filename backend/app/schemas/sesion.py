@@ -11,6 +11,13 @@ class CooperativaDelUsuario(Salida):
     nombre_comercial: str | None
     estado: str
     es_demo: bool
+    # La pantalla de consentimiento nombra a la cooperativa como titular del banco de datos, con su RUC y su
+    # domicilio (Ley N.° 29733, art. 18).
+    ruc: str
+    direccion_postal: str | None = None
+    distrito: str | None = None
+    provincia: str | None = None
+    departamento: str | None = None
 
 
 class MeRespuesta(BaseModel):
