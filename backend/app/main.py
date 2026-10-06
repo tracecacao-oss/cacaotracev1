@@ -18,6 +18,7 @@ from app.limite import LimitePorIp
 from app.routers import (
     auditoria,
     cooperativa,
+    dex,
     documentos,
     exportacion,
     habilitacion,
@@ -161,6 +162,7 @@ def crear_app(
         proceso,
         exportacion,
         cooperativa,
+        dex,
         publico,
     ):
         app.include_router(modulo.router)

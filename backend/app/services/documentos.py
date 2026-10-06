@@ -53,6 +53,26 @@ TIPOS_POR_ENTIDAD = {
     # Parte 8
     "cooperativa": documentos_legales.CODIGOS_COOPERATIVA,
     "lote": documentos_embarque.CODIGOS,
+    # Parte 9
+    "certificacion": ("certificacion",),
+    "dex": (
+        "dex_pdf_es",
+        "dex_pdf_en",
+        "dex_geojson",
+        "dex_anexo_ii",
+        "dex_hallazgos",
+        "dex_leeme",
+        "dex_paquete",
+    ),
+}
+# Parte 9: archivos que genera el sistema al emitir el DEX. No los sube una persona, así que no pasan por el
+# límite de PDF, JPG o PNG; el tipo sale de su extensión.
+GENERADOS = {
+    "pdf": "application/pdf",
+    "geojson": "application/geo+json",
+    "json": "application/json",
+    "txt": "text/plain; charset=utf-8",
+    "zip": "application/zip",
 }
 NOMBRES_TIPO = {
     "dni": "copia del DNI",
@@ -66,6 +86,14 @@ NOMBRES_TIPO = {
     "dpp_pdf": "PDF del DPP",
     "imagen_satelital": "imagen satelital",
     "imagen_externa": "imagen externa",
+    "certificacion": "certificación",
+    "dex_pdf_es": "PDF del DEX en español",
+    "dex_pdf_en": "PDF del DEX en inglés",
+    "dex_geojson": "GeoJSON de las parcelas del DEX",
+    "dex_anexo_ii": "datos del Anexo II del DEX",
+    "dex_hallazgos": "informe de hallazgos del DEX",
+    "dex_leeme": "LEEME del DEX",
+    "dex_paquete": "paquete del DEX",
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS_COOPERATIVA},
     **{t.codigo: t.nombre for t in documentos_embarque.TIPOS},
@@ -80,6 +108,7 @@ NO_ANULABLES = (
     "dpp_pdf",
     "imagen_satelital",
     "imagen_externa",
+    *TIPOS_POR_ENTIDAD["dex"],
 )
 
 
@@ -132,6 +161,9 @@ def guardar(
     if tipo == "archivo_geometria":
         extension = archivo.nombre.rsplit(".", 1)[-1].lower()
         tipo_mime = tipo_mime or "application/octet-stream"
+    elif entidad == "dex":
+        extension = archivo.nombre.rsplit(".", 1)[-1].lower()
+        tipo_mime = GENERADOS[extension]
     else:
         try:
             extension = validar_documento(archivo.contenido)
@@ -256,8 +288,9 @@ def documento_visible(contexto: Contexto, documento_id: uuid.UUID) -> Documento:
     documento = contexto.sesion.get(Documento, documento_id)
     if documento is None:
         raise no_encontrado("El documento no existe.")
-    if documento.entidad in ("cooperativa", "lote"):
-        # Parte 8: los de la cooperativa y los de embarque los ve el personal de esa cooperativa.
+    if documento.entidad in ("cooperativa", "lote", "certificacion", "dex"):
+        # Partes 8 y 9: los de la cooperativa, los de embarque, las certificaciones y los archivos del DEX
+        # los ve el personal de esa cooperativa.
         if contexto.rol == "productor" or documento.cooperativa_id != contexto.cooperativa_id:
             raise no_encontrado("El documento no existe.")
         return documento
@@ -298,7 +331,7 @@ def anular(contexto: Contexto, documento_id: uuid.UUID, motivo: str) -> Document
         raise error_api(
             400, "documento_no_anulable", f"La {NOMBRES_TIPO[documento.tipo]} no se anula a mano."
         )
-    if documento.entidad == "cooperativa" and contexto.rol != "admin_cooperativa":
+    if documento.entidad in ("cooperativa", "certificacion") and contexto.rol != "admin_cooperativa":
         raise error_api(
             403, "solo_administrador", "Solo un administrador anula los documentos legales de la cooperativa."
         )

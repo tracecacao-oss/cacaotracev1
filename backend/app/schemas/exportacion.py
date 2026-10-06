@@ -21,7 +21,7 @@ Eori = Annotated[
 Tolerancia = Annotated[Decimal, Field(ge=0, le=100, max_digits=4, decimal_places=1)]
 KilosAsignados = Annotated[Decimal, Field(gt=0, max_digits=10, decimal_places=2)]
 EstadoOrden = Literal["abierta", "con_lote", "cerrada", "anulada"]
-EstadoLote = Literal["en_armado", "armado", "anulado"]
+EstadoLote = Literal["en_armado", "armado", "bloqueado", "listo", "cerrado", "anulado"]
 
 # ---------- Importadores ----------
 
@@ -208,6 +208,8 @@ class LoteDetalle(LoteSalida):
     # Parte 8: alertas posteriores al cierre y la última recomprobación, si la hay.
     alertas: list[dict[str, Any]] = []
     recomprobacion: RecomprobacionSalida | None = None
+    # Parte 9: el DEX vigente del lote o, si no lo hay, el último emitido.
+    dex: Referencia | None = None
 
 
 class ParcelaDeGenealogia(BaseModel):

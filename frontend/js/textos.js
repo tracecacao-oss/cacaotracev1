@@ -142,6 +142,7 @@ export const TIPOS_DOCUMENTO = {
   respuesta_analisis: "Respuesta del análisis",
   imagen_satelital: "Imagen satelital",
   imagen_externa: "Imagen externa",
+  certificacion: "Certificación",
 };
 
 export function insigniaAlerta(codigo) {

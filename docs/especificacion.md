@@ -3843,6 +3843,46 @@ Cada endpoint con token tiene además la prueba de las dos cooperativas definida
 - [ ] Decidir si el historial de deforestación de la región se cubre en una versión posterior con los datos agregados de Geobosques.
 - [ ] Revisar las frases de las plantillas de hallazgos antes de la demo, en los dos idiomas.
 
+### Registro de la construcción (2026-10-06)
+
+**Contraste con las fuentes oficiales.** Consultado en EUR-Lex el 2026-10-06, en el texto consolidado del Reglamento (UE) 2023/1115 del 18/09/2026 (CELEX 02023R1115-20260918), en español y en inglés:
+
+1. **Criterios del artículo 10, apartado 2.** Sus letras a) a n) no cambiaron en la consolidación. Los diez criterios del informe quedan con estos nombres y estas letras; los textos viven en `backend/app/textos/`:
+
+   | N.º | Nombre en el informe | Letras |
+   | --- | --- | --- |
+   | 1 | Presencia de bosques y prevalencia de la deforestación o la degradación forestal | b y f |
+   | 2 | Complejidad de la cadena de suministro y nivel de procesado | i |
+   | 3 | Riesgo de elusión o de mezcla con productos de origen desconocido | j |
+   | 4 | Tenencia y derechos de terceros sobre la tierra | e, más la legislación pertinente del art. 3, letra b |
+   | 5 | Fuente, fiabilidad y validez de la información; corrupción y falsificación de documentos | g y h |
+   | 6 | Nivel de riesgo asignado al país de producción | a |
+   | 7 | Información de sistemas de certificación o de verificación por terceros | n |
+   | 8 | Pueblos indígenas, derechos humanos y conflictos armados | c, d y h |
+   | 9 | Reclamaciones, preocupaciones justificadas e historial de incumplimiento | e y l |
+   | 10 | Conclusiones de los grupos de expertos de la Comisión | k |
+
+   La letra m) ("cualquier información que indique un riesgo") no es un criterio aparte: la cubre el informe entero.
+2. **Anexo II.** El punto 4 (referencia a una declaración existente) fue suprimido por el Reglamento (UE) 2025/2650. `anexo_ii.json` sigue el orden 1, 2, 3, 4 (suprimido), 5 y 6, con el texto oficial de los puntos 1 a 3. El punto 5 no se reproduce, porque es la afirmación de riesgo del operador: queda vacío con la nota "corresponde al operador", igual que la firma del punto 6. El intervalo de cosecha y los datos de contacto de la cooperativa van aparte, como información del artículo 9, apartado 1, letras d) y e).
+3. **GeoJSON.** La descripción oficial del archivo GeoJSON del EUDR (versión del 17/08/2026) pide `Area` solo para los puntos, y no admite polígonos con huecos. **Difiere de la propuesta de esta especificación** (`Area` en toda parcela), así que manda la descripción oficial: cada parcela lleva `ProductionPlace` y `ProducerCountry`, y un punto lleva además `Area` en hectáreas. Los huecos no son un problema: la Parte 3 ya rechaza los polígonos con huecos.
+
+**Decisiones de construcción por confirmar** (la especificación no las dice):
+
+- El criterio de cada comprobación que falla: parcelas habilitadas y sin excluidas, 1; DOP, DPP, genealogía y embarque, 3; expediente y datos de la cooperativa e importador, 5. `parcela_cambio_de_estado` toma el criterio 4 si dejó de cumplir el expediente o el productor, y el 1 en los demás casos.
+- La explicación de los hallazgos de una parcela es la nota de su habilitación vigente (la que la cooperativa escribe al habilitar con alertas). La de una superposición aceptada es su nota; la de una exención, su motivo; la de una tanda, la nota de validación sellada en su DOP; la de una corrida, la explicación sellada en su DPP; la de la desviación FIFO, su motivo.
+- `documento_entrega_sin_cotejar` aparece en toda tanda con documento de entrega, porque el sistema no coteja ese documento con SUNAT.
+- Un hallazgo de un lote o de la cooperativa no tiene peso en el lote; un hallazgo de tanda o de corrida pesa lo que su tanda o su corrida aporta. Dentro de cada grupo, los hallazgos sin peso van al final.
+- En el mensaje final, los casos de la recomprobación se resumen por comprobación (nombre, número de casos y códigos); el texto exacto de cada caso va en su hallazgo.
+- Lo que dijo una fuente se cita con el texto que la aplicación ya muestra en español. En inglés, Whisp se cita con el valor que entregó (`low`, `more_info_needed` o `high`), y GFW y MapBiomas con las mismas cifras.
+- Los hallazgos de imágenes (`imagen_previa_lejana` y `sin_imagen_de_alta_resolucion_previa`) se miran solo en parcelas con la alerta de análisis, que son las únicas que generan imágenes. Cuenta como imagen de alta resolución una de Wayback o una externa anterior al corte.
+- `LEEME.txt` va en español y en inglés, en el mismo archivo.
+- El diálogo de emisión muestra el mensaje final del informe preliminar en español. El mensaje sellado puede diferir solo si los datos cambian en ese instante.
+
+**Para el equipo:**
+
+- El texto de consentimiento de la Parte 2 sigue en la versión 0 ("pendiente de revisión legal"). Todavía no cubre que el nombre del productor y la ubicación de su parcela se entreguen al comprador.
+- La clasificación de riesgo del Perú no está registrada. El informe dice "clasificación del país no registrada" hasta que el superadministrador la cargue con su referencia oficial.
+
 ## Parte 10 — Datos de demostración y pruebas finales
 
 La plataforma arranca en blanco. Solo contiene al superadministrador y una cooperativa de demostración llamada Prueba, con datos ficticios que recorren todo el flujo. Las cooperativas reales las crea el equipo, y sus datos entran a mano durante el piloto.

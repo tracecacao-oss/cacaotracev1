@@ -73,10 +73,11 @@ function armarUrl(ruta, parametros) {
  * opciones: metodo, cuerpo, parametros, conToken (por defecto true),
  * sinConsulta (no enviar X-Cooperativa-Id aunque el superadmin esté consultando),
  * cooperativa (id que el superadmin lee en esta petición, sin entrar al modo consulta),
- * formulario (FormData con archivos; el navegador pone el Content-Type multipart).
+ * formulario (FormData con archivos; el navegador pone el Content-Type multipart),
+ * unIntento (una sola petición con todo el tiempo: para lo que no debe repetirse, como emitir el DEX).
  */
 export async function llamarApi(ruta, opciones = {}) {
-  const { metodo = "GET", cuerpo, parametros, conToken = true, sinConsulta = false, cooperativa, formulario } = opciones;
+  const { metodo = "GET", cuerpo, parametros, conToken = true, sinConsulta = false, cooperativa, formulario, unIntento = false } = opciones;
   const cabeceras = {};
   if (conToken) {
     const token = await tokenActual();
@@ -103,10 +104,10 @@ export async function llamarApi(ruta, opciones = {}) {
   try {
     for (;;) {
       const restante = LIMITE_TOTAL_MS - (Date.now() - inicio);
-      const quedaOtroIntento = restante > PAUSA_REINTENTO_MS;
+      const quedaOtroIntento = !unIntento && restante > PAUSA_REINTENTO_MS;
       let respuesta;
       try {
-        respuesta = await intentar(armarUrl(ruta, parametros), pedido, Math.min(LIMITE_INTENTO_MS, restante));
+        respuesta = await intentar(armarUrl(ruta, parametros), pedido, unIntento ? restante : Math.min(LIMITE_INTENTO_MS, restante));
       } catch {
         // Red caída o intento sin respuesta: se reintenta mientras quede tiempo.
         if (!quedaOtroIntento) {

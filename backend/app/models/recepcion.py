@@ -32,7 +32,7 @@ ESTADOS_TANDA = ("registrada", "observada", "validada", "anulada")
 DECISIONES_TANDA = ("validar", "observar", "anular")
 ESTADOS_DOP = ("vigente", "anulado")
 # Parte 6: corridas, tandas finales y DPP.
-TIPOS_CORRELATIVO = ("tanda", "dop", "corrida", "tanda_final", "dpp", "orden", "lote")
+TIPOS_CORRELATIVO = ("tanda", "dop", "corrida", "tanda_final", "dpp", "orden", "lote", "dex")
 # Adenda 3 de la Parte 5. El Comprobante de Operaciones de la Ley N.° 29972 queda fuera: esa ley está
 # derogada por la Ley N.° 31335 (decisión del equipo del 2026-10-06, adenda 3, sección 12).
 TIPOS_DOC_ENTREGA = ("guia_remision", "liquidacion_compra")

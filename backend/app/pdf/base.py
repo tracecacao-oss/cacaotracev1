@@ -5,6 +5,7 @@ Usa las tipografías del diseño (Plus Jakarta Sans y JetBrains Mono, licencia O
 app/recursos/fuentes. Todo texto entra como texto, nunca como HTML.
 """
 
+import logging
 import math
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,8 @@ from fpdf import FPDF
 from fpdf.fonts import FontFace
 
 FUENTES = Path(__file__).resolve().parents[1] / "recursos" / "fuentes"
+# fontTools registra cada subconjunto de tipografía a nivel INFO: llena los registros sin decir nada útil.
+logging.getLogger("fontTools").setLevel(logging.WARNING)
 TINTA = (17, 24, 39)
 TINTA_2 = (75, 85, 99)
 TINTA_3 = (107, 114, 128)
@@ -26,9 +29,10 @@ AMBAR = (180, 83, 9)
 class Documento(FPDF):
     """Página A4 con pie de código y número de página."""
 
-    def __init__(self, codigo: str):
+    def __init__(self, codigo: str, pie: str = "Página {n} de {total}"):
         super().__init__(orientation="P", unit="mm", format="A4")
         self.codigo = codigo
+        self.pie = pie
         self.set_margins(16, 16, 16)
         self.set_auto_page_break(auto=True, margin=18)
         variable = str(FUENTES / "PlusJakartaSans-Variable.ttf")
@@ -56,7 +60,7 @@ class Documento(FPDF):
         self.cell(0, 5, self.codigo, align="L")
         self.set_x(self.l_margin)
         self.set_font("Jakarta", "", 7.5)
-        self.cell(0, 5, f"Página {self.page_no()} de {{nb}}", align="R")
+        self.cell(0, 5, self.pie.format(n=self.page_no(), total="{nb}"), align="R")
 
     # ---------- Piezas ----------
 
@@ -106,7 +110,7 @@ class Documento(FPDF):
         if nivel:
             self.set_xy(self.w - self.r_margin - ancho_nivel, y)
             self.set_font("Jakarta", "", 7.5)
-            verificado = nivel in ("Documentado", "Verificado en fuente")
+            verificado = nivel in ("Documentado", "Verificado en fuente", "Documented", "Checked at source")
             self.set_text_color(*(ESMERALDA if verificado else TINTA_3))
             self.cell(ancho_nivel, 4.6, nivel, align="R")
         self.set_xy(self.l_margin, max(fin, y + 4.6) + 0.6)

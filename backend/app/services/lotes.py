@@ -289,7 +289,15 @@ def obtener(contexto: Contexto, lote_id: uuid.UUID) -> LoteDetalle:
         indicadores=indicadores_,
         alertas=lote.alertas or [],
         recomprobacion=recomprobacion.salida(sesion, ultima) if ultima else None,
+        dex=_dex_de(sesion, lote.id),
     )
+
+
+def _dex_de(sesion: Session, lote_id: uuid.UUID) -> Referencia | None:
+    from app.services import dex  # evita importación circular
+
+    fila = dex.de_lote(sesion, lote_id)
+    return Referencia(id=fila.id, codigo=fila.codigo, estado=fila.estado) if fila else None
 
 
 # ---------- Crear y cambiar la selección ----------
