@@ -26,6 +26,8 @@ from app.models import Base, ConFechas
 ROLES = ("superadmin", "admin_cooperativa", "operador", "lector", "productor")
 ROLES_PERSONAL = ("admin_cooperativa", "operador", "lector")
 ESTADOS_COOPERATIVA = ("activa", "suspendida")
+# Adenda 3 de la Parte 5: cooperativa agraria (Ley N.° 31335), asociación de productores o empresa.
+TIPOS_ORGANIZACION = ("cooperativa_agraria", "asociacion", "empresa")
 ESTADOS_AFILIACION = ("activa", "inactiva")
 ORIGENES_CONSENTIMIENTO = ("productor", "cooperativa")
 
@@ -44,6 +46,7 @@ class Cooperativa(ConFechas, Base):
         CheckConstraint("ruc ~ '^[0-9]{11}$'", name="ruc_11_digitos"),
         CheckConstraint(f"estado IN ({_en(ESTADOS_COOPERATIVA)})", name="estado_valido"),
         CheckConstraint("codigo IS NULL OR codigo ~ '^[A-Z]{3,6}$'", name="codigo_3_a_6_letras"),
+        CheckConstraint(f"tipo_organizacion IN ({_en(TIPOS_ORGANIZACION)})", name="tipo_organizacion_valido"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -59,6 +62,8 @@ class Cooperativa(ConFechas, Base):
     # Parte 5: forma parte del código de cada DOP. La fija el superadmin y no cambia después. Las
     # cooperativas creadas antes de la Parte 5 la reciben una sola vez.
     codigo: Mapped[str | None] = mapped_column(String(6), unique=True)
+    # Adenda 3 de la Parte 5: la fija el superadmin al crear la organización y puede corregirla.
+    tipo_organizacion: Mapped[str] = mapped_column(Text)
 
 
 class Productor(ConFechas, Base):

@@ -18,6 +18,7 @@ import {
   sinVacios,
   toast,
 } from "../ui.js";
+import { TIPOS_ORGANIZACION } from "../textos.js";
 import { camposUbigeo } from "../ubigeo.js";
 import { consultar, insigniaEstado } from "./cooperativas.js";
 
@@ -41,6 +42,7 @@ function abrirEdicion(c, alGuardar) {
       provincia,
     ),
     distrito,
+    campo({ etiqueta: "Tipo de organización", name: "tipo_organizacion", opciones: TIPOS_ORGANIZACION, value: c.tipo_organizacion }),
     // Solo las cooperativas creadas antes de la Parte 5 llegan sin código; se fija una sola vez.
     !c.codigo &&
       campo({
@@ -203,6 +205,7 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
             mono: true,
             extra: !c.codigo && "Falta: sin código la cooperativa no recibe tandas. Fíjalo en Editar datos.",
           },
+          { etiqueta: "Tipo de organización", valor: TIPOS_ORGANIZACION.find(([v]) => v === c.tipo_organizacion)?.[1] ?? c.tipo_organizacion },
           { etiqueta: "Ubicación", valor: `${c.distrito}, ${c.provincia}, ${c.departamento}` },
           { etiqueta: "Usuarios del personal", valor: String(c.usuarios), mono: true },
           { etiqueta: "Productores afiliados", valor: String(c.productores), mono: true },

@@ -1,13 +1,13 @@
 // Asistente de nueva tanda en 4 pasos, pensado para el celular en cancha: 1) productor y parcela,
-// 2) pesaje y cosecha, 3) guía de remisión, 4) revisión con requisitos, alertas y la decisión.
+// 2) pesaje y cosecha, 3) documento de entrega, 4) revisión con requisitos, alertas y la decisión.
 // La tanda se guarda al salir del paso 3 (queda "registrada"); validar emite su DOP.
 
 import { llamarApi } from "../api.js";
 import { ESTADOS_HABILITACION, PRODUCTO, REQUISITOS, REQUISITOS_TANDA, kilos } from "../textos.js";
-import { campoArchivoGuia, camposTanda, cuerpoTanda, descargarPdf, listaAlertas, listaRequisitos } from "../tandas.js";
+import { campoArchivoDocumento, camposTanda, cuerpoTanda, descargarPdf, listaAlertas, listaRequisitos } from "../tandas.js";
 import { abrirModal, avatar, buscador, conRetraso, enviarCon, fecha, h, icono, reemplazar, rejilla, toast, vacio } from "../ui.js";
 
-const PASOS = ["Productor y parcela", "Pesaje y cosecha", "Guía de remisión", "Revisión"];
+const PASOS = ["Productor y parcela", "Pesaje y cosecha", "Documento de entrega", "Revisión"];
 // Errores de la API que se corrigen en el paso de pesaje y cosecha.
 const DEL_PASO_2 = new Set(["fecha_futura", "cosecha_invalida", "humedad_solo_en_seco", "variedad_requerida", "lugar_invalido"]);
 
@@ -27,7 +27,7 @@ export default async function tandaNueva({ navegar, recargar }) {
   const vista = {
     titulo: "Nueva tanda",
     antetitulo: "Recepción",
-    descripcion: "Productor y parcela, pesaje, guía y revisión. Cada tanda viene de una sola parcela.",
+    descripcion: "Productor y parcela, pesaje, documento de entrega y revisión. Cada tanda viene de una sola parcela.",
     migas: [["Lotes y proceso", "#/lotes"], ["Recepción", volver], ["Nueva tanda"]],
   };
   if (!configuracion.lista || !lugares.some((l) => l.tipo === "cancha_acopio")) {
@@ -148,13 +148,13 @@ export default async function tandaNueva({ navegar, recargar }) {
     actualizarBotones();
   }
 
-  // ---------- Pasos 2 y 3: pesaje, cosecha y guía ----------
+  // ---------- Pasos 2 y 3: pesaje, cosecha y documento de entrega ----------
   const campos = camposTanda({}, { lugares, configuracion });
   const formPesaje = h("form", { class: "form", novalidate: true }, campos.pesaje);
-  const archivo = campoArchivoGuia();
-  const formGuia = h("form", { class: "form", novalidate: true }, h("p", { class: "panel-sub" }, "Sin guía la tanda se guarda, pero no se valida."), campos.guia, archivo);
+  const archivo = campoArchivoDocumento();
+  const formDocumento = h("form", { class: "form", novalidate: true }, h("p", { class: "panel-sub" }, "Sin documento de entrega la tanda se guarda, pero no se valida."), campos.documento, archivo);
   const paso2 = h("div", { hidden: true }, formPesaje);
-  const paso3 = h("div", { hidden: true }, formGuia);
+  const paso3 = h("div", { hidden: true }, formDocumento);
 
   function validos(formulario) {
     const controles = [...formulario.querySelectorAll("input,select,textarea")].filter((c) => !c.closest("[hidden]"));
@@ -162,7 +162,7 @@ export default async function tandaNueva({ navegar, recargar }) {
   }
 
   function datosDeLaTanda() {
-    return cuerpoTanda({ ...Object.fromEntries(new FormData(formPesaje)), ...Object.fromEntries(new FormData(formGuia)) }, st.tanda);
+    return cuerpoTanda({ ...Object.fromEntries(new FormData(formPesaje)), ...Object.fromEntries(new FormData(formDocumento)) }, st.tanda);
   }
 
   async function guardar() {
@@ -174,7 +174,7 @@ export default async function tandaNueva({ navegar, recargar }) {
     const elegidoArchivo = archivo.querySelector("input");
     if (elegidoArchivo.files.length) {
       const datos = new FormData();
-      datos.append("tipo", "guia_remision");
+      datos.append("tipo", "documento_entrega");
       datos.append("archivo", elegidoArchivo.files[0]);
       tanda = await llamarApi(`/tandas/${tanda.id}/documentos`, { metodo: "POST", formulario: datos });
       elegidoArchivo.value = "";
@@ -187,15 +187,15 @@ export default async function tandaNueva({ navegar, recargar }) {
   const paso4 = h("div", { hidden: true, class: "form" });
   const nota = h("textarea", { class: "input texto-libre", name: "nota", maxlength: 4000, rows: 4 });
 
-  function guiaVigente(t) {
-    return t.documentos.find((d) => d.tipo === "guia_remision" && d.vigente);
+  function documentoVigente(t) {
+    return t.documentos.find((d) => d.tipo === "documento_entrega" && d.vigente);
   }
 
   function pintarRevision() {
     const t = st.tanda;
     nota.required = t.nota_obligatoria;
     nota.minLength = t.nota_obligatoria ? 50 : 0;
-    const guia = guiaVigente(t);
+    const archivoDoc = documentoVigente(t);
     reemplazar(
       paso4,
       h("div", { class: "tarjeta-r" }, h("b", { class: "mono" }, t.codigo), h("span", { class: "badge info" }, h("span", { class: "dot" }), "Registrada, sin validar")),
@@ -207,7 +207,12 @@ export default async function tandaNueva({ navegar, recargar }) {
         { etiqueta: "Peso seco equivalente", valor: kilos(t.peso_seco_equivalente_kg), mono: true, extra: t.estado_producto === "baba" ? "Estimado con el factor de la cooperativa." : null },
         { etiqueta: "Variedad", valor: t.variedad_nombre },
         { etiqueta: "Cosecha", valor: `Del ${fecha(t.cosecha_desde)} al ${fecha(t.cosecha_hasta)}` },
-        { etiqueta: "Guía de remisión", valor: t.gre_numero ? `${t.gre_numero} · RUC ${t.gre_ruc_emisor ?? "—"}` : null, mono: true, extra: guia ? `Archivo: ${guia.nombre_original}` : "Sin archivo" },
+        {
+          etiqueta: t.doc_entrega_tipo_nombre ?? "Documento de entrega",
+          valor: t.doc_entrega_numero ? `${t.doc_entrega_numero} · RUC ${t.doc_entrega_ruc_emisor ?? "—"}` : null,
+          mono: true,
+          extra: archivoDoc ? `Archivo: ${archivoDoc.nombre_original}` : "Sin archivo",
+        },
       ]),
       h("b", {}, "Requisitos para validar"),
       listaRequisitos(t.requisitos),
@@ -332,7 +337,7 @@ export default async function tandaNueva({ navegar, recargar }) {
       if (d.cosecha_desde > d.cosecha_hasta) return avisar("La cosecha empieza después de terminar: revisa las fechas.");
       return irA(2);
     }
-    if (!validos(formGuia)) return;
+    if (!validos(formDocumento)) return;
     avisar("");
     siguiente.classList.add("is-loading");
     siguiente.disabled = true;

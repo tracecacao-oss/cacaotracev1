@@ -103,14 +103,15 @@ def editar_tanda(tanda_id: uuid.UUID, datos: TandaCambios, contexto: Registro):
 
 
 @router.post("/tandas/{tanda_id}/documentos", response_model=TandaDetalle, status_code=201)
-def cargar_guia(
+def cargar_documento_entrega(
     tanda_id: uuid.UUID,
     contexto: Registro,
     storage: Storage,
     archivo: Annotated[UploadFile, File()],
-    tipo: Annotated[Literal["guia_remision"], Form()] = "guia_remision",
+    tipo: Annotated[Literal["documento_entrega"], Form()] = "documento_entrega",
 ):
-    return tandas.cargar_guia(contexto, storage, tanda_id, leer_archivo(archivo))
+    """El archivo del documento de entrega (adenda 3 de la Parte 5)."""
+    return tandas.cargar_documento(contexto, storage, tanda_id, leer_archivo(archivo))
 
 
 @router.post("/tandas/{tanda_id}/validar", response_model=TandaDetalle)

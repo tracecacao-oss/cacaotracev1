@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BeforeValidator, StringConstraints
 
 from app.schemas.comunes import Entrada, Ruc, Salida, Texto, TextoOpcional
+from app.schemas.recepcion import TipoOrganizacion
 from app.schemas.usuarios import AdministradorNuevo, UsuarioSalida
 
 # Parte 5: de 3 a 6 letras mayúsculas; forma parte del código de cada DOP.
@@ -26,6 +27,7 @@ class CooperativaSalida(Salida):
     estado: str
     es_demo: bool
     codigo: str | None = None
+    tipo_organizacion: str
     creado_en: datetime
     usuarios: int = 0
     productores: int = 0
@@ -42,6 +44,8 @@ class CooperativaNueva(Entrada):
     es_demo: bool = False
     # Parte 5: se fija al crear y no cambia después.
     codigo: CodigoCooperativa
+    # Adenda 3 de la Parte 5: obligatoria; el superadmin puede corregirla después.
+    tipo_organizacion: TipoOrganizacion
     administrador: AdministradorNuevo
 
 
@@ -55,6 +59,7 @@ class CooperativaCambios(Entrada):
     estado: Literal["activa", "suspendida"] | None = None
     # Solo para las cooperativas creadas antes de la Parte 5, que todavía no tienen código.
     codigo: CodigoCooperativa | None = None
+    tipo_organizacion: TipoOrganizacion | None = None
 
 
 class CooperativaCreada(Salida):

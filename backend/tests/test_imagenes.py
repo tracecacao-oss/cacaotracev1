@@ -597,9 +597,10 @@ def test_el_dop_lleva_las_imagenes_y_la_revision(
                 "variedad": "ccn_51",
                 "cosecha_desde": str(dia - timedelta(days=10)),
                 "cosecha_hasta": str(dia - timedelta(days=3)),
-                "gre_numero": "T001-123",
-                "gre_fecha_emision": str(dia),
-                "gre_ruc_emisor": "20123456789",
+                "doc_entrega_tipo": "guia_remision",
+                "doc_entrega_numero": "T001-123",
+                "doc_entrega_fecha_emision": str(dia),
+                "doc_entrega_ruc_emisor": "20123456789",
             },
         )
         .json()
@@ -626,4 +627,4 @@ def test_el_dop_sin_alerta_no_lleva_imagenes(api, sesion, operador, productor):
     parcela = _parcela(api, sesion, operador, productor)
     analisis_completado(sesion, parcela, "whisp", resultado="low")
     assert servicio.para_dop(sesion, parcela, None) == (None, {})
-    assert dops.VERSION_CONTENIDO == 2
+    assert dops.VERSION_CONTENIDO >= 2

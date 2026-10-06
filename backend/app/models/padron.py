@@ -43,8 +43,8 @@ TIPOS_DOCUMENTO = (
     *TIPOS_LEGALES,
     "foto_visita",
     "respuesta_analisis",
-    # Parte 5
-    "guia_remision",
+    # Parte 5; la adenda 3 cambió "guia_remision" por "documento_entrega"
+    "documento_entrega",
     "dop_pdf",
     # Adenda 2 de la Parte 4
     "imagen_satelital",

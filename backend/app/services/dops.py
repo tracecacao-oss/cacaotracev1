@@ -13,7 +13,7 @@ from typing import Any
 import segno
 from sqlalchemy import select
 
-from app.catalogos import guia_remision, variedades
+from app.catalogos import documento_entrega, variedades
 from app.config import get_settings
 from app.contexto import Contexto, cooperativa_del_contexto
 from app.errores import error_api, no_encontrado
@@ -36,7 +36,9 @@ from app.services.fuentes import registro
 from app.storage import ClienteStorage, ErrorStorage
 
 # 2: adenda 2 de la Parte 4, las imágenes y la revisión de las parcelas con alerta de análisis.
-VERSION_CONTENIDO = 2
+# 3: adenda 3 de la Parte 5, el documento de entrega con su tipo en lugar de la guía de remisión. Los DOP
+# anteriores conservan su bloque "guia_remision": su contenido está sellado.
+VERSION_CONTENIDO = 3
 NIVEL = {
     "declarado": "Declarado",
     "documentado": "Documentado",
@@ -196,7 +198,7 @@ def _bloque_expediente(contexto: Contexto, parcela: Parcela) -> dict[str, Any]:
 
 def _bloque_tanda(sesion, tanda: Tanda, evaluacion: dict[str, Any]) -> dict[str, Any]:
     lugar = sesion.get(Lugar, tanda.lugar_id)
-    guia = evaluacion["guia"]
+    documento = evaluacion["documento"]
     return {
         "codigo": tanda.codigo,
         "lugar": {
@@ -215,14 +217,15 @@ def _bloque_tanda(sesion, tanda: Tanda, evaluacion: dict[str, Any]) -> dict[str,
         "tipo_semilla": tanda.tipo_semilla,
         "cosecha_desde": tanda.cosecha_desde,
         "cosecha_hasta": tanda.cosecha_hasta,
-        "guia_remision": {
-            "numero": tanda.gre_numero,
-            "fecha_emision": tanda.gre_fecha_emision,
-            "ruc_emisor": tanda.gre_ruc_emisor,
-            "peso_kg": tanda.gre_peso_kg,
-            "documento_sha256": guia.sha256 if guia else None,
+        "documento_entrega": {
+            "tipo": tanda.doc_entrega_tipo,
+            "nombre_tipo": documento_entrega.nombre(tanda.doc_entrega_tipo),
+            "numero": tanda.doc_entrega_numero,
+            "fecha_emision": tanda.doc_entrega_fecha_emision,
+            "ruc_emisor": tanda.doc_entrega_ruc_emisor,
+            "peso_kg": tanda.doc_entrega_peso_kg,
+            "documento_sha256": documento.sha256 if documento else None,
             "nivel": "documentado",
-            "registro_consultable": guia_remision.REGISTRO_CONSULTABLE,
         },
     }
 
@@ -252,10 +255,14 @@ def _no_verificado(contenido: dict[str, Any]) -> list[str]:
             lista.append(f"MapBiomas Perú no cubre lo ocurrido después de {indicadores['ultimo_anio']}.")
         if fuente["fuente"] == "mapbiomas" and indicadores.get("pocos_pixeles"):
             lista.append("MapBiomas Perú: la parcela tiene menos de 10 píxeles de 30 m.")
-    lista.append(
-        "Guía de remisión: no tiene registro público consultable; SUNAT solo la muestra, con Clave SOL, a "
-        "quienes figuran en ella."
-    )
+    tipo = contenido["tanda"]["documento_entrega"]["tipo"]
+    if tipo == "guia_remision":
+        lista.append(
+            "Guía de remisión: no tiene registro público consultable; SUNAT solo la muestra, con Clave "
+            "SOL, a quienes figuran en ella."
+        )
+    else:
+        lista.append(f"{documento_entrega.nombre(tipo)}: no se cotejó con SUNAT.")
     lista.append("El sistema no comprueba el vínculo físico entre el grano entregado y la parcela.")
     return lista
 

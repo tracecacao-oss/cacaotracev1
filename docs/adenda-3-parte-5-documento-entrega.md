@@ -127,7 +127,57 @@ La tercera existe porque la liquidación de compra corresponde cuando el product
 
 ## 11. Decisiones pendientes del equipo
 
-- [ ] Confirmar con las organizaciones del piloto, o con su contador, qué documento emiten hoy al recibir cacao.
+- [ ] Confirmar con las organizaciones del piloto, o con su contador, qué documento emiten hoy al recibir cacao. En especial, qué documento emite una cooperativa agraria al recibir cacao de un socio (sección 12).
 - [ ] Confirmar los 7 días de plazo para emitir el comprobante o la liquidación después de la recepción.
 - [ ] Revisar el tipo de organización de cada cooperativa ya creada.
 - [ ] Para la Parte 8: decidir qué documentos legales se piden a una asociación, ya que el registro de cooperativas agrarias no le aplica.
+
+## 12. Registro de la construcción (2026-10-06)
+
+### La Ley N.° 29972 está derogada
+
+La Segunda Disposición Complementaria Derogatoria de la Ley N.° 31335, Ley de perfeccionamiento de la asociatividad de los productores agrarios en cooperativas agrarias (El Peruano, 10/08/2021), dice: "Derógase la Ley 29972, Ley que promueve la inclusión de los productores agrarios a través de las cooperativas, y normas complementarias". El tipo `comprobante_operaciones_29972` corresponde a esa ley.
+
+La Ley N.° 31335 regula en su lugar el Documento Acto Cooperativo (DAC), y sus reglas no calzan con las de este tipo:
+
+- La cooperativa atribuye con él a cada socio sus ingresos por mes, no por entrega.
+- Es un documento físico que autoriza la SUNAT.
+- Es opcional para los socios con ingresos de hasta 140 UIT al año (artículos 28 y 43).
+- El acto cooperativo no es acto de comercio y está inafecto al IGV (artículos 4 y 31).
+
+**Decisión del equipo:** construir sin ese tipo. Hoy hay dos tipos, `guia_remision` y `liquidacion_compra`. El tipo de las cooperativas agrarias se agrega cuando el equipo confirme con su contador qué documento emite la cooperativa al recibir cacao de un socio (decisión pendiente 1 de la sección 11). Mientras tanto no se usan:
+
+- el error `tipo_no_disponible` (3, regla 3);
+- la regla del RUC de la organización para ese tipo (5).
+
+### Serie y número de la liquidación de compra
+
+Antes de fijar el formato se consultó la documentación de SUNAT (2, regla 3):
+
+- **Cuándo se emite:** Reglamento de Comprobantes de Pago, artículo 6, inciso 1.3, con el texto de la RS 244-2019/SUNAT. La emite quien adquiere productos primarios agropecuarios a personas naturales que no otorgan comprobante por carecer de RUC, hasta 75 UIT de ventas al año por vendedor. Es electrónica. En formato impreso solo se emite en contingencia o en zonas con baja o nula conexión a internet.
+- **Serie electrónica:** Anexo N.° 27 de la RS 097-2012/SUNAT, con el texto de la RS 123-2022/SUNAT. La serie tiene 4 caracteres alfanuméricos y empieza con "L" (ejemplo L001). El correlativo tiene hasta 8 dígitos y empieza en 1. En el SEE-SOL la serie es E001.
+- **Serie impresa:** Reglamento de Comprobantes de Pago, artículo 9.4. La serie del comprobante impreso tiene 3 dígitos y el correlativo 7. Como en la guía, también se aceptan series numéricas de 4 dígitos.
+
+El catálogo de los tipos, con sus fuentes, está en `backend/app/catalogos/documento_entrega.py`.
+
+### Lo construido, además de lo que dicen las secciones 3 a 8
+
+- **Migración 0008.**
+  - Agrega `cooperativas.tipo_organizacion`: obligatoria y sin valor por defecto; las organizaciones ya creadas quedan como `cooperativa_agraria`.
+  - Renombra las cuatro columnas de la guía y agrega `doc_entrega_tipo`; todas las tandas existentes quedan como `guia_remision`.
+  - Cambia el tipo de documento `guia_remision` a `documento_entrega`.
+  - Agrega `configuracion_cooperativa.dias_max_emision_doc_entrega` = 7.
+  - Ningún dato se pierde. Se comprobó en la base local de la interfaz: las 5 tandas existentes conservan sus datos, sus 4 archivos siguen ahí y las huellas de los 4 DOP siguen cuadrando.
+- **Errores nuevos de la API:**
+  - `documento_tipo_requerido`: hay datos del documento sin su tipo.
+  - `documento_numero_invalido`: serie o número fuera del formato de su tipo.
+  - `documento_fecha_invalida`: fecha fuera de la regla de su tipo.
+  - `fecha_futura`: fecha de emisión posterior a hoy.
+  - `emisor_no_corresponde`: la liquidación lleva un RUC que no es el de la organización.
+- **RUC de la liquidación:** si falta, la API lo llena con el de la organización. La interfaz lo muestra lleno y sin poder editarse.
+- **Requisito `documento_entrega_completo`:** al evaluar la tanda se vuelven a revisar las reglas de su tipo, porque el plazo de la configuración o el RUC pueden haber cambiado desde el registro.
+- **Nombre de la tolerancia:** la columna `tolerancia_peso_guia_pct` conserva su nombre; la pantalla la llama tolerancia del documento de entrega.
+- **DOP:** el contenido sellado pasa a la versión 3, con el bloque `documento_entrega`. Los DOP emitidos antes conservan el bloque `guia_remision`, y la pantalla y el PDF los siguen mostrando.
+- **"No verificado" del DOP:** para la liquidación de compra, dice que no se cotejó con SUNAT.
+- **Pendiente para la Parte 9:** los cambios de la sección 8, reglas 3 a 5 (hallazgos y "Datos del lote"), se aplican cuando se construya esa parte.
+

@@ -46,7 +46,7 @@ TIPOS_POR_ENTIDAD = {
     "parcela": ("sustento_midagri", "archivo_geometria", *documentos_legales.CODIGOS),
     "visita": ("foto_visita",),
     "analisis": ("respuesta_analisis",),
-    "tanda": ("guia_remision",),
+    "tanda": ("documento_entrega",),
     "dop": ("dop_pdf",),
     "imagen": ("imagen_satelital", "imagen_externa"),
 }
@@ -57,7 +57,7 @@ NOMBRES_TIPO = {
     "archivo_geometria": "archivo de geometría",
     "foto_visita": "foto de la visita",
     "respuesta_analisis": "respuesta completa del análisis",
-    "guia_remision": "guía de remisión",
+    "documento_entrega": "documento de entrega",
     "dop_pdf": "PDF del DOP",
     "imagen_satelital": "imagen satelital",
     "imagen_externa": "imagen externa",

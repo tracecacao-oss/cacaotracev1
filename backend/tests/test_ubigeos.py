@@ -138,6 +138,7 @@ def test_cooperativa_nueva_con_nombres_oficiales(api, sesion, superadmin):
         json={
             "razon_social": "Coop Ubicada",
             "codigo": "CUB",
+            "tipo_organizacion": "cooperativa_agraria",
             "ruc": "20999999931",
             "departamento": "Cusco",
             "provincia": "La Convención",
@@ -162,6 +163,7 @@ def test_cooperativa_con_ubicacion_inventada_no_se_crea(api, sesion, superadmin,
         json={
             "razon_social": "Coop Sin Lugar",
             "codigo": "CSL",
+            "tipo_organizacion": "empresa",
             "ruc": "20999999932",
             "departamento": "Departamento X",
             "provincia": "Provincia X",

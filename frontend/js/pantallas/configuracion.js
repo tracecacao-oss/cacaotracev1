@@ -49,10 +49,17 @@ const PARAMETROS = [
   },
   {
     nombre: "tolerancia_peso_guia_pct",
-    etiqueta: "Tolerancia entre el peso de la guía y el de la balanza",
-    ayuda: "Diferencia admitida, en porcentaje. Si el peso que declara la guía difiere más, la tanda muestra una alerta.",
+    etiqueta: "Tolerancia entre el peso del documento de entrega y el de la balanza",
+    ayuda: "Diferencia admitida, en porcentaje. Si el peso que declara el documento difiere más, la tanda muestra una alerta.",
     atributos: { type: "number", step: "0.1", min: "0", max: "100", inputmode: "decimal" },
     unidad: "%",
+  },
+  {
+    nombre: "dias_max_emision_doc_entrega",
+    etiqueta: "Días para emitir la liquidación de compra",
+    ayuda: "La liquidación de compra se emite el día de la recepción o hasta estos días después.",
+    atributos: { type: "number", step: "1", min: "0", max: "365", inputmode: "numeric" },
+    unidad: "días",
   },
 ];
 

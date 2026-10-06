@@ -75,6 +75,28 @@ function medidas(lista) {
   return (visibles.length ? visibles : lista).map((m) => `${m.valor} ${m.unidad ?? ""} (${m.nombre}, ${m.via})`.replace("  ", " ")).join("; ");
 }
 
+/** Adenda 3: el documento de entrega con su tipo. Los DOP de antes guardan "guia_remision": se leen igual. */
+function filasDocumentoEntrega(t) {
+  if (t.documento_entrega) {
+    const d = t.documento_entrega;
+    return [
+      { etiqueta: "Documento de entrega", valor: [d.nombre_tipo, d.numero].filter(Boolean).join(", "), extra: insigniaNivel(d.nivel) },
+      { etiqueta: "Emisión del documento", valor: fecha(d.fecha_emision) },
+      { etiqueta: "RUC del emisor", valor: d.ruc_emisor, mono: true },
+      { etiqueta: "Peso declarado en el documento", valor: d.peso_kg == null ? null : kilos(d.peso_kg), mono: true },
+      { etiqueta: "Huella del archivo del documento", valor: d.documento_sha256, mono: true },
+    ];
+  }
+  const g = t.guia_remision;
+  return [
+    { etiqueta: "Guía de remisión", valor: g.numero, mono: true, extra: insigniaNivel(g.nivel) },
+    { etiqueta: "Emisión de la guía", valor: fecha(g.fecha_emision) },
+    { etiqueta: "RUC del emisor", valor: g.ruc_emisor, mono: true },
+    { etiqueta: "Peso declarado en la guía", valor: g.peso_kg == null ? null : kilos(g.peso_kg), mono: true },
+    { etiqueta: "Huella del archivo de la guía", valor: g.documento_sha256, mono: true },
+  ];
+}
+
 /** Adenda 2: solo si la parcela tuvo la alerta de análisis. Las imágenes van dibujadas en el PDF. */
 function bloqueImagenes(im) {
   const n = (v) => Number(v).toLocaleString("es-PE", { maximumFractionDigits: 2 });
@@ -328,11 +350,7 @@ export default async function dop({ parametros: [id], recargar }) {
         { etiqueta: "Variedad", valor: t.variedad },
         { etiqueta: "Tipo de semilla", valor: t.tipo_semilla },
         { etiqueta: "Cosecha", valor: `Del ${fecha(t.cosecha_desde)} al ${fecha(t.cosecha_hasta)}` },
-        { etiqueta: "Guía de remisión", valor: t.guia_remision.numero, mono: true, extra: insigniaNivel(t.guia_remision.nivel) },
-        { etiqueta: "Emisión de la guía", valor: fecha(t.guia_remision.fecha_emision) },
-        { etiqueta: "RUC del emisor", valor: t.guia_remision.ruc_emisor, mono: true },
-        { etiqueta: "Peso declarado en la guía", valor: t.guia_remision.peso_kg == null ? null : kilos(t.guia_remision.peso_kg), mono: true },
-        { etiqueta: "Huella del archivo de la guía", valor: t.guia_remision.documento_sha256, mono: true },
+        ...filasDocumentoEntrega(t),
       ]),
     }),
     seccion({

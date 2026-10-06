@@ -11,6 +11,7 @@ def _nueva(ruc="20999999901", correo="admin.nueva@prueba.test", **cambios):
     return {
         "razon_social": "Coop Nueva Prueba",
         "codigo": "CNP",
+        "tipo_organizacion": "cooperativa_agraria",
         "ruc": ruc,
         "departamento": "SAN MARTIN",
         "provincia": "PICOTA",
@@ -202,3 +203,20 @@ def test_cabecera_de_cooperativa_inexistente(api, superadmin):
         "/productores"
     )
     assert respuesta.status_code == 404
+
+
+def test_tipo_de_organizacion(api, sesion, superadmin):
+    """Adenda 3 de la Parte 5: obligatorio al crear; el superadmin lo corrige después."""
+    api.como(superadmin)
+    sin_tipo = {k: v for k, v in _nueva().items() if k != "tipo_organizacion"}
+    assert api.post("/admin/cooperativas", json=sin_tipo).status_code == 422
+    creada = api.post("/admin/cooperativas", json=_nueva(tipo_organizacion="asociacion")).json()[
+        "cooperativa"
+    ]
+    assert creada["tipo_organizacion"] == "asociacion"
+    cambio = api.patch(f"/admin/cooperativas/{creada['id']}", json={"tipo_organizacion": "empresa"})
+    assert cambio.json()["tipo_organizacion"] == "empresa"
+    assert (
+        api.patch(f"/admin/cooperativas/{creada['id']}", json={"tipo_organizacion": "otra"}).status_code
+        == 422
+    )

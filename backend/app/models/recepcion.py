@@ -32,6 +32,9 @@ ESTADOS_TANDA = ("registrada", "observada", "validada", "anulada")
 DECISIONES_TANDA = ("validar", "observar", "anular")
 ESTADOS_DOP = ("vigente", "anulado")
 TIPOS_CORRELATIVO = ("tanda", "dop")
+# Adenda 3 de la Parte 5. El Comprobante de Operaciones de la Ley N.° 29972 queda fuera: esa ley está
+# derogada por la Ley N.° 31335 (decisión del equipo del 2026-10-06, adenda 3, sección 12).
+TIPOS_DOC_ENTREGA = ("guia_remision", "liquidacion_compra")
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -54,6 +57,7 @@ class ConfiguracionCooperativa(ConFechas, Base):
             name="dias_no_negativos",
         ),
         CheckConstraint("tolerancia_peso_guia_pct >= 0", name="tolerancia_no_negativa"),
+        CheckConstraint("dias_max_emision_doc_entrega >= 0", name="dias_emision_no_negativos"),
     )
 
     cooperativa_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cooperativas.id"), primary_key=True)
@@ -64,6 +68,8 @@ class ConfiguracionCooperativa(ConFechas, Base):
     dias_max_cosecha_entrega_baba: Mapped[int] = mapped_column(Integer, server_default=text("7"))
     dias_max_cosecha_entrega_seco: Mapped[int] = mapped_column(Integer, server_default=text("90"))
     tolerancia_peso_guia_pct: Mapped[Decimal] = mapped_column(Numeric(4, 1), server_default=text("5.0"))
+    # Adenda 3: días para emitir la liquidación de compra después de la recepción.
+    dias_max_emision_doc_entrega: Mapped[int] = mapped_column(Integer, server_default=text("7"))
 
 
 class Lugar(ConFechas, Base):
@@ -116,13 +122,20 @@ class Tanda(ConFechas, Base):
         ),
         CheckConstraint("cosecha_desde <= cosecha_hasta", name="cosecha_ordenada"),
         CheckConstraint(
-            "gre_ruc_emisor IS NULL OR gre_ruc_emisor ~ '^[0-9]{11}$'", name="gre_ruc_11_digitos"
+            "doc_entrega_ruc_emisor IS NULL OR doc_entrega_ruc_emisor ~ '^[0-9]{11}$'",
+            name="doc_entrega_ruc_11_digitos",
         ),
-        CheckConstraint("gre_peso_kg IS NULL OR gre_peso_kg > 0", name="gre_peso_positivo"),
+        CheckConstraint(
+            "doc_entrega_peso_kg IS NULL OR doc_entrega_peso_kg > 0", name="doc_entrega_peso_positivo"
+        ),
+        CheckConstraint(
+            f"doc_entrega_tipo IS NULL OR doc_entrega_tipo IN ({_en(TIPOS_DOC_ENTREGA)})",
+            name="doc_entrega_tipo_valido",
+        ),
         CheckConstraint("(variedad = 'otra') = (variedad_otra IS NOT NULL)", name="variedad_otra_si_otra"),
         UniqueConstraint("cooperativa_id", "codigo", name="uq_tandas_cooperativa_codigo"),
         Index("ix_tandas_parcela_recibida", "parcela_id", "recibida_en"),
-        Index("ix_tandas_guia", "gre_ruc_emisor", "gre_numero"),
+        Index("ix_tandas_doc_entrega", "doc_entrega_ruc_emisor", "doc_entrega_numero"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -142,10 +155,12 @@ class Tanda(ConFechas, Base):
     tipo_semilla: Mapped[str | None] = mapped_column(Text)
     cosecha_desde: Mapped[date] = mapped_column(Date)
     cosecha_hasta: Mapped[date] = mapped_column(Date)
-    gre_numero: Mapped[str | None] = mapped_column(Text)
-    gre_fecha_emision: Mapped[date | None] = mapped_column(Date)
-    gre_ruc_emisor: Mapped[str | None] = mapped_column(String(11))
-    gre_peso_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    # Adenda 3: el documento de entrega (antes, solo la guía de remisión).
+    doc_entrega_tipo: Mapped[str | None] = mapped_column(Text)
+    doc_entrega_numero: Mapped[str | None] = mapped_column(Text)
+    doc_entrega_fecha_emision: Mapped[date | None] = mapped_column(Date)
+    doc_entrega_ruc_emisor: Mapped[str | None] = mapped_column(String(11))
+    doc_entrega_peso_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     estado: Mapped[str] = mapped_column(Text, server_default="registrada")
     registrada_por: Mapped[uuid.UUID] = mapped_column(ForeignKey("perfiles.id"))
 

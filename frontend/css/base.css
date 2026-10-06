@@ -2375,6 +2375,17 @@ button.kpi[aria-pressed="true"] {
   border-color: var(--emerald);
   background: var(--emerald-tint);
 }
+/* Adenda 3: el tipo de documento de entrega se elige con una opción de radio. */
+.opcion-doc {
+  cursor: pointer;
+}
+.opcion-doc input {
+  accent-color: var(--emerald);
+}
+.opcion:has(input:checked) {
+  border-color: var(--emerald);
+  background: var(--emerald-tint);
+}
 .opcion:disabled {
   cursor: not-allowed;
   opacity: 0.6;
