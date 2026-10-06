@@ -2890,3 +2890,159 @@ button.tira-item:hover {
     justify-self: start;
   }
 }
+
+/* Parte 7: indicadores del lote (cifras sin colores de aprobación), diagrama de la genealogía, tabla y mapa
+   enlazados, y armado del lote. */
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+.indicador {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.indicador-n {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.indicador-v {
+  display: grid;
+  gap: 2px;
+}
+.indicador-v b {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.indicador .sec,
+.indicador-v .sec {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.genealogia {
+  display: grid;
+  gap: 12px;
+}
+.sankey-caja {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  padding: 8px;
+}
+.sankey {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  height: auto;
+}
+.sankey-col {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink-3);
+}
+.sankey-enlace {
+  fill: var(--emerald);
+  fill-opacity: 0.22;
+  transition: fill-opacity 0.15s;
+}
+.sankey-enlace.elegido {
+  fill: var(--amber);
+  fill-opacity: 0.45;
+}
+.sankey-enlace.apagado {
+  fill-opacity: 0.06;
+}
+.sankey-nodo rect {
+  fill: var(--emerald);
+}
+.sankey-nodo text {
+  font-size: 11px;
+  fill: var(--ink-2);
+}
+.sankey-nodo.apagado {
+  opacity: 0.35;
+}
+.sankey-nodo.elegido rect {
+  fill: var(--amber);
+}
+.sankey-nodo.es-parcela {
+  cursor: pointer;
+}
+.sankey-nodo.es-parcela:focus-visible {
+  outline: 2px solid var(--emerald);
+}
+.genealogia-pie {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.mapa-genealogia {
+  height: 360px;
+}
+.fila-tocable {
+  cursor: pointer;
+}
+.fila-elegida td {
+  background: var(--amber-tint);
+}
+.armado-resumen {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.armado-resumen > div {
+  display: grid;
+  gap: 2px;
+}
+.armado-resumen b {
+  font-size: 18px;
+}
+.armado-resumen .sec {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.texto-aviso {
+  color: var(--amber-ink) !important;
+}
+.tabla-armado td.num .input {
+  width: 130px;
+  margin-left: auto;
+}
+.armado-pie {
+  padding: 0 20px 20px;
+}
+.recorrido-h {
+  display: grid;
+  gap: 2px;
+  padding: 16px 20px 0;
+}
+.linea {
+  display: block;
+}
+.resultados-origen {
+  padding: 0 20px;
+}
+@media (max-width: 900px) {
+  .genealogia-pie {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .armado-resumen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tabla-armado td.num .input {
+    width: 100px;
+  }
+}

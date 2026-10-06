@@ -1,25 +1,6 @@
-// Módulo aún no construido: pantalla vacía con su nombre.
+// Secciones del módulo Cooperativa, que comparten sus pantallas.
 
 import { rolEfectivo } from "../estado.js";
-import { h, vacio } from "../ui.js";
-
-const MODULOS = {
-  "#/trazabilidad": ["Trazabilidad", "Parte 7"],
-  "#/exportacion": ["Exportación", "Partes 8 y 9"],
-};
-
-export default function pantallaVacia({ hash }) {
-  const [titulo, parte] = MODULOS[hash] ?? ["Módulo", ""];
-  return {
-    titulo,
-    migas: [[titulo]],
-    contenido: h(
-      "section",
-      { class: "panel" },
-      vacio({ titulo: "Todavía no disponible", texto: `Este módulo se construye en ${parte} de CacaoTrace.` }),
-    ),
-  };
-}
 
 /**
  * Usuarios y Auditoría son del administrador (el superadmin los consulta). Configuración y Lugares los

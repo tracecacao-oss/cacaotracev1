@@ -9,7 +9,6 @@ import { errorDeCarga, h } from "./ui.js";
 
 const PERSONAL = ["admin_cooperativa", "operador", "lector", "consulta"];
 const TODOS = ["superadmin", "admin_cooperativa", "operador", "lector", "productor", "consulta"];
-const vacia = () => import("./pantallas/vacia.js");
 
 const RUTAS = [
   { patron: /^#\/ingreso$/, publica: true, cargar: () => import("./pantallas/ingreso.js") },
@@ -34,7 +33,15 @@ const RUTAS = [
   { patron: /^#\/lotes\/stock$/, roles: PERSONAL, cargar: () => import("./pantallas/stock.js") },
   { patron: /^#\/tandas-finales\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/tanda-final.js") },
   { patron: /^#\/dpps\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/dpp.js") },
-  { patron: /^#\/(trazabilidad|exportacion)$/, roles: PERSONAL, cargar: vacia },
+  { patron: /^#\/trazabilidad(\/lotes)?$/, roles: PERSONAL, cargar: () => import("./pantallas/trazabilidad-lotes.js") },
+  { patron: /^#\/trazabilidad\/origen$/, roles: PERSONAL, cargar: () => import("./pantallas/trazabilidad-origen.js") },
+  { patron: /^#\/exportacion(\/ordenes)?$/, roles: PERSONAL, cargar: () => import("./pantallas/ordenes.js") },
+  { patron: /^#\/exportacion\/ordenes\/nueva$/, roles: ["admin_cooperativa", "operador"], cargar: () => import("./pantallas/orden-nueva.js") },
+  { patron: /^#\/exportacion\/lotes$/, roles: PERSONAL, cargar: () => import("./pantallas/lotes-exportacion.js") },
+  { patron: /^#\/exportacion\/importadores$/, roles: PERSONAL, cargar: () => import("./pantallas/importadores.js") },
+  { patron: /^#\/ordenes\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/orden.js") },
+  { patron: /^#\/lotes-exportacion\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/lote-exportacion.js") },
+  { patron: /^#\/lotes-exportacion\/([0-9a-f-]{36})\/armar$/, roles: ["admin_cooperativa", "operador"], cargar: () => import("./pantallas/lote-armar.js") },
   { patron: /^#\/cooperativa$/, roles: PERSONAL, cargar: () => import("./pantallas/cooperativa.js") },
   { patron: /^#\/cooperativa\/usuarios$/, roles: ["admin_cooperativa", "consulta"], cargar: () => import("./pantallas/usuarios.js") },
   { patron: /^#\/cooperativa\/auditoria$/, roles: ["admin_cooperativa", "consulta"], cargar: () => import("./pantallas/auditoria.js") },

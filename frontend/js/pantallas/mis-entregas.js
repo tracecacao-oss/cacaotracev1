@@ -1,6 +1,7 @@
 // Mis entregas (productor, desde el celular): sus tandas con fecha, parcela, peso y estado, el PDF del DOP
-// de cada una y, desde la Parte 6, en qué fase del proceso está su cacao o si ya entró al stock. Solo
-// lectura: la recepción la registra la cooperativa en su balanza.
+// de cada una y, desde la Parte 6, en qué fase del proceso está su cacao, si ya entró al stock o (Parte 7) si
+// entró a un lote de exportación, sin importador ni kilos. Solo lectura: la recepción la registra la
+// cooperativa en su balanza.
 
 import { llamarApi } from "../api.js";
 import { PRODUCTO, insigniaDop, insigniaTanda, kilos } from "../textos.js";
@@ -26,9 +27,13 @@ export default async function misEntregas() {
               t.proceso &&
                 h(
                   "span",
-                  { class: `badge ${t.proceso.estado === "consolidada" ? "ok" : "info"}` },
+                  { class: `badge ${["consolidada", "en_lote_de_exportacion"].includes(t.proceso.estado) ? "ok" : "info"}` },
                   h("span", { class: "dot" }),
-                  t.proceso.estado === "consolidada" ? "Procesado: ya entró al stock" : `En proceso: ${t.proceso.fase_nombre.toLowerCase()}`,
+                  t.proceso.estado === "en_lote_de_exportacion"
+                    ? "En un lote de exportación"
+                    : t.proceso.estado === "consolidada"
+                      ? "Procesado: ya entró al stock"
+                      : `En proceso: ${t.proceso.fase_nombre.toLowerCase()}`,
                 ),
               t.dop
                 ? h(

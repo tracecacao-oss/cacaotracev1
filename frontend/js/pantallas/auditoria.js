@@ -25,6 +25,9 @@ const ACCIONES = [
   ["calidad.", "Calidades"],
   ["corrida.", "Corridas"],
   ["dpp.", "DPP"],
+  ["importador.", "Importadores"],
+  ["orden.", "Órdenes de compra"],
+  ["lote.", "Lotes de exportación"],
   ["superadmin.", "Consultas de soporte"],
 ];
 
@@ -89,6 +92,15 @@ const TEXTO_ACCION = {
   "corrida.anular": "Anuló una corrida",
   "dpp.emitir": "Emitió un DPP",
   "dpp.anular": "Anuló un DPP",
+  "importador.crear": "Registró un importador",
+  "importador.editar": "Editó un importador",
+  "orden.crear": "Registró una orden de compra",
+  "orden.editar": "Editó una orden de compra",
+  "orden.anular": "Anuló una orden de compra",
+  "lote.crear": "Creó un lote de exportación",
+  "lote.cambiar_seleccion": "Cambió la selección de un lote",
+  "lote.confirmar": "Confirmó un lote de exportación",
+  "lote.anular": "Anuló un lote de exportación",
 };
 
 function resumen(detalle) {
