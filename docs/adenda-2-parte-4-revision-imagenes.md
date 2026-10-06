@@ -255,3 +255,18 @@ El informe lleva además este texto fijo en "Lo que no pudimos verificar": "La r
 - [ ] Confirmar que, si las imágenes no permiten distinguir, la parcela queda pendiente sin otra vía.
 - [ ] Confirmar el tope de 5 % de nubes sobre la parcela.
 - [ ] Confirmar con Esri si se puede incluir una imagen de Wayback en un PDF.
+
+## 17. Registro de la construcción (2026-10-05)
+
+### Decisiones del equipo
+
+1. **Las visitas ya no atienden un análisis.** Una parcela habilitada cuya alerta se atendió con una visita pasa sola a `observada` cuando se aplica esta adenda, hasta que el administrador registre una revisión de imágenes. La pestaña Visitas se conserva solo para marcar un lindero recorrido en campo (8.1).
+2. **"Buscar más imágenes"** agrega hasta 3 escenas utilizables más, las más cercanas antes del 31 de diciembre de 2020 que aún no estén en el juego (dentro de 2020 y 2019), para ver mejor si había bosque en la fecha de corte, y vuelve a buscar la escena utilizable más reciente.
+3. **Cuota:** `IMAGENES_CUOTA_MENSUAL_PU` = 30000, la cuota que informó el equipo para su cuenta. La documentación pública de Copernicus indica 10,000 al mes para usuarios generales.
+4. **Imagen externa:** se guarda con `fuente` = `externa` y `papel` = `externa`, valores que la tabla de la sección 6.1 no listaba.
+
+### Comprobación de viabilidad (`backend/scripts/check_imagenes.py`)
+
+- **Wayback (punto 4): pasa.** Para la parcela de `tests/datos/whisp_respuesta_real.json` hay 10 versiones con fecha de captura real (`SRC_DATE2`); las imágenes distintas son del 30/09/2012 y del 29/01/2023, a 0.5 m, de Maxar/Vantor (WorldView-2). La configuración, los metadatos y las teselas responden sin clave: la cuenta de ArcGIS Location Platform no hace falta para Wayback. El servicio rechaza (403) el identificador por defecto de httpx; las peticiones se identifican como CacaoTrace.
+- **Copernicus (puntos 1 a 3):** pendiente de que el equipo lo corra con sus credenciales.
+- **Términos de Esri:** el Master Agreement E204 (sección 3.2) no permite guardar ni almacenar sus datos fuera de sus productos, y permite representaciones estáticas en informes, con atribución. El resumen de términos pide consultar a Esri para el uso comercial de contenido de Living Atlas. Mientras el equipo no lo confirme con Esri, Wayback se muestra solo dentro de la aplicación (3.3).
