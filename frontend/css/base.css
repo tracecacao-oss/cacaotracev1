@@ -3558,3 +3558,311 @@ button.tira-item:hover {
   font-size: 12px;
   color: var(--ink-3);
 }
+
+/* Parte 9: informe de hallazgos con la composición del diseño (hz-*), sin colores de gravedad: los tres
+   grupos se distinguen por su título. Mensaje final, ficha del DEX y diálogo de emisión. */
+.verif:has(> .btn) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+.hz {
+  overflow: hidden;
+}
+.hz-h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.hz-h > div:first-child {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+.hz-h h2 {
+  font-size: 17px;
+  line-height: 1.3;
+  text-wrap: balance;
+  max-width: 60ch;
+}
+.hz-h p {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-top: 4px;
+  max-width: 70ch;
+}
+.hz-acts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.hz-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+.hz-tile {
+  padding: 14px 20px;
+  border-left: 1px solid var(--line);
+  min-width: 0;
+}
+.hz-tile:first-child {
+  border-left: 0;
+}
+.hz-tile b {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.hz-tile b small {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.hz-tile span {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 3px;
+  line-height: 1.3;
+}
+.hz-sec {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+}
+.hz-sec:last-child {
+  border-bottom: 0;
+}
+.hz-sec > h3 {
+  font-size: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hz-sec > h3 small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.hz-sub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+.hz-lista {
+  display: grid;
+  gap: 8px;
+}
+.hz-filtros {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hz-filtro {
+  min-width: 180px;
+}
+.hz-f {
+  display: grid;
+  gap: 5px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.hz-f-h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.hz-f-h b {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  min-width: 0;
+}
+.hz-f .crit {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.hz-f p {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  max-width: 86ch;
+}
+.hz-f-m {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.hz-nv {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.hz-ctx {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.hz-t {
+  font-size: 12.5px;
+  width: 100%;
+  border-collapse: collapse;
+}
+.hz-t td,
+.hz-t th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.hz-t th {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: var(--surface-3);
+  white-space: nowrap;
+}
+.hz-t tr:last-child td {
+  border-bottom: 0;
+}
+.hz-t td.out {
+  color: var(--ink-3);
+}
+.mf {
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.mf b {
+  color: var(--ink);
+}
+.mf-grupo ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 3px;
+}
+.mf-caja {
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.casilla-entiendo {
+  margin-top: 4px;
+}
+.dex-ficha {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+.dex-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 16px;
+  align-items: start;
+}
+.dex-qr {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: #fff;
+}
+.dex-qr svg {
+  width: 128px;
+  height: 128px;
+}
+.dex-qr figcaption {
+  font-size: 11px;
+  color: #4b5563;
+  text-align: center;
+}
+.dex-sub {
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.dex-archivos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.dex-archivos li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.dex-archivos li:last-child {
+  border-bottom: 0;
+}
+.dex-archivos li > span {
+  display: grid;
+  min-width: 0;
+}
+.dex-archivos .sec {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  .hz-h,
+  .hz-sec {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .hz-f-h {
+    flex-direction: column;
+  }
+  .dex-cuerpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .verif:has(> .btn) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .verif:has(> .btn) > .btn {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+/* El informe va dentro de la ficha del lote: sin otro panel alrededor, como la genealogía incrustada. */
+.contenido-pestana > .hz {
+  border-top: 1px solid var(--line);
+}

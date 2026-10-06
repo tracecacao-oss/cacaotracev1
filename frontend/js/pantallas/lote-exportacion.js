@@ -1,14 +1,18 @@
-// Detalle de un lote de exportación con pestañas Selección, Genealogía, Indicadores y, desde la Parte 8,
-// Embarque y Recomprobación. Un lote con desviación FIFO muestra su etiqueta y su motivo; uno bloqueado, una
-// franja fija con las comprobaciones que fallan. Los resultados se nombran "sin observaciones" y "con
-// observaciones". Un lote armado se anula con motivo; uno bloqueado o listo, solo un administrador.
+// Detalle de un lote de exportación con pestañas Selección, Genealogía, Indicadores, Embarque y
+// Recomprobación (Parte 8), y Hallazgos y DEX (Parte 9). Un lote con desviación FIFO muestra su etiqueta y su
+// motivo; uno bloqueado, una franja fija con las comprobaciones que fallan. Los resultados se nombran "sin
+// observaciones" y "con observaciones". Un lote armado se anula con motivo; uno bloqueado o listo, solo un
+// administrador. El DEX lo emite solo un administrador, sobre un lote listo, después de leer el mensaje final
+// y marcar la casilla de entendimiento.
 
 import { llamarApi } from "../api.js";
 import { anularDocumento, verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
 import { estadoLote, insignia, insigniaFifo, seccionesExportacion, tarjetasIndicadores, vistaGenealogia } from "../exportacion.js";
+import { mensajeFinal, vistaInforme } from "../informe.js";
+import { codigoQr, huella } from "../tandas.js";
 import { kilos } from "../textos.js";
-import { abrirModal, cabeceraFicha, campo, cargando, enviarCon, errorDeCarga, fecha, h, icono, reemplazar, seccion, toast } from "../ui.js";
+import { abrirModal, cabeceraFicha, campo, cargando, enviarCon, errorDeCarga, fecha, h, icono, reemplazar, rejilla, seccion, toast } from "../ui.js";
 
 const PESTANAS = [
   ["seleccion", "Selección"],
@@ -16,7 +20,19 @@ const PESTANAS = [
   ["indicadores", "Indicadores"],
   ["embarque", "Embarque"],
   ["recomprobacion", "Recomprobación"],
+  ["hallazgos", "Hallazgos"],
+  ["dex", "DEX"],
 ];
+const CASILLA = "Entiendo que el DEX no declara el nivel de riesgo ni reemplaza la DDS";
+const ARCHIVOS = {
+  paquete: "Paquete completo (.zip)",
+  pdf_es: "Expediente en PDF, en español",
+  pdf_en: "Expediente en PDF, en inglés",
+  geojson: "GeoJSON de las parcelas",
+  anexo_ii: "Datos del Anexo II (JSON)",
+  hallazgos: "Informe de hallazgos (JSON)",
+  leeme: "LEEME.txt",
+};
 const RESULTADO = {
   sin_observaciones: ["ok", "Sin observaciones"],
   con_observaciones: ["warn", "Con observaciones"],
@@ -278,10 +294,205 @@ function pestanaRecomprobacion(l, opera, recargar, irAPestana) {
   });
 }
 
-export default async function loteExportacion({ parametros: [id], recargar }) {
+// ---------- Hallazgos ----------
+
+function pestanaHallazgos(l, irAPestana) {
+  if (["en_armado", "anulado"].includes(l.estado)) {
+    return seccion({ titulo: "Hallazgos", contenido: h("p", { class: "panel-sub" }, "El informe se calcula para un lote armado, bloqueado o listo, y queda sellado en su DEX.") });
+  }
+  const caja = h("div", {}, cargando());
+  const sellado = l.estado === "cerrado" && l.dex;
+  const pedido = sellado ? llamarApi(`/dex/${l.dex.id}`).then((d) => d.contenido.informe) : llamarApi(`/lotes/${l.id}/hallazgos`);
+  pedido.then((informe) => reemplazar(caja, vistaInforme(informe, { codigoDex: sellado ? l.dex.codigo : null, irAPestana }))).catch((error) => reemplazar(caja, errorDeCarga(error)));
+  return caja;
+}
+
+// ---------- DEX ----------
+
+/** Abre la URL firmada de un archivo del DEX. La ventana se abre en el mismo clic para que no la bloqueen. */
+async function descargar(dexId, clave) {
+  const ventana = window.open("about:blank", "_blank");
+  try {
+    const lista = await llamarApi(`/dex/${dexId}/descargas`);
+    const archivo = lista.find((x) => x.clave === clave);
+    if (!archivo) throw new Error("El archivo no está disponible.");
+    if (ventana) {
+      ventana.opener = null;
+      ventana.location.href = archivo.url;
+    } else {
+      window.location.assign(archivo.url);
+    }
+  } catch (error) {
+    ventana?.close();
+    toast(error.message, "bad");
+  }
+}
+
+function abrirEmision(l, alEmitir) {
+  const casilla = h("input", { type: "checkbox", name: "entiendo", required: true });
+  const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-emitir-dex", disabled: true }, icono("shield"), "Emitir DEX");
+  const mensaje = h("div", { class: "mf-caja" }, cargando());
+  casilla.addEventListener("change", () => {
+    boton.disabled = !casilla.checked;
+  });
+  const formulario = h(
+    "form",
+    { class: "form", id: "form-emitir-dex" },
+    h("p", { class: "panel-sub" }, "Este es el mensaje final del informe que quedará sellado en el expediente. Léelo antes de emitir: el sistema recomprueba el lote en ese instante y, si algo falla, lo bloquea y no emite nada."),
+    mensaje,
+    h("label", { class: "check casilla-entiendo" }, casilla, h("span", {}, CASILLA)),
+  );
+  llamarApi(`/lotes/${l.id}/hallazgos`)
+    .then((informe) => reemplazar(mensaje, mensajeFinal(informe.mensaje.es)))
+    .catch((error) => reemplazar(mensaje, errorDeCarga(error)));
+  const { cerrar } = abrirModal({ titulo: "Emitir DEX", subtitulo: `${l.codigo} · orden ${l.orden.codigo}`, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
+  enviarCon(formulario, boton, async () => {
+    try {
+      const dex = await llamarApi(`/lotes/${l.id}/dex`, { metodo: "POST", cuerpo: { entiendo: casilla.checked }, unIntento: true });
+      cerrar();
+      toast(`DEX emitido: ${dex.codigo}.`);
+      alEmitir();
+    } catch (error) {
+      if (error.codigo === "lote_bloqueado") {
+        cerrar();
+        toast(error.message, "bad");
+        alEmitir();
+        return;
+      }
+      throw error;
+    }
+  });
+  // enviarCon vuelve a habilitar el botón al terminar: sin la casilla marcada, sigue apagado.
+  formulario.addEventListener("submit", () => setTimeout(() => (boton.disabled = !casilla.checked), 0));
+}
+
+function abrirAnulacionDex(dex, alAnular) {
+  const boton = h("button", { class: "btn btn-danger", type: "submit", form: "form-anular-dex" }, "Anular DEX");
+  const formulario = h(
+    "form",
+    { class: "form", id: "form-anular-dex" },
+    h("p", { class: "alerta warn" }, "El DEX conserva su contenido y sus archivos, y la verificación pública lo mostrará como anulado. El lote vuelve a armado y la orden a con lote: para emitir de nuevo hay que recomprobar, y la nueva emisión recibe un código nuevo."),
+    h("label", { class: "field" }, "Motivo", h("textarea", { class: "input texto-libre", name: "motivo", required: true, maxlength: 200, rows: 3 })),
+  );
+  const { cerrar } = abrirModal({ titulo: "Anular DEX", subtitulo: dex.codigo, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
+  enviarCon(formulario, boton, async ({ motivo }) => {
+    await llamarApi(`/dex/${dex.id}/anular`, { metodo: "POST", cuerpo: { motivo } });
+    cerrar();
+    toast("DEX anulado.", "warn");
+    alAnular();
+  });
+}
+
+function fichaDex(dex, alAnular) {
+  const rol = rolEfectivo();
+  const descarga = ["admin_cooperativa", "operador"].includes(rol);
+  const vigente = dex.estado === "vigente";
+  return h(
+    "div",
+    { class: "dex-ficha" },
+    h(
+      "div",
+      { class: `verif ${vigente ? "" : "bad"}`.trim() },
+      icono(vigente ? "check" : "alert"),
+      h(
+        "div",
+        {},
+        h("b", {}, `${dex.codigo} · ${vigente ? "vigente" : "anulado"}`),
+        h(
+          "span",
+          {},
+          vigente
+            ? "La cooperativa descarga el paquete y lo envía al importador por su cuenta. El sistema no envía nada ni guarda si se entregó."
+            : `Anulado el ${fecha(dex.anulado_en, { hora: true })}${dex.anulado_por_nombre ? ` por ${dex.anulado_por_nombre}` : ""}. Motivo: ${dex.motivo_anulacion}`,
+        ),
+      ),
+    ),
+    h(
+      "div",
+      { class: "dex-cuerpo" },
+      rejilla([
+        { etiqueta: "Código", valor: dex.codigo, mono: true },
+        { etiqueta: "Emitido", valor: `${fecha(dex.emitido_en, { hora: true })}${dex.emitido_por_nombre ? ` · ${dex.emitido_por_nombre}` : ""}` },
+        { etiqueta: "Importador", valor: dex.importador },
+        { etiqueta: "Masa neta", valor: kilos(dex.masa_neta_kg) },
+        { etiqueta: "Huella SHA-256 del contenido", valor: huella(dex.contenido_sha256), extra: "Es la misma que llevan impresa los dos PDF y la que muestra la página pública." },
+        { etiqueta: "Verificación pública", valor: h("a", { href: dex.url_verificacion, target: "_blank", rel: "noopener" }, "Abrir la página de verificación") },
+      ]),
+      h("figure", { class: "dex-qr" }, codigoQr(dex.qr, `Código QR de verificación del ${dex.codigo}`), h("figcaption", {}, "Lleva a la página pública de verificación")),
+    ),
+    h("h4", { class: "dex-sub" }, "Archivos"),
+    h("p", { class: "panel-sub" }, descarga ? "Cada descarga queda en la auditoría. Las direcciones vencen a los 5 minutos. Los PDF en español y en inglés tienen las mismas secciones y las mismas cifras." : "Descargan el administrador y el operador."),
+    h(
+      "ul",
+      { class: "dex-archivos" },
+      [...dex.archivos].sort((a, b) => (b.clave === "paquete") - (a.clave === "paquete")).map((a) =>
+        h(
+          "li",
+          {},
+          h("span", {}, h("b", {}, ARCHIVOS[a.clave] ?? a.clave), h("span", { class: "sec mono" }, a.nombre)),
+          descarga && h("button", { class: `btn btn-sm ${a.clave === "paquete" ? "btn-primary" : ""}`.trim(), type: "button", onclick: () => descargar(dex.id, a.clave) }, icono("download", "ic-sm"), a.clave.startsWith("pdf_") ? "Ver" : "Descargar"),
+        ),
+      ),
+    ),
+    vigente && rol === "admin_cooperativa" && h("div", { class: "fila-acciones dex-anular" }, h("button", { class: "btn btn-sm btn-danger", type: "button", onclick: () => abrirAnulacionDex(dex, alAnular) }, "Anular DEX")),
+  );
+}
+
+function pestanaDex(l, alCambiar, irAPestana) {
+  const admin = rolEfectivo() === "admin_cooperativa";
+  const partes = [];
+  if (l.estado === "listo") {
+    partes.push(
+      h(
+        "div",
+        { class: "verif" },
+        icono("shield"),
+        h("div", {}, h("b", {}, "El lote está listo para emitir su DEX"), h("span", {}, admin ? "Antes de confirmar se muestra el mensaje final del informe. El sistema recomprueba el lote al emitir." : "Solo un administrador de la cooperativa emite el DEX.")),
+        admin && h("button", { class: "btn btn-primary btn-sm", type: "button", onclick: () => abrirEmision(l, alCambiar) }, icono("shield"), "Emitir DEX"),
+      ),
+    );
+  } else if (l.estado === "bloqueado") {
+    partes.push(
+      h(
+        "div",
+        { class: "verif bad" },
+        icono("alert"),
+        h("div", {}, h("b", {}, "No se puede emitir el DEX de un lote bloqueado"), h("span", {}, "Corrige lo que falla, recomprueba el lote y, cuando quede listo, emite el DEX.")),
+        h("button", { class: "btn btn-sm", type: "button", onclick: () => irAPestana("recomprobacion") }, "Ver la recomprobación"),
+      ),
+    );
+  } else if (l.estado === "armado") {
+    partes.push(
+      h(
+        "div",
+        { class: "verif" },
+        icono("rotate"),
+        h("div", {}, h("b", {}, "El DEX se emite sobre un lote listo"), h("span", {}, "Carga los cuatro documentos de embarque y recomprueba el lote: si las nueve comprobaciones salen sin observaciones, queda listo.")),
+        h("button", { class: "btn btn-sm", type: "button", onclick: () => irAPestana("recomprobacion") }, "Ir a Recomprobación"),
+      ),
+    );
+  } else if (!l.dex) {
+    partes.push(h("p", { class: "panel-sub" }, "Este lote no tiene DEX."));
+  }
+  if (l.dex) {
+    const caja = h("div", {}, cargando());
+    llamarApi(`/dex/${l.dex.id}`)
+      .then((dex) => reemplazar(caja, fichaDex(dex, alCambiar)))
+      .catch((error) => reemplazar(caja, errorDeCarga(error)));
+    partes.push(caja);
+  }
+  return seccion({
+    titulo: "DEX",
+    sub: "El expediente que la cooperativa entrega al importador: no declara un nivel de riesgo, no lleva firma y no reemplaza la DDS.",
+    contenido: partes,
+  });
+}
+
+export default async function loteExportacion({ parametros: [id, pestana], recargar, navegar }) {
   const l = await llamarApi(`/lotes/${id}`);
   const opera = ["admin_cooperativa", "operador"].includes(rolEfectivo());
-  if (recordada.id !== id) recordada = { id, clave: l.estado === "bloqueado" ? "recomprobacion" : "seleccion" };
+  if (pestana) recordada = { id, clave: pestana };
+  else if (recordada.id !== id) recordada = { id, clave: l.estado === "bloqueado" ? "recomprobacion" : l.estado === "cerrado" ? "dex" : "seleccion" };
   const cuerpo = h("div", { class: "contenido-pestana" });
   const barra = h("div", { class: "seg", role: "tablist", "aria-label": "Secciones del lote" });
   const generadores = {
@@ -290,7 +501,15 @@ export default async function loteExportacion({ parametros: [id], recargar }) {
     indicadores: () => pestanaIndicadores(l),
     embarque: () => pestanaEmbarque(l, opera, recargar),
     recomprobacion: () => pestanaRecomprobacion(l, opera, recargar, mostrar),
+    hallazgos: () => pestanaHallazgos(l, mostrar),
+    dex: () => pestanaDex(l, alCambiarDex, mostrar),
   };
+  // Tras emitir o anular, la pantalla vuelve a cargarse en la pestaña DEX.
+  function alCambiarDex() {
+    recordada = { id, clave: "dex" };
+    if (location.hash === `#/lotes-exportacion/${id}/dex`) recargar();
+    else navegar(`#/lotes-exportacion/${id}/dex`);
+  }
   function mostrar(clave) {
     recordada = { id, clave };
     for (const b of barra.children) b.setAttribute("aria-selected", String(b.dataset.clave === clave));
@@ -327,7 +546,9 @@ export default async function loteExportacion({ parametros: [id], recargar }) {
         detalle: ["Orden ", h("a", { href: `#/ordenes/${l.orden.id}`, class: "mono" }, l.orden.codigo), ` · ${l.importador} · ${l.calidad}`, l.armado_en ? ` · armado el ${fecha(l.armado_en, { hora: true })} por ${l.armado_por_nombre ?? "—"}` : ""],
         cifra: kilos(l.masa_neta_kg ?? l.seleccionado_kg),
         cifraTexto: l.masa_neta_kg ? `masa neta · ${l.numero_parcelas} ${l.numero_parcelas === 1 ? "parcela" : "parcelas"}` : `seleccionado de ${kilos(l.cantidad_kg)}`,
-        accion: opera && l.estado === "en_armado" && h("a", { class: "btn btn-primary", href: `#/lotes-exportacion/${l.id}/armar` }, icono("layers"), "Armar lote"),
+        accion:
+          (opera && l.estado === "en_armado" && h("a", { class: "btn btn-primary", href: `#/lotes-exportacion/${l.id}/armar` }, icono("layers"), "Armar lote")) ||
+          (rolEfectivo() === "admin_cooperativa" && l.estado === "listo" && h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirEmision(l, alCambiarDex) }, icono("shield"), "Emitir DEX")),
       }),
       l.alertas
         .filter((a) => a.codigo === "exclusion_posterior_al_cierre")

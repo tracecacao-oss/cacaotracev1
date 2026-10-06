@@ -24,6 +24,7 @@ export function seccionesPlataforma() {
   return [
     ["Cooperativas", "#/plataforma/cooperativas"],
     ["Superposiciones", "#/plataforma/superposiciones"],
+    ["Configuración", "#/plataforma/configuracion"],
   ];
 }
 

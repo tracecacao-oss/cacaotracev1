@@ -28,6 +28,8 @@ const ACCIONES = [
   ["importador.", "Importadores"],
   ["orden.", "Órdenes de compra"],
   ["lote.", "Lotes de exportación"],
+  ["dex.", "DEX"],
+  ["certificacion.", "Certificaciones"],
   ["superadmin.", "Consultas de soporte"],
 ];
 
@@ -104,6 +106,12 @@ const TEXTO_ACCION = {
   "lote.recomprobar": "Recomprobó un lote",
   "lote.cambiar_estado": "Cambió el estado de un lote (recomprobación)",
   "lote.alerta": "Alerta en un lote cerrado",
+  "dex.emitir": "Emitió un DEX",
+  "dex.descargar": "Descargó los archivos de un DEX",
+  "dex.anular": "Anuló un DEX",
+  "certificacion.registrar": "Registró una certificación",
+  "certificacion.editar": "Editó o anuló una certificación",
+  "plataforma.configurar": "Cambió la clasificación del país",
 };
 
 function resumen(detalle) {

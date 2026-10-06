@@ -1,4 +1,4 @@
-// Verificación pública del DOP y del DPP: la página a la que lleva el código QR. No pide sesión, no tiene
+// Verificación pública del DOP, del DPP y del DEX: la página a la que lleva el código QR. No pide sesión, no tiene
 // barra lateral y no enlaza al resto de la aplicación. Muestra solo cinco datos: código, cooperativa, fecha
 // de emisión, estado y huella. Un código que no existe dice solo eso.
 
@@ -19,6 +19,13 @@ const TIPOS = {
     vigente: "Este documento del procesamiento fue emitido por la cooperativa y no ha sido anulado.",
     anulado: "La cooperativa anuló este documento del procesamiento.",
     sub: "Documento del procesamiento de un lote de cacao. Esta página muestra solo si existe, si está vigente y su huella.",
+  },
+  dex: {
+    sigla: "DEX",
+    ruta: "/publico/dex/",
+    vigente: "Este expediente de exportación fue emitido por la cooperativa y no ha sido anulado.",
+    anulado: "La cooperativa anuló este expediente de exportación.",
+    sub: "Expediente de exportación de un lote de cacao. Esta página muestra solo si existe, si está vigente y su huella. No declara un nivel de riesgo.",
   },
 };
 

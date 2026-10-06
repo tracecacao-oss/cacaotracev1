@@ -11,6 +11,7 @@ export function seccionesExportacion() {
   return [
     ["Órdenes", "#/exportacion/ordenes"],
     ["Lotes", "#/exportacion/lotes"],
+    ["DEX", "#/exportacion/dex"],
     ["Importadores", "#/exportacion/importadores"],
   ];
 }
