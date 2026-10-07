@@ -29,7 +29,7 @@ from app.schemas.parcelas import (
     SuperposicionDeParcela,
     SuperposicionPrevista,
 )
-from app.services import analisis, documentos, geometria, habilitacion, superposiciones
+from app.services import analisis, documentos, geometria, habilitacion, limites, superposiciones
 from app.services.auditoria import aplicar_cambios, registrar_auditoria
 from app.services.documentos import Archivo
 from app.services.expediente import no_excluida
@@ -432,6 +432,7 @@ def analizar(
                 valida=r.valida,
                 errores=r.errores,
                 superposiciones=_previstas(contexto, productor, r, excluir) if productor and r.valida else [],
+                ubicacion=limites.ubicar(contexto.sesion, r.geometria) if r.valida else None,
             )
         )
     return resultado

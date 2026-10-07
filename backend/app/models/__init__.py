@@ -70,6 +70,7 @@ from app.models.padron import (  # noqa: E402
     TIPOS_DOCUMENTO,
     TIPOS_LEGALES,
     Documento,
+    LimiteDistrital,
     Parcela,
     Superposicion,
 )
@@ -126,6 +127,7 @@ __all__ = [
     "ExencionDocumento",
     "VisitaCampo",
     "Documento",
+    "LimiteDistrital",
     "Parcela",
     "Superposicion",
     "ESTADOS_AFILIACION",

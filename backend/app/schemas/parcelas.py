@@ -55,6 +55,16 @@ class SuperposicionPrevista(BaseModel):
     porcentaje: Decimal | None
 
 
+class UbicacionSugerida(BaseModel):
+    """Departamento, provincia y distrito según los límites del INEI, para que la persona los confirme."""
+
+    ubigeo: str
+    departamento: str
+    provincia: str
+    distrito: str
+    fuente: str
+
+
 class GeometriaAnalizada(BaseModel):
     indice: int
     nombre: str | None
@@ -65,6 +75,8 @@ class GeometriaAnalizada(BaseModel):
     errores: list[ErrorGeometriaSalida]
     # Solo si se indica el productor: superposiciones que se abrirían al guardar.
     superposiciones: list[SuperposicionPrevista] = []
+    # Decisión del 2026-10-06: la ubicación sale de las coordenadas y la persona la confirma.
+    ubicacion: UbicacionSugerida | None = None
 
 
 class AnalisisArchivo(BaseModel):

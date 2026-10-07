@@ -1,5 +1,6 @@
 """Parcelas: geometría validada por dibujo o archivo, alertas, edición y exportación."""
 
+import json
 import math
 from decimal import Decimal
 from pathlib import Path
@@ -93,6 +94,31 @@ def test_kml_y_geojson_de_la_misma_parcela_dan_la_misma_geometria(api, operador)
     assert a["area_ha"] == b["area_ha"]
     for p, q in zip(a["geometria"]["coordinates"][0], b["geometria"]["coordinates"][0], strict=True):
         assert math.isclose(p[0], q[0], abs_tol=1e-9) and math.isclose(p[1], q[1], abs_tol=1e-9)
+
+
+def _analizar(api, geometria) -> dict:
+    archivo = ("dibujo.geojson", json.dumps({"type": "Feature", "properties": {}, "geometry": geometria}))
+    respuesta = api.post("/parcelas/analizar-archivo", files={"archivo": archivo})
+    assert respuesta.status_code == 200, respuesta.text
+    return respuesta.json()["geometrias"][0]
+
+
+def test_la_ubicacion_sale_de_las_coordenadas(api, operador):
+    """Decisión del 2026-10-06: el distrito sale de los límites del INEI y la persona lo confirma."""
+    api.como(operador)
+    poligono = _analizar(api, rectangulo(100, 100))
+    u = poligono["ubicacion"]
+    assert (u["ubigeo"], u["departamento"], u["provincia"], u["distrito"]) == (
+        "220201",
+        "SAN MARTIN",
+        "BELLAVISTA",
+        "BELLAVISTA",
+    )
+    assert "INEI" in u["fuente"]
+    assert _analizar(api, punto())["ubicacion"]["ubigeo"] == "220201"
+    # En el mar, frente a La Libertad: dentro del recuadro del Perú, pero en ningún distrito.
+    mar = _analizar(api, {"type": "Point", "coordinates": [-81.2, -8.0]})
+    assert mar["valida"] and mar["ubicacion"] is None
 
 
 def test_kml_con_entidad_externa_se_rechaza(api, operador):

@@ -242,3 +242,15 @@ class Superposicion(ConFechas, Base):
     nota: Mapped[str | None] = mapped_column(Text)
     cerrada_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))
     cerrada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class LimiteDistrital(Base):
+    """Límite referencial de un distrito (INEI, 2023), para sugerir la ubicación de una parcela desde sus
+    coordenadas. Solo el ubigeo: los nombres salen del catálogo del INEI. Lo carga la migración 0015."""
+
+    __tablename__ = "limites_distritales"
+
+    ubigeo: Mapped[str] = mapped_column(String(6), primary_key=True)
+    geometria = mapped_column(
+        Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=True), nullable=False
+    )
