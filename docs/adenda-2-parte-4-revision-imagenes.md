@@ -209,6 +209,8 @@ Hallazgos nuevos para la Parte 9:
 
 El informe lleva además este texto fijo en "Lo que no pudimos verificar": "La revisión de imágenes la hace personal de la cooperativa. Las imágenes revisadas se adjuntan para que el operador pueda repetirla."
 
+> **Pedido del equipo del 2026-10-07:** el texto fijo va solo si al menos una parcela del lote tiene una revisión de imágenes.
+
 ## 13. Pruebas mínimas
 
 | Caso | Resultado esperado |

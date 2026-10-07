@@ -1,4 +1,4 @@
-# Pruebas en cada push y pull request: lint, migraciones y pytest contra Postgres con PostGIS.
+# Pruebas en cada push y pull request: lint, migraciones y pytest contra Postgres con PostGIS; y las pruebas de la interfaz con Node.
 name: CI
 
 on:
@@ -61,3 +61,17 @@ jobs:
 
       - name: Pruebas
         run: pytest
+
+  # Pruebas de la interfaz que no necesitan navegador (por ahora, las fechas dd/mm/aaaa de frontend/js/fechas.js),
+  # con el corredor que trae Node: sin dependencias ni package.json.
+  interfaz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Pruebas
+        run: node --test "frontend/tests/*.test.mjs"

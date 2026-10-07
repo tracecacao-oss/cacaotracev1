@@ -7,14 +7,16 @@ plantilla. No hay puntaje, semáforo ni conclusión: solo se cuenta.
 
 Un conjunto "registra bosque en 2020" si alguna de sus medidas de bosque alcanza
 UMBRAL_BOSQUE_2020_PCT del área de la parcela; "registra cambios" si alguna de sus medidas de cambio es
-mayor que cero. Se usa el último análisis completado de cada fuente sobre la geometría actual.
+mayor que cero. Desde el 2026-10-07 los cambios se cuentan aparte según lo que mide el conjunto
+(catalogos/conjuntos_datos.TIPO_CAMBIO): pérdida de bosque o alteración de la vegetación. Se usa el último
+análisis completado de cada fuente sobre la geometría actual.
 """
 
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from app.catalogos.conjuntos_datos import CONJUNTOS
+from app.catalogos.conjuntos_datos import ALTERACION_VEGETACION, CONJUNTOS, tipo_cambio
 from app.models import AnalisisCobertura
 
 VIA = {"whisp": "Whisp", "gfw": "GFW", "mapbiomas": "MapBiomas"}
@@ -33,7 +35,8 @@ INDICADORES = {
 }
 FRASE = (
     "Conjuntos de datos consultados: {n}. Registran bosque en 2020: {a} de {b} que lo miden. "
-    "Registran cambios después de 2020: {c} de {d} que lo miden."
+    "Registran pérdida de bosque después de 2020: {c} de {d} que la miden. "
+    "Registran alteración de la vegetación después de 2020: {e} de {f} que la miden."
 )
 
 
@@ -55,11 +58,21 @@ class Fila:
     al_2020: list[Medida] = field(default_factory=list)
     despues_2020: list[Medida] = field(default_factory=list)
     registra_bosque_2020: bool | None = None
-    registra_cambio: bool | None = None
+    # Qué mide el conjunto después de 2020 (pérdida de bosque o alteración de la vegetación) y si lo registra.
+    tipo_cambio: str | None = None
+    registra_perdida: bool | None = None
+    registra_alteracion: bool | None = None
 
     @property
     def vias(self) -> list[str]:
         return list(self.fechas)
+
+    @property
+    def registra_cambio(self) -> bool | None:
+        """Cualquier cambio después de 2020, de pérdida o de alteración."""
+        if self.registra_perdida is None and self.registra_alteracion is None:
+            return None
+        return bool(self.registra_perdida) or bool(self.registra_alteracion)
 
 
 # Decisión del equipo del 2026-10-05 (adenda, 7.2 reglas 1 y 3): hubo bosque en la parcela el 31/12/2020
@@ -81,13 +94,16 @@ class Convergencia:
     @property
     def conteos(self) -> dict[str, int]:
         a, b = self._conteo("registra_bosque_2020")
-        c, d = self._conteo("registra_cambio")
+        c, d = self._conteo("registra_perdida")
+        e, f = self._conteo("registra_alteracion")
         return {
             "consultados": len(self.filas),
             "bosque_registran": a,
             "bosque_miden": b,
-            "cambio_registran": c,
-            "cambio_miden": d,
+            "perdida_registran": c,
+            "perdida_miden": d,
+            "alteracion_registran": e,
+            "alteracion_miden": f,
         }
 
     @property
@@ -97,8 +113,10 @@ class Convergencia:
             n=k["consultados"],
             a=k["bosque_registran"],
             b=k["bosque_miden"],
-            c=k["cambio_registran"],
-            d=k["cambio_miden"],
+            c=k["perdida_registran"],
+            d=k["perdida_miden"],
+            e=k["alteracion_registran"],
+            f=k["alteracion_miden"],
         )
 
     @property
@@ -108,13 +126,6 @@ class Convergencia:
     @property
     def hubo_bosque_2020(self) -> bool:
         return len(self.registran_bosque_2020) >= MAPAS_MINIMOS_BOSQUE_2020
-
-    @property
-    def discrepan(self) -> dict[str, bool]:
-        """Dos conjuntos responden distinto a la misma pregunta (para el hallazgo `conjuntos_discrepan`)."""
-        bosque = {f.registra_bosque_2020 for f in self.filas if f.registra_bosque_2020 is not None}
-        cambio = {f.registra_cambio for f in self.filas if f.registra_cambio is not None}
-        return {"estado_2020": len(bosque) > 1, "cambio_posterior": len(cambio) > 1}
 
 
 def _numero(valor: Any) -> float | None:
@@ -175,7 +186,11 @@ def calcular(
                         alcanza = bool(area_ha) and valor >= area_ha * umbral_pct / 100
                     fila.registra_bosque_2020 = bool(fila.registra_bosque_2020) or alcanza
             elif pregunta == "cambio_posterior":
+                fila.tipo_cambio = tipo_cambio(conjunto)
                 valor = _numero(medida.valor)
                 if valor is not None:
-                    fila.registra_cambio = bool(fila.registra_cambio) or valor > 0
+                    if fila.tipo_cambio == ALTERACION_VEGETACION:
+                        fila.registra_alteracion = bool(fila.registra_alteracion) or valor > 0
+                    else:
+                        fila.registra_perdida = bool(fila.registra_perdida) or valor > 0
     return Convergencia(sorted(filas.values(), key=lambda f: f.nombre), umbral_pct, area_ha)

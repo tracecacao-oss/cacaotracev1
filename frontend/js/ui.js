@@ -1,5 +1,6 @@
 // Piezas de interfaz reutilizables. Ningún texto se inserta como HTML: todo va por textContent.
 
+import { completarAlEscribir, fechaLima, leerFecha, leerFechaHora, mostrarFecha, mostrarFechaHora, problemaFecha } from "./fechas.js";
 import { ICONOS } from "./iconos.js";
 
 /** Crea un elemento: h("button", { class: "btn", onclick }, "Texto", otroNodo). */
@@ -202,17 +203,75 @@ export function mostrarClaveTemporal({ titulo, persona, usuario }) {
 
 // ---------- Formularios ----------
 
-/** Campo con etiqueta. Con `opciones` ([valor, texto][]) es una lista desplegable. */
+/**
+ * Campo con etiqueta. Con `opciones` ([valor, texto][]) es una lista desplegable. Con `type: "date"` o
+ * `"datetime-local"` es un campo de fecha dd/mm/aaaa (con hora, dd/mm/aaaa hh:mm en 24 horas): ver
+ * `controlFecha`.
+ */
 export function campo({ etiqueta, ayuda, opciones, value, ...atributos }) {
   const id = atributos.id ?? `c-${atributos.name}`;
   let control;
   if (opciones) {
     control = h("select", { class: "select", id, ...atributos }, opciones.map(([v, t]) => h("option", { value: v }, t)));
     if (value !== undefined) control.value = value;
+  } else if (atributos.type === "date" || atributos.type === "datetime-local") {
+    control = controlFecha({ ...atributos, id, value });
   } else {
     control = h("input", { class: "input", id, value, ...atributos });
   }
   return h("label", { class: "field", for: id }, etiqueta, control, ayuda && h("small", {}, ayuda));
+}
+
+/**
+ * Fecha escrita dd/mm/aaaa (o dd/mm/aaaa hh:mm) sin el selector nativo, que cambia de formato con el idioma
+ * del navegador. Son dos inputs y el primero es el oculto: lleva `name`, el valor ISO ("AAAA-MM-DD" o
+ * "AAAA-MM-DDTHH:MM"), `min`, `max`, `required` y `disabled`, y se lee o se cambia como un input de fecha
+ * nativo (`campo.querySelector("input")`). El visible lo sigue solo: muestra el valor, avisa en español si
+ * la fecha no existe o se sale de los límites y, al escribir, actualiza el oculto antes de que el evento
+ * `input` llegue a la etiqueta.
+ */
+function controlFecha({ type, id, value, name, min, max, required, disabled, class: clase, ...atributos }) {
+  const hora = type === "datetime-local";
+  const leer = hora ? leerFechaHora : leerFecha;
+  const mostrar = hora ? mostrarFechaHora : mostrarFecha;
+  const oculto = h("input", { type: "hidden", name, value: value ?? "", min, max, required, disabled, "data-fecha": type });
+  const visible = h("input", {
+    class: clase ?? "input mono",
+    type: "text",
+    inputmode: "numeric",
+    autocomplete: "off",
+    spellcheck: "false",
+    placeholder: hora ? "dd/mm/aaaa hh:mm" : "dd/mm/aaaa",
+    maxlength: hora ? 16 : 10,
+    ...atributos,
+    id,
+    required,
+    disabled,
+    value: mostrar(value),
+  });
+  const validar = () =>
+    visible.setCustomValidity(problemaFecha(visible.value, { hora, min: oculto.getAttribute("min"), max: oculto.getAttribute("max") }) ?? "");
+  visible.addEventListener("input", (evento) => {
+    if (evento.inputType?.startsWith("insert") && visible.selectionStart === visible.value.length) {
+      const completo = completarAlEscribir(visible.value, { hora });
+      if (completo !== visible.value) visible.value = completo;
+    }
+    oculto.value = leer(visible.value) ?? "";
+    validar();
+  });
+  // Al salir del campo, la fecha válida queda con dos dígitos: 6/9/2026 pasa a 06/09/2026.
+  visible.addEventListener("change", () => {
+    if (leer(visible.value)) visible.value = mostrar(leer(visible.value));
+  });
+  // Lo que el código cambia en el oculto (valor, límites, obligatorio) se refleja en el visible.
+  new MutationObserver(() => {
+    visible.required = oculto.required;
+    visible.disabled = oculto.disabled;
+    if ((leer(visible.value) ?? "") !== oculto.value) visible.value = mostrar(oculto.value);
+    validar();
+  }).observe(oculto, { attributes: true, attributeFilter: ["value", "min", "max", "required", "disabled"] });
+  validar();
+  return [oculto, visible];
 }
 
 /** Envía un formulario con estado de carga y muestra el error de la API dentro del formulario. */
@@ -337,26 +396,10 @@ export function errorDeCarga(error) {
 
 // ---------- Formatos ----------
 
-const FECHA_LIMA = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-const FECHA_HORA_LIMA = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-/** Las fechas llegan en UTC y se muestran en hora de Lima. */
+/** Las fechas llegan en UTC y se muestran en hora de Lima: dd/mm/aaaa y, con hora, dd/mm/aaaa hh:mm (24 h). */
 export function fecha(valor, { hora = false } = {}) {
   if (!valor) return "—";
-  const objeto = valor.length === 10 ? new Date(`${valor}T12:00:00Z`) : new Date(valor);
-  return (hora ? FECHA_HORA_LIMA : FECHA_LIMA).format(objeto);
+  return fechaLima(valor, { hora });
 }
 
 export function iniciales(nombres = "", apellidos = "") {

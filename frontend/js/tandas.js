@@ -2,7 +2,9 @@
 // campos de pesaje, cosecha y documento de entrega; requisitos y alertas; huella, código QR y PDF.
 
 import { llamarApi } from "./api.js";
+import { hoyLima, momentoLima } from "./fechas.js";
 import { ALERTAS, ALERTAS_TANDA, REQUISITOS_TANDA, TIPOS_DOC_ENTREGA, VARIEDADES, kilos } from "./textos.js";
+import { lugar } from "./ubigeo.js";
 import { campo, h, icono, toast } from "./ui.js";
 
 export function seccionesLotes() {
@@ -17,25 +19,7 @@ export function seccionesLotes() {
 
 // ---------- Fechas en hora de Lima (Perú no cambia de hora: siempre UTC-5) ----------
 
-const PARTES_LIMA = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/Lima",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
-/** "AAAA-MM-DDTHH:MM" en hora de Lima, para un campo datetime-local. */
-export function momentoLima(valor = new Date()) {
-  const p = Object.fromEntries(PARTES_LIMA.formatToParts(new Date(valor)).map((x) => [x.type, x.value]));
-  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
-}
-
-export const hoyLima = () => momentoLima().slice(0, 10);
-
-/** El valor del campo datetime-local es hora de Lima: se envía con su desfase. */
+/** El valor del campo de fecha y hora ("AAAA-MM-DDTHH:MM", ver fechas.js) es hora de Lima: se envía con su desfase. */
 const conDesfase = (local) => `${local}:00-05:00`;
 
 // ---------- Campos de la tanda ----------
@@ -152,9 +136,9 @@ export function camposTanda(t = {}, { lugares, configuracion }) {
           name: "lugar_id",
           required: true,
           value: t.lugar_id ?? "",
-          opciones: [["", canchas.length ? "Elige dónde se pesó…" : "No hay canchas de acopio activas"], ...canchas.map((l) => [l.id, `${l.nombre} · ${l.distrito}`])],
+          opciones: [["", canchas.length ? "Elige dónde se pesó…" : "No hay canchas de acopio activas"], ...canchas.map((l) => [l.id, `${l.nombre} · ${lugar(l.distrito)}`])],
         })
-      : [h("input", { type: "hidden", name: "lugar_id", value: canchas[0].id }), h("p", { class: "panel-sub" }, `Pesada en ${canchas[0].nombre} (${canchas[0].distrito}).`)],
+      : [h("input", { type: "hidden", name: "lugar_id", value: canchas[0].id }), h("p", { class: "panel-sub" }, `Pesada en ${canchas[0].nombre} (${lugar(canchas[0].distrito)}).`)],
     recepcion,
     h("div", { class: "field" }, "Estado del producto", botonesProducto, producto),
     h("div", { class: "grid2" }, peso, campo({ etiqueta: "Sacos (opcional)", name: "numero_sacos", type: "number", step: "1", min: "1", inputmode: "numeric", value: t.numero_sacos ?? "" })),

@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app import textos
+from app import textos, ubigeo
 from app.models import Certificacion, ConfiguracionPlataforma
 from app.services import lotes as servicio_lotes
 from app.services.hallazgos.catalogo import CRITERIOS, GRUPOS, ORDEN, Hallazgo
@@ -57,6 +57,11 @@ def _casos_por_comprobacion(idioma: str, lista: list[Hallazgo]) -> list[str]:
     return partes
 
 
+# Hallazgos que dicen cuántos conjuntos de datos registran algo: el mensaje final da la proporción de cada
+# parcela.
+CON_PROPORCION = ("conjuntos_registran_bosque_2020", "conjuntos_registran_cambio_posterior")
+
+
 def _frases(idioma: str, hallazgos: list[Hallazgo]) -> list[str]:
     """Una frase por código: nombra los sujetos y suma su peso (cada sujeto cuenta una vez)."""
     por_codigo: dict[str, list[Hallazgo]] = {}
@@ -72,6 +77,16 @@ def _frases(idioma: str, hallazgos: list[Hallazgo]) -> list[str]:
         pesos = [p for p in sujetos.values() if p is not None]
         peso = sum(pesos, Decimal("0")) if pesos else None
         nombres = sorted(sujetos, key=lambda s: (-(sujetos[s] if sujetos[s] is not None else SIN_PESO), s))
+        if codigo in CON_PROPORCION:
+            # "PA-00001 (1 de 13 conjuntos de datos)": la proporción de cada parcela, nunca "algún conjunto".
+            de_sujeto = {h.sujeto.get("codigo"): h for h in lista}
+            nombres = [
+                textos.t(
+                    idioma, "comun.proporcion_conjuntos", parcela=s, n=de_sujeto[s].datos["n"],
+                    total=de_sujeto[s].datos["total"],
+                )
+                for s in nombres
+            ]
         if codigo == "criterio_no_cubierto":
             nombres = [
                 textos.t(idioma, "comun.criterio_citado", criterio=h.datos["criterio_corto"]) for h in lista
@@ -122,7 +137,7 @@ def parrafos(bloques: list[dict[str, Any]]) -> list[str]:
 
 def _encabezado(idioma: str, d: DatosLote) -> str:
     n_parcelas, n_productores = len(d.parcelas), len(d.productores)
-    departamentos = sorted({p.departamento for p in d.parcelas.values() if p.departamento})
+    departamentos = sorted({ubigeo.mostrar(p.departamento) for p in d.parcelas.values() if p.departamento})
     return textos.t(
         idioma,
         "comun.encabezado",
@@ -183,7 +198,8 @@ def contexto(d: DatosLote) -> dict[str, Any]:
                 "comun.clasificacion",
                 clasificacion=textos.obtener(idioma, f"clasificaciones.{clasificacion['valor']}"),
                 fecha=textos.fecha(idioma, clasificacion["fecha"]),
-                referencia=clasificacion["referencia"] or "—",
+                # Sin su punto final: la frase ya termina en punto ("2023/1115.." no).
+                referencia=(clasificacion["referencia"] or "—").rstrip(" .;:,") or "—",
             )
         else:
             primera = textos.obtener(idioma, "comun.sin_clasificacion")
@@ -300,6 +316,7 @@ def armar(d: DatosLote, hallazgos: list[Hallazgo], *, preliminar: bool) -> dict[
     grupos_mensaje = GRUPOS if preliminar else GRUPOS[1:]
     ctx = contexto(d)
     no_verificados = [h for h in hallazgos if h.entrada.grupo == "no_verificado"]
+    hay_revision = any(d.evaluaciones[p].revision is not None for p in d.parcelas)
     mensaje = {}
     no_verificado = {}
     for idioma in textos.IDIOMAS:
@@ -314,10 +331,10 @@ def armar(d: DatosLote, hallazgos: list[Hallazgo], *, preliminar: bool) -> dict[
             },
             {"grupo": None, "titulo": None, "frases": [textos.obtener(idioma, "comun.cierre")]},
         ]
-        no_verificado[idioma] = [
-            *_frases(idioma, no_verificados),
-            textos.obtener(idioma, "comun.revision_imagenes_fija"),
-        ]
+        no_verificado[idioma] = _frases(idioma, no_verificados)
+        # Solo si alguna parcela del lote tiene una revisión de imágenes (pedido del equipo del 2026-10-07).
+        if hay_revision:
+            no_verificado[idioma].append(textos.obtener(idioma, "comun.revision_imagenes_fija"))
     return {
         "preliminar": preliminar,
         "lote": {"id": str(d.lote.id), "codigo": d.lote.codigo, "estado": d.lote.estado},

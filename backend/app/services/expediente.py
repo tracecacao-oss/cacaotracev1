@@ -25,10 +25,12 @@ ORDEN = {"vigente": 0, "por_vencer": 1, "vencido": 2}
 @dataclass
 class Casilla:
     codigo: str
-    estado: str  # vigente, por_vencer, vencido, no_aplica o faltante
+    estado: str  # vigente, por_vencer, vencido, no_aplica, no_requerida o faltante
     documento: Documento | None = None  # el que cubre la casilla
     documentos: list[Documento] = field(default_factory=list)
     exencion: ExencionDocumento | None = None
+    # Solo en tenencia: el otro documento de tenencia que ya cubre la casilla (estado no_requerida).
+    cubierta_por: str | None = None
 
     @property
     def nivel(self) -> str | None:
@@ -128,15 +130,31 @@ def expedientes(
             )
         )
     }
-    return {
-        pid: Expediente(
-            {
-                c: _casilla(c, docs.get((pid, c), []), exenciones.get((pid, c)), hoy, aviso)
-                for c in catalogo.CODIGOS
-            }
+    resultado = {}
+    for pid in parcela_ids:
+        casillas = {
+            c: _casilla(c, docs.get((pid, c), []), exenciones.get((pid, c)), hoy, aviso)
+            for c in catalogo.CODIGOS
+        }
+        _tenencia_cubierta(casillas)
+        resultado[pid] = Expediente(casillas)
+    return resultado
+
+
+def _tenencia_cubierta(casillas: dict[str, Casilla]) -> None:
+    """Con el título vigente, la constancia de posesión no falta: no se requiere, y al revés (pedido del
+    equipo del 2026-10-07). Basta un documento de tenencia; la casilla vacía dice cuál la cubre."""
+    for codigo in catalogo.TENENCIA:
+        casilla = casillas[codigo]
+        if casilla.estado != "faltante":
+            continue
+        cubre = next(
+            (o for o in catalogo.TENENCIA if o != codigo and casillas[o].estado in ("vigente", "por_vencer")),
+            None,
         )
-        for pid in parcela_ids
-    }
+        if cubre:
+            casilla.estado = "no_requerida"
+            casilla.cubierta_por = cubre
 
 
 def expediente(sesion: Session, parcela_id: uuid.UUID) -> Expediente:
@@ -328,6 +346,8 @@ def salida(sesion: Session, parcela: Parcela):
                 registro_consultable=tipo.registro_consultable,
                 admite_exencion=not tipo.tenencia,
                 estado=c.estado,
+                cubierta_por=c.cubierta_por,
+                cubierta_por_nombre=catalogo.POR_CODIGO[c.cubierta_por].nombre if c.cubierta_por else None,
                 nivel=c.nivel,
                 vence_en=c.documento.fecha_vencimiento if c.documento else None,
                 documentos=[documento_salida(d, nombres.get(d.subido_por)) for d in documentos],

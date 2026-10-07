@@ -59,7 +59,11 @@ def test_titulo_vigente_y_cinco_documentos_completan_el_expediente(api, sesion, 
         "zonificacion",
     ]
     assert _casilla(exp, "titulo_sunarp")["estado"] == "vigente"
-    assert _casilla(exp, "constancia_posesion")["estado"] == "faltante"
+    # Con el título vigente, la constancia no falta: no se requiere y dice qué la cubre.
+    constancia = _casilla(exp, "constancia_posesion")
+    assert constancia["estado"] == "no_requerida"
+    assert constancia["cubierta_por"] == "titulo_sunarp"
+    assert constancia["cubierta_por_nombre"] == "Título de propiedad inscrito en SUNARP"
     alertas = api.get(f"/parcelas/{parcela.id}").json()["alertas"]
     assert "expediente_incompleto" not in alertas
 
@@ -232,3 +236,18 @@ def test_registros_consultables_confirmados():
 
     consultables = {t.codigo for t in catalogo.TIPOS if t.registro_consultable}
     assert consultables == {"titulo_sunarp", "cusaf", "sunafil", "sunat", "zonificacion"}
+
+
+def test_la_constancia_cubre_la_tenencia_y_el_titulo_no_se_requiere(api, sesion, operador, parcela):
+    documento_legal(sesion, parcela, "constancia_posesion", operador)
+    titulo = _casilla(_expediente(api.como(operador), parcela), "titulo_sunarp")
+    assert titulo["estado"] == "no_requerida"
+    assert titulo["cubierta_por"] == "constancia_posesion"
+    assert titulo["cubierta_por_nombre"].startswith("Constancia de posesión")
+
+
+def test_sin_ningun_documento_de_tenencia_las_dos_casillas_faltan(api, operador, parcela):
+    exp = _expediente(api.como(operador), parcela)
+    for codigo in ("titulo_sunarp", "constancia_posesion"):
+        casilla = _casilla(exp, codigo)
+        assert casilla["estado"] == "faltante" and casilla["cubierta_por"] is None

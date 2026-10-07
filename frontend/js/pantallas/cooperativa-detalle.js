@@ -19,7 +19,7 @@ import {
   toast,
 } from "../ui.js";
 import { TIPOS_ORGANIZACION } from "../textos.js";
-import { camposUbigeo } from "../ubigeo.js";
+import { camposUbigeo, lugares } from "../ubigeo.js";
 import { consultar, insigniaEstado } from "./cooperativas.js";
 
 function abrirEdicion(c, alGuardar) {
@@ -183,7 +183,7 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
         inicio: h("span", { class: "ins-icono" }, icono("cooperativa")),
         titulo: nombre,
         insignias: [insigniaEstado(c), c.es_demo && h("span", { class: "badge info" }, h("span", { class: "dot" }), "Demostración")],
-        detalle: [h("span", { class: "mono" }, `RUC ${c.ruc}`), ` · ${c.distrito}, ${c.provincia}, ${c.departamento}`],
+        detalle: [h("span", { class: "mono" }, `RUC ${c.ruc}`), ` · ${lugares(c.distrito, c.provincia, c.departamento)}`],
         cifra: String(c.productores),
         cifraTexto: c.productores === 1 ? "productor afiliado" : "productores afiliados",
         accion: !soloLectura && h("button", { class: "btn btn-primary", type: "button", onclick: () => consultar(c, navegar) }, icono("eye"), "Consultar cooperativa"),
@@ -206,7 +206,7 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
             extra: !c.codigo && "Falta: sin código la cooperativa no recibe tandas. Fíjalo en Editar datos.",
           },
           { etiqueta: "Tipo de organización", valor: TIPOS_ORGANIZACION.find(([v]) => v === c.tipo_organizacion)?.[1] ?? c.tipo_organizacion },
-          { etiqueta: "Ubicación", valor: `${c.distrito}, ${c.provincia}, ${c.departamento}` },
+          { etiqueta: "Ubicación", valor: lugares(c.distrito, c.provincia, c.departamento) },
           { etiqueta: "Usuarios del personal", valor: String(c.usuarios), mono: true },
           { etiqueta: "Productores afiliados", valor: String(c.productores), mono: true },
         ]),

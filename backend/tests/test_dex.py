@@ -432,7 +432,6 @@ ESPERADOS_CON_TODO = {
     "documento_por_vencer",
     "conjuntos_registran_bosque_2020",
     "conjuntos_registran_cambio_posterior",
-    "conjuntos_discrepan",
     "revision_de_imagenes_registrada",
     "habilitada_con_cambio_visible",
     "coordenada_no_recorrida",
@@ -494,6 +493,20 @@ def test_cada_regla_genera_su_hallazgo_con_grupo_etapa_y_criterio(api, operador,
     # Las comprobaciones que fallan: un hallazgo por caso (faltan los cuatro documentos de embarque).
     assert len(por_codigo["comprobacion_fallida"]) == 4
     assert informe["preliminar"] is True and informe["grupos"]["impide_cierre"]["cantidad"] == 4
+    # Pedido del 2026-10-07. La exención no se puede comprobar: va en No verificado.
+    assert {h["grupo"] for h in por_codigo["exencion_declarada"]} == {"no_verificado"}
+    # Ya no hay un hallazgo por conjuntos que responden distinto.
+    assert "conjuntos_discrepan" not in por_codigo
+    # Siempre la proporción, nunca "algún conjunto".
+    bosque = por_codigo["conjuntos_registran_bosque_2020"][0]
+    assert re.match(rf"En {p1.codigo}, 1 de \d+ conjuntos de datos registra bosque", bosque["hecho"]["es"])
+    texto = informe["mensaje_texto"]["es"]
+    assert re.search(rf"{p1.codigo} \(1 de \d+ conjuntos de datos\)", texto), texto
+    assert re.search(rf"{p1.codigo} \(1 of \d+ datasets\)", informe["mensaje_texto"]["en"])
+    assert "algún" not in texto and "algun" not in texto
+    # Una parcela del lote tiene revisión de imágenes: la frase sobre esa revisión aparece una vez.
+    revision = [f for f in informe["no_verificado"]["es"] if f.startswith("La revisión de imágenes")]
+    assert len(revision) == 1
 
 
 def test_las_reglas_no_se_disparan_en_un_lote_sin_novedades(
@@ -623,9 +636,8 @@ def test_mensaje_final_y_secciones(api, operador, basico):
     assert (
         criterios.index("pueblos indígenas") < criterios.index("reclamaciones") < criterios.index("expertos")
     )
-    assert informe["no_verificado"]["es"][-1].startswith(
-        "La revisión de imágenes la hace personal de la cooperativa"
-    )
+    # Ninguna parcela del lote tiene revisión de imágenes: la frase sobre esa revisión no aparece.
+    assert not any(f.startswith("La revisión de imágenes") for f in informe["no_verificado"]["es"])
     claves = [f["clave"] for f in informe["datos_lote"]]
     assert {"orden", "masa", "cobertura_pedido", "conjuntos_por_parcela", "tandas_por_documento"} <= set(
         claves
@@ -700,6 +712,12 @@ def test_emision_completa(api, sesion, admin, operador, basico, storage_falso):
     # Seis archivos y el paquete guardados.
     archivos = {a["clave"] for a in dex["archivos"]}
     assert archivos == {"pdf_es", "pdf_en", "geojson", "anexo_ii", "hallazgos", "leeme", "paquete"}
+    # Con el título vigente, la constancia de posesión no se requiere y dice qué la cubre (2026-10-07).
+    sellado = sesion.get(Dex, uuid.UUID(dex["id"])).contenido
+    for respaldo in sellado["respaldo"]:
+        casillas = respaldo["expediente"]["casillas"]
+        constancia = next(c for c in casillas if c["codigo"] == "constancia_posesion")
+        assert (constancia["estado"], constancia["cubierta_por"]) == ("no_requerida", "titulo_sunarp")
     docs = list(sesion.scalars(select(Documento).where(Documento.entidad == "dex")))
     assert len(docs) == 7 and all(d.ruta in storage_falso.archivos for d in docs)
     paquete = next(d for d in docs if d.tipo == "dex_paquete")
@@ -941,7 +959,8 @@ def test_clasificacion_del_pais(api, sesion, admin, operador, basico):
     datos = {
         "clasificacion_pais": "estandar",
         "clasificacion_fecha": "2026-10-03",
-        "clasificacion_referencia": "Reglamento de Ejecución de la Comisión (publicación de prueba)",
+        # Con su punto final: el informe no lo duplica al cerrar la frase.
+        "clasificacion_referencia": "Reglamento de Ejecución de la Comisión (publicación de prueba).",
     }
     respuesta = api.put("/admin/configuracion", json=datos)
     assert respuesta.status_code == 200 and respuesta.json()["clasificacion_pais"] == "estandar"
@@ -950,6 +969,9 @@ def test_clasificacion_del_pais(api, sesion, admin, operador, basico):
         "Perú figura como riesgo estándar en la clasificación registrada el 3 de octubre de 2026"
     )
     assert informe["contexto"]["texto"]["en"].startswith("Peru is listed as standard risk")
+    for idioma in ("es", "en"):
+        assert "prueba)." in informe["contexto"]["texto"][idioma]
+        assert ".." not in informe["contexto"]["texto"][idioma]
     auditoria = sesion.scalar(select(Auditoria).where(Auditoria.accion == "plataforma.configurar"))
     assert auditoria is not None and auditoria.cooperativa_id is None
 

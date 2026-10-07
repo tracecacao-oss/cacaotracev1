@@ -3576,7 +3576,7 @@ El catálogo es cerrado: cada hallazgo nace de una regla que ya existe en las Pa
 | `superposicion_aceptada` | La parcela tiene una superposición aceptada con nota | 3 | Requiere atención |
 | `superposicion_con_excluida` | La parcela se superpone con una parcela excluida | 3 | Requiere atención |
 | `tenencia_solo_posesion` | La tenencia se apoya solo en una constancia de posesión | 4 | Requiere atención |
-| `exencion_declarada` | Una casilla del expediente está cubierta por una exención | 4 | Requiere atención |
+| `exencion_declarada` | Una casilla del expediente está cubierta por una exención | 4 | No verificado (pedido del equipo del 2026-10-07; antes, Requiere atención) |
 | `documento_por_vencer` | Una casilla está `por_vencer` al emitir | 4 | Requiere atención |
 | `coordenada_no_recorrida` | Ningún técnico recorrió el lindero después del último cambio de geometría. Indica quién registró la geometría | 1 | No verificado |
 | `analisis_por_aproximacion` | Una parcela de tipo punto se analizó como círculo | 1 | No verificado |
@@ -4386,7 +4386,7 @@ Construido en `feat/parte-10-piloto`:
 - las reglas de los datos;
 - la carga completa por la capa de servicios (`app/demo/carga_simulacion.py`), con Whisp y GFW simulados sin alertas, sin que falle ningún paso;
 - que la genealogía y los saldos coinciden con los del guion;
-- que en el DEX solo pidan atención las exenciones declaradas;
+- que en el DEX nada pida atención (desde el 2026-10-07, las exenciones declaradas van en No verificado);
 - el contenido del ZIP.
 
 **Decisiones del guion:**
@@ -4396,6 +4396,33 @@ Construido en `feat/parte-10-piloto`:
 - La plantilla de proceso se llena con la sugerida.
 - La fecha de entrega de cada orden es el día en que se genera el paquete.
 - La clasificación del país no está en el guion: la registra el equipo con su referencia oficial.
+
+### Ajustes tras la revisión del equipo (2026-10-07)
+
+Pedido del equipo del 2026-10-07, después de revisar la simulación. Rama `feat/parte-10-ajustes-revision`.
+
+**1. Fechas.** Todos los campos, listas y detalles muestran y piden las fechas como dd/mm/aaaa, y la fecha con hora como dd/mm/aaaa hh:mm en 24 horas, sea cual sea el idioma del navegador. La API sigue en ISO.
+- El control de fecha está en `frontend/js/fechas.js` y `campo()` de `ui.js` lo usa para los tipos `date` y `datetime-local`.
+- Una fecha que no existe, como 31/02/2026, no se acepta.
+- Las pruebas de la interfaz corren con Node (`frontend/tests/`) en el trabajo `interfaz` del CI.
+
+**3. Menos ruido en las señales de cobertura.**
+- Siempre la proporción, nunca "algún conjunto": "1 de 13 conjuntos de datos registra bosque en 2020".
+- La pérdida de bosque y la alteración de la vegetación se cuentan aparte (adenda de fuentes, sección 6). `conjuntos_registran_cambio_posterior` solo cuenta la pérdida de bosque.
+- Se quita `conjuntos_discrepan`.
+
+**4. Tenencia.** Basta un documento de tenencia. Si la parcela tiene el título vigente o por vencer, la casilla vacía de la constancia de posesión no está "faltante": está `no_requerida` y dice "No requerida: la tenencia está cubierta por" y el nombre del título; y al revés. Se ve así en la pantalla, en el DOP (contenido versión 4, con `cubierta_por` y `cubierta_por_nombre`) y en el DEX. Los DOP anteriores no cambian.
+
+**5. Revisión de imágenes.** El texto fijo sobre quién hace la revisión va en "Lo que no pudimos verificar" solo si al menos una parcela del lote tiene una revisión de imágenes.
+
+**6. Exenciones.** `exencion_declarada` pasa de Requiere atención a No verificado.
+
+**7. Redacción.**
+- GFW nombra cada medida por separado y usa singular con 1: "GFW: 1 alerta integrada de deforestación desde 2021; 0.5 ha de pérdida de cobertura arbórea desde 2021; …".
+- La referencia de la clasificación del país pierde su punto final, para no cerrar la frase con dos.
+- Los lugares se muestran como "San Martín", no "SAN MARTIN". La base sigue guardando el nombre del INEI.
+  - Los 25 departamentos llevan su ortografía (`ubigeo.mostrar` en el backend y `lugar()` en la interfaz).
+  - Las provincias y los distritos solo pasan a mayúsculas y minúsculas: "Mariscal Caceres", sin tilde. Ni el INEI ni el MEF publican el catálogo con tildes, y Claude Code no las inventa. Si el equipo quiere tildes en provincias y distritos, hace falta una lista que el equipo apruebe.
 
 ## Cómo entregar este documento a Claude Code
 

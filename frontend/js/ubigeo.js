@@ -1,6 +1,6 @@
 // Departamento, provincia y distrito elegidos del catálogo oficial del INEI (GET /ubigeos).
 // Las tres listas van encadenadas: cada una se llena al elegir la anterior. Se guardan los
-// nombres tal como los escribe el INEI, en mayúsculas.
+// nombres tal como los escribe el INEI, en mayúsculas, y se muestran con `lugar()`.
 
 import { llamarApi } from "./api.js";
 import { campo, h } from "./ui.js";
@@ -22,8 +22,57 @@ const clave = (texto) =>
 
 const buscar = (lista, nombre) => lista.find((x) => clave(x.nombre ?? x) === clave(nombre));
 
+// Los 25 departamentos con su ortografía, igual que `ubigeo.mostrar` en la API (pedido del 2026-10-07).
+const DEPARTAMENTOS = {
+  AMAZONAS: "Amazonas",
+  ANCASH: "Áncash",
+  APURIMAC: "Apurímac",
+  AREQUIPA: "Arequipa",
+  AYACUCHO: "Ayacucho",
+  CAJAMARCA: "Cajamarca",
+  CALLAO: "Callao",
+  CUSCO: "Cusco",
+  HUANCAVELICA: "Huancavelica",
+  HUANUCO: "Huánuco",
+  ICA: "Ica",
+  JUNIN: "Junín",
+  "LA LIBERTAD": "La Libertad",
+  LAMBAYEQUE: "Lambayeque",
+  LIMA: "Lima",
+  LORETO: "Loreto",
+  "MADRE DE DIOS": "Madre de Dios",
+  MOQUEGUA: "Moquegua",
+  PASCO: "Pasco",
+  PIURA: "Piura",
+  PUNO: "Puno",
+  "SAN MARTIN": "San Martín",
+  TACNA: "Tacna",
+  TUMBES: "Tumbes",
+  UCAYALI: "Ucayali",
+};
+const MINUSCULAS = new Set(["de", "del", "la", "las", "los", "el", "y", "en"]);
+
+/**
+ * Un nombre del catálogo para leerlo: "SAN MARTIN" → "San Martín". A las provincias y los distritos no se
+ * les agregan tildes, porque el catálogo oficial no las trae: solo pasan a mayúsculas y minúsculas.
+ */
+export function lugar(nombre) {
+  if (!nombre) return "";
+  const escrito = DEPARTAMENTOS[clave(nombre)];
+  if (escrito) return escrito;
+  return nombre
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((p, i) => (i && MINUSCULAS.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)))
+    .join(" ");
+}
+
+/** Varios nombres del catálogo en una línea, con coma y sin los vacíos. */
+export const lugares = (...nombres) => nombres.filter(Boolean).map(lugar).join(", ");
+
 function llenar(select, aviso, nombres) {
-  select.replaceChildren(h("option", { value: "" }, aviso), ...nombres.map((n) => h("option", { value: n }, n)));
+  select.replaceChildren(h("option", { value: "" }, aviso), ...nombres.map((n) => h("option", { value: n }, lugar(n))));
 }
 
 /**
@@ -67,7 +116,7 @@ export function camposUbigeo(actual = {}) {
       alElegirProvincia();
       if (t) dist.value = t;
       if (actual.distrito && !t) {
-        const anterior = [actual.distrito, actual.provincia, actual.departamento].join(", ");
+        const anterior = lugares(actual.distrito, actual.provincia, actual.departamento);
         campos[2].append(h("small", {}, `Ubicación anterior: ${anterior}. Elígela de la lista oficial.`));
       }
     })

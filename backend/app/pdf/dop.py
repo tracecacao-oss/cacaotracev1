@@ -9,6 +9,7 @@ import io
 from datetime import datetime
 from typing import Any
 
+from app import ubigeo
 from app.fechas import LIMA
 from app.pdf.base import AMBAR, TEXTO_DEMO, TINTA, TINTA_3, Documento
 
@@ -51,6 +52,7 @@ ESTADO_CASILLA = {
     "vencido": "Vencido",
     "no_aplica": "No aplica",
     "faltante": "Falta",
+    "no_requerida": "No requerida",
 }
 ALERTAS = {
     "volumen_acumulado_excede_tope": "El volumen de la parcela en 365 días supera el tope por hectárea",
@@ -79,6 +81,15 @@ ALERTAS = {
     "tenencia_solo_posesion": "La tenencia se apoya solo en una constancia de posesión",
     "superposicion_con_excluida": "Se superpone con una parcela excluida",
 }
+
+
+def _marca_cambio(fila: dict) -> str:
+    """Desde la versión 4, pérdida de bosque y alteración de la vegetación por separado; antes, "cambios"."""
+    if "registra_perdida" not in fila:
+        return " · registra cambios" if fila.get("registra_cambio") else ""
+    marcas = [" · registra pérdida de bosque" if fila.get("registra_perdida") else ""]
+    marcas.append(" · registra alteración de la vegetación" if fila.get("registra_alteracion") else "")
+    return "".join(marcas)
 
 
 def _fecha(valor: str | None, *, hora: bool = False) -> str:
@@ -284,9 +295,7 @@ def documento(
         v
         for v in (
             ubicacion["centro_poblado"],
-            ubicacion["distrito"],
-            ubicacion["provincia"],
-            ubicacion["departamento"],
+            *(ubigeo.mostrar(ubicacion[c]) for c in ("distrito", "provincia", "departamento")),
         )
         if v
     )
@@ -383,8 +392,7 @@ def documento(
                     " y ".join(f["vias"]),
                     medidas(f.get("al_2020"))
                     + (" · registra bosque" if f.get("registra_bosque_2020") else ""),
-                    medidas(f.get("despues_2020"))
-                    + (" · registra cambios" if f.get("registra_cambio") else ""),
+                    medidas(f.get("despues_2020")) + _marca_cambio(f),
                 ]
                 for f in conv["filas"]
             ],
@@ -411,6 +419,8 @@ def documento(
             )
         elif exencion:
             detalle = f"No aplica: {exencion['motivo']}"
+        elif casilla.get("cubierta_por_nombre"):
+            detalle = f"La tenencia está cubierta por {casilla['cubierta_por_nombre']}"
         else:
             detalle = ""
         filas.append(
@@ -429,7 +439,12 @@ def documento(
     t = c["tanda"]
     pdf.seccion("Tanda")
     pdf.dato("Código", t["codigo"], mono=True)
-    pdf.dato("Lugar", f"{t['lugar']['nombre']} ({t['lugar']['distrito']}, {t['lugar']['provincia']})")
+    lugar_tanda = t["lugar"]
+    pdf.dato(
+        "Lugar",
+        f"{lugar_tanda['nombre']} ({ubigeo.mostrar(lugar_tanda['distrito'])}, "
+        f"{ubigeo.mostrar(lugar_tanda['provincia'])})",
+    )
     pdf.dato("Recepción", _fecha(t["recibida_en"], hora=True))
     pdf.dato("Producto", "Cacao en baba" if t["estado_producto"] == "baba" else "Cacao seco")
     pdf.dato("Peso en balanza", _kg(t["peso_kg"]))

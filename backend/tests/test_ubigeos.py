@@ -193,3 +193,13 @@ def test_cooperativa_previa_al_catalogo_se_edita_sin_tocar_su_ubicacion(api, ses
     )
     assert bueno.status_code == 200
     assert bueno.json()["departamento"] == "SAN MARTIN"
+
+
+def test_nombres_del_catalogo_para_leer():
+    assert ubigeo.mostrar("SAN MARTIN") == "San Martín"
+    assert ubigeo.mostrar("ANCASH") == "Áncash"
+    assert ubigeo.mostrar("MADRE DE DIOS") == "Madre de Dios"
+    # Provincias y distritos: sin tildes que el catálogo oficial no trae.
+    assert ubigeo.mostrar("MARISCAL CACERES") == "Mariscal Caceres"
+    assert ubigeo.mostrar("SAN JOSE DE SISA") == "San Jose de Sisa"
+    assert ubigeo.mostrar(None) == "" and ubigeo.mostrar("") == ""

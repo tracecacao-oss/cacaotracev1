@@ -16,7 +16,7 @@ import httpx
 import numpy as np
 import pytest
 
-from app.catalogos import capas_whisp
+from app.catalogos import capas_whisp, conjuntos_datos
 from app.config import Settings
 from app.fechas import ahora
 from app.models import AnalisisCobertura, Documento, Parcela
@@ -350,7 +350,6 @@ def test_dos_conjuntos_que_discrepan_sobre_2020_muestran_sus_valores():
     assert [(m.nombre, m.valor) for m in por_conjunto["jrc_gfc2020"].al_2020] == [("EUFO_2020", 0.0)]
     assert por_conjunto["umd_gfc"].registra_bosque_2020 is True
     assert por_conjunto["jrc_gfc2020"].registra_bosque_2020 is False
-    assert c.discrepan == {"estado_2020": True, "cambio_posterior": False}
     assert c.registran_bosque_2020 == ["UMD Global Forest Change (Hansen et al.)"]
 
 
@@ -385,12 +384,15 @@ def test_frase_de_conteo_coincide_con_los_datos_y_solo_cuenta():
         "consultados": 7,  # JRC GFC2020, TMF, UMD GFC, RADD, alertas integradas, SBTN y DIST
         "bosque_registran": 1,  # UMD GFC: 1.546 ha de 4.525 (34 %)
         "bosque_miden": 4,  # JRC GFC2020, TMF, UMD GFC y SBTN (0.1 ha, menos del 10 %)
-        "cambio_registran": 2,  # RADD y alertas integradas
-        "cambio_miden": 4,  # UMD GFC, RADD, alertas integradas y DIST
+        "perdida_registran": 2,  # RADD y alertas integradas
+        "perdida_miden": 3,  # UMD GFC, RADD y alertas integradas
+        "alteracion_registran": 0,
+        "alteracion_miden": 1,  # DIST: alteración de la vegetación, no pérdida de bosque
     }
     assert c.frase == (
         "Conjuntos de datos consultados: 7. Registran bosque en 2020: 1 de 4 que lo miden. "
-        "Registran cambios después de 2020: 2 de 4 que lo miden."
+        "Registran pérdida de bosque después de 2020: 2 de 3 que la miden. "
+        "Registran alteración de la vegetación después de 2020: 0 de 1 que la miden."
     )
     assert not PROHIBIDAS.search(c.frase)
 
@@ -479,8 +481,32 @@ def test_convergencia_con_las_tres_respuestas_reales():
         False,
     )
     assert por_conjunto["esa_worldcover"].registra_bosque_2020 is False  # 0.002 ha, menos del 10 %
-    assert (c.conteos["bosque_registran"], c.conteos["cambio_registran"]) == (1, 1)
+    assert (
+        c.conteos["bosque_registran"],
+        c.conteos["perdida_registran"],
+        c.conteos["alteracion_registran"],
+    ) == (1, 1, 0)
     assert c.frase.startswith(
         f"Conjuntos de datos consultados: {len(c.filas)}. Registran bosque en 2020: 1 de "
     )
-    assert c.discrepan == {"estado_2020": True, "cambio_posterior": True}
+
+
+def test_perdida_de_bosque_y_alteracion_de_la_vegetacion_se_cuentan_aparte():
+    """Pedido del 2026-10-07: DIST y el cambio de clase de Esri alteran la vegetación; no son pérdida de
+    bosque."""
+    c = convergencia.calcular(
+        [_whisp(GFC_TC_2020=0.0, EUFO_2020=0.0, GFC_loss_after_2020=0.0), _gfw(alertas_dist_desde_2021=4)],
+        4.0,
+        10,
+    )
+    por_conjunto = {f.conjunto: f for f in c.filas}
+    dist = por_conjunto["umd_glad_dist"]
+    assert dist.tipo_cambio == "alteracion_vegetacion"
+    assert (dist.registra_alteracion, dist.registra_perdida, dist.registra_cambio) == (True, None, True)
+    assert por_conjunto["umd_gfc"].tipo_cambio == "perdida_bosque"
+    assert (c.conteos["perdida_registran"], c.conteos["alteracion_registran"]) == (0, 1)
+    assert "Registran alteración de la vegetación después de 2020: 1 de 1 que la miden." in c.frase
+    # Cada conjunto del catálogo tiene su tipo de cambio.
+    assert set(conjuntos_datos.TIPO_CAMBIO.values()) == {"perdida_bosque", "alteracion_vegetacion"}
+    assert conjuntos_datos.tipo_cambio("esri_lulc") == "alteracion_vegetacion"
+    assert conjuntos_datos.tipo_cambio("gfw_integrated_alerts") == "perdida_bosque"

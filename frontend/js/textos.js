@@ -84,6 +84,8 @@ export const ESTADOS_CASILLA = {
   por_vencer: ["warn", "Por vencer"],
   vencido: ["bad", "Vencido"],
   no_aplica: ["info", "No aplica"],
+  // Solo en tenencia: el otro documento de tenencia ya la cubre (pedido del 2026-10-07).
+  no_requerida: ["", "No requerida"],
   faltante: ["", "Falta"],
 };
 

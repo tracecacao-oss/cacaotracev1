@@ -802,10 +802,10 @@ def _datos_propios(
         )
     if numero == 9:
         volteos = [inicio + timedelta(hours=48), inicio + timedelta(hours=96)]
-        texto = "\n".join(f"{v.astimezone(LIMA):%Y-%m-%d %H:%M}" for v in volteos)
+        texto = "\n".join(f"{v.astimezone(LIMA):%d/%m/%Y %H:%M}" for v in volteos)
         return (
             {"fechas_volteo": [v.isoformat() for v in volteos]},
-            (("Fechas de volteo (una por línea, AAAA-MM-DD HH:MM)", texto),),
+            (("Fechas de volteo (una por línea, dd/mm/aaaa hh:mm)", texto),),
         )
     if numero == 10:
         return {"pct_bien_fermentados": "82"}, (("Granos bien fermentados (%)", "82"),)

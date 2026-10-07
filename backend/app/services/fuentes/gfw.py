@@ -180,12 +180,19 @@ class GFW:
         perdida = indicadores.get("perdida_ha_total")
         if alertas is None or perdida is None:
             return "GFW: sin resultado"
-        if alertas == 0 and perdida == 0:
-            base = "GFW: sin alertas ni pérdida registrada desde 2021"
-        else:
-            base = f"GFW: {alertas} alertas y {perdida:g} ha de pérdida desde 2021"
+        # Cada medida por separado, con singular para 1 (pedido del equipo del 2026-10-07).
+        partes = [
+            f"{alertas} {'alerta integrada' if alertas == 1 else 'alertas integradas'} "
+            "de deforestación desde 2021",
+            f"{perdida:g} ha de pérdida de cobertura arbórea desde 2021",
+        ]
         bosque = indicadores.get("bosque_natural_2020_ha")
+        if bosque is not None:
+            partes.append(f"{bosque:g} ha de bosque natural en 2020")
         dist = indicadores.get("alertas_dist_desde_2021")
-        if bosque is None or dist is None:
-            return base
-        return f"{base}; {bosque:g} ha de bosque natural en 2020; {dist} alertas DIST desde 2021"
+        if dist is not None:
+            partes.append(
+                f"{dist} {'alerta DIST' if dist == 1 else 'alertas DIST'} "
+                "de alteración de la vegetación desde 2021"
+            )
+        return "GFW: " + "; ".join(partes)

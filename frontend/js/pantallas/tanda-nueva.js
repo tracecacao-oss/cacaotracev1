@@ -5,6 +5,7 @@
 import { llamarApi } from "../api.js";
 import { ESTADOS_HABILITACION, PRODUCTO, REQUISITOS, REQUISITOS_TANDA, kilos } from "../textos.js";
 import { campoArchivoDocumento, camposTanda, cuerpoTanda, descargarPdf, listaAlertas, listaRequisitos } from "../tandas.js";
+import { lugar } from "../ubigeo.js";
 import { abrirModal, avatar, buscador, conRetraso, enviarCon, fecha, h, icono, reemplazar, rejilla, toast, vacio } from "../ui.js";
 
 const PASOS = ["Productor y parcela", "Pesaje y cosecha", "Documento de entrega", "Revisión"];
@@ -117,7 +118,7 @@ export default async function tandaNueva({ navegar, recargar }) {
                     "span",
                     {},
                     h("b", {}, pa.nombre),
-                    h("span", { class: "sec" }, h("span", { class: "mono" }, pa.codigo), ` · ${Number(pa.area_cultivada_ha).toLocaleString("es-PE")} ha con cacao · ${pa.distrito}`),
+                    h("span", { class: "sec" }, h("span", { class: "mono" }, pa.codigo), ` · ${Number(pa.area_cultivada_ha).toLocaleString("es-PE")} ha con cacao · ${lugar(pa.distrito)}`),
                     motivo && h("span", { class: "motivo" }, motivo),
                   ),
                   !motivo && icono("chev", "chev-derecha"),

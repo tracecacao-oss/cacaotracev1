@@ -268,7 +268,10 @@ def test_alertas_de_revision_y_error(api, sesion, operador, productor):
         if a["estado"] == "completado"
     }
     assert tarjetas["whisp"]["resultado_texto"] == "Whisp: requiere más información"
-    assert tarjetas["gfw"]["resultado_texto"] == "GFW: 3 alertas y 0.25 ha de pérdida desde 2021"
+    assert tarjetas["gfw"]["resultado_texto"] == (
+        "GFW: 3 alertas integradas de deforestación desde 2021; "
+        "0.25 ha de pérdida de cobertura arbórea desde 2021"
+    )
     assert tarjetas["whisp"]["requiere_revision"] and tarjetas["gfw"]["requiere_revision"]
 
 
@@ -493,8 +496,9 @@ def test_gfw_responde_con_el_ejemplo_guardado(
     assert fuentes["gfw"].requiere_revision(None, fila.indicadores)  # hay pérdida en 2022
     tarjeta = next(a for a in api.get(f"/parcelas/{parcela.id}/analisis").json() if a["id"] == str(fila.id))
     assert tarjeta["resultado_texto"] == (
-        "GFW: 0 alertas y 0.2292 ha de pérdida desde 2021; 0 ha de bosque natural en 2020; "
-        "0 alertas DIST desde 2021"
+        "GFW: 0 alertas integradas de deforestación desde 2021; "
+        "0.2292 ha de pérdida de cobertura arbórea desde 2021; 0 ha de bosque natural en 2020; "
+        "0 alertas DIST de alteración de la vegetación desde 2021"
     )
 
 
@@ -544,5 +548,27 @@ def test_gfw_bosque_natural_y_alertas_dist():
     assert indicadores["alertas_dist_desde_2021"] == 3
     assert gfw.requiere_revision(resultado, indicadores)
     assert gfw.texto(resultado, indicadores).endswith(
-        "; 1.5 ha de bosque natural en 2020; 3 alertas DIST desde 2021"
+        "; 1.5 ha de bosque natural en 2020; 3 alertas DIST de alteración de la vegetación desde 2021"
     )
+
+
+def test_texto_de_gfw_nombra_cada_medida_y_usa_singular_con_una():
+    """Pedido del 2026-10-07: cada medida por separado y "1 alerta", no "1 alertas"."""
+    from app.services.hallazgos.parcela import texto_fuente
+
+    indicadores = {
+        "alertas_desde_2021": 1,
+        "perdida_ha_total": 0.5,
+        "bosque_natural_2020_ha": 0,
+        "alertas_dist_desde_2021": 1,
+    }
+    esperado = (
+        "GFW: 1 alerta integrada de deforestación desde 2021; "
+        "0.5 ha de pérdida de cobertura arbórea desde 2021; 0 ha de bosque natural en 2020; "
+        "1 alerta DIST de alteración de la vegetación desde 2021"
+    )
+    assert fuentes_configuradas()["gfw"].texto(None, indicadores) == esperado
+    assert texto_fuente("es", "gfw", None, indicadores) == esperado
+    ingles = texto_fuente("en", "gfw", None, indicadores)
+    assert "1 integrated deforestation alert since" in ingles
+    assert "1 DIST vegetation disturbance alert since" in ingles

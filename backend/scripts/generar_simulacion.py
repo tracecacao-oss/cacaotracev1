@@ -180,11 +180,11 @@ def _doc_legal(g: Guion, d: sim.Documento, cuenta: str, ruta: str, numero_etique
     campos = [
         (numero_etiqueta, d.numero, COPIAR),
         ("Entidad emisora", d.entidad, COPIAR),
-        ("Fecha de emisión", _dia(d.emision), TECLEAR),
+        ("Fecha de emisión", _dia(d.emision), COPIAR),
         (
             "Fecha de vencimiento (si tiene)",
             _dia(d.vencimiento) if d.vencimiento else "Déjalo vacío",
-            TECLEAR,
+            COPIAR if d.vencimiento else TECLEAR,
         ),
         ("Archivo (foto o PDF, hasta 10 MB)", d.archivo, ARCHIVO),
     ]
@@ -206,9 +206,8 @@ def _antes_de_empezar(simulacion: sim.Simulacion) -> str:
         "Sigue los pasos en orden: cada uno usa lo que dejó el anterior.",
         "Cada paso dice con qué cuenta se hace. Conviene tener dos ventanas: una normal con el "
         "administrador y una privada (incógnito) con el operador.",
-        "Botón «Copiar»: copia el valor exacto. Las fechas y las horas se escriben a mano: los campos de "
-        "fecha del navegador no aceptan pegar. Las horas van en formato de 24 horas; si tu navegador pide "
-        "a. m. o p. m., usa la equivalente.",
+        "Botón «Copiar»: copia el valor exacto. Las fechas van como dd/mm/aaaa y, con hora, como "
+        "dd/mm/aaaa hh:mm en 24 horas; se pueden pegar o escribir.",
         "Los archivos están en las carpetas del ZIP; la ruta de cada uno va en la columna Valor.",
         f"Fechas del paquete: entre agosto y el {_dia(simulacion.hoy)}, ninguna futura. Solo los "
         "vencimientos de los documentos son posteriores al 31/03/2027.",
@@ -443,16 +442,16 @@ def _cooperativa(g: Guion, k: int, c: sim.Cooperativa) -> None:
             [
                 ("1. Buscar productor (DNI o nombre)", pr.dni, COPIAR),
                 ("1. ¿De qué parcela es este cacao?", f"{p.codigo} · {p.nombre}", ELEGIR),
-                ("2. Fecha y hora del pesaje", _momento(t.recibida_en), TECLEAR),
+                ("2. Fecha y hora del pesaje", _momento(t.recibida_en), COPIAR),
                 ("2. Estado del producto", "En baba", ELEGIR),
                 ("2. Peso neto en balanza (kg)", _kg(t.peso), COPIAR),
                 ("2. Sacos (opcional)", str(t.sacos), COPIAR),
                 ("2. Variedad", t.variedad_nombre, ELEGIR),
-                ("2. Cosecha desde", _dia(t.cosecha_desde), TECLEAR),
-                ("2. Cosecha hasta", _dia(t.cosecha_hasta), TECLEAR),
+                ("2. Cosecha desde", _dia(t.cosecha_desde), COPIAR),
+                ("2. Cosecha hasta", _dia(t.cosecha_hasta), COPIAR),
                 ("3. Tipo de documento", "Liquidación de compra", ELEGIR),
                 ("3. Serie y número", t.liquidacion.numero, COPIAR),
-                ("3. Fecha de emisión", _dia(t.liquidacion.emision), TECLEAR),
+                ("3. Fecha de emisión", _dia(t.liquidacion.emision), COPIAR),
                 ("3. RUC del emisor", f"{c.ruc} (se llena solo)", CONFIRMAR),
                 ("3. Peso declarado en el documento (kg, opcional)", _kg(t.peso), COPIAR),
                 ("3. Foto o PDF del documento de entrega (hasta 10 MB)", t.liquidacion.archivo, ARCHIVO),
@@ -501,7 +500,7 @@ def _cooperativa(g: Guion, k: int, c: sim.Cooperativa) -> None:
             dato = "; ".join(f"{et}: {v}" for et, v in e.etiquetas_datos) or "—"
             filas.append([
                 (str(e.numero), ""), (e.nombre, ""), (lugares[e.lugar], CONFIRMAR),
-                (_momento(e.inicio), TECLEAR), (_momento(e.fin), TECLEAR), (e.metodo, CONFIRMAR),
+                (_momento(e.inicio), COPIAR), (_momento(e.fin), COPIAR), (e.metodo, CONFIRMAR),
                 (str(e.distancia), COPIAR) if e.distancia is not None else ("—", ""),
                 (dato, COPIAR) if e.etiquetas_datos else ("—", ""),
             ])
@@ -559,7 +558,7 @@ def _cooperativa(g: Guion, k: int, c: sim.Cooperativa) -> None:
             ("Cantidad (kg de masa neta)", _kg(o.cantidad), COPIAR), ("Tolerancia (%)", "0", CONFIRMAR),
             ("Calidad", sim.CALIDAD, ELEGIR), ("País de destino", o.pais_destino, CONFIRMAR),
             ("Puerto o ciudad de destino", o.lugar_destino, COPIAR),
-            ("Fecha de entrega", _dia(o.fecha_entrega), TECLEAR),
+            ("Fecha de entrega", _dia(o.fecha_entrega), COPIAR),
             ("Referencia del importador (opcional)", o.referencia, COPIAR),
         ],
         "Crear orden",
@@ -580,7 +579,7 @@ def _cooperativa(g: Guion, k: int, c: sim.Cooperativa) -> None:
             f"Lote › pestaña Embarque › fila «{d.nombre}» › Cargar documento",
             [
                 ("Número", d.numero, COPIAR), ("Entidad emisora", d.entidad, COPIAR),
-                ("Fecha de emisión", _dia(d.emision), TECLEAR),
+                ("Fecha de emisión", _dia(d.emision), COPIAR),
                 ("Archivo (foto o PDF, hasta 10 MB)", d.archivo, ARCHIVO),
             ],
             "Cargar documento",

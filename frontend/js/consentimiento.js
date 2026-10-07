@@ -4,6 +4,8 @@
 // Los marcadores {cooperativa}, {ruc} y {domicilio} nombran a la cooperativa del productor, que es la
 // titular del banco de datos (art. 18 de la ley).
 
+import { lugares } from "./ubigeo.js";
+
 let enCache = null;
 
 export async function textoConsentimiento() {
@@ -21,7 +23,7 @@ export function completarTexto(texto, cooperativa) {
   if (!cooperativa) {
     return texto.replace("{cooperativa} (RUC {ruc}), con domicilio en {domicilio},", "La cooperativa que te registró").replaceAll("{cooperativa}", "la cooperativa que te registró");
   }
-  const lugar = [cooperativa.distrito, cooperativa.provincia, cooperativa.departamento].filter(Boolean).join(", ");
+  const lugar = lugares(cooperativa.distrito, cooperativa.provincia, cooperativa.departamento);
   const domicilio = [cooperativa.direccion_postal, lugar].filter(Boolean).join(", ") || "el domicilio que figura en su RUC";
   return texto.replaceAll("{cooperativa}", cooperativa.razon_social).replaceAll("{ruc}", cooperativa.ruc).replaceAll("{domicilio}", domicilio);
 }

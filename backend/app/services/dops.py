@@ -38,7 +38,7 @@ from app.storage import ClienteStorage, ErrorStorage
 # 2: adenda 2 de la Parte 4, las imágenes y la revisión de las parcelas con alerta de análisis.
 # 3: adenda 3 de la Parte 5, el documento de entrega con su tipo en lugar de la guía de remisión. Los DOP
 # anteriores conservan su bloque "guia_remision": su contenido está sellado.
-VERSION_CONTENIDO = 3
+VERSION_CONTENIDO = 4
 NIVEL = {
     "declarado": "Declarado",
     "documentado": "Documentado",
@@ -176,6 +176,9 @@ def _bloque_expediente(contexto: Contexto, parcela: Parcela) -> dict[str, Any]:
                 "codigo": c.codigo,
                 "nombre": c.nombre,
                 "estado": c.estado,
+                # Versión 4: la casilla de tenencia que no se requiere dice qué documento la cubre.
+                "cubierta_por": c.cubierta_por,
+                "cubierta_por_nombre": c.cubierta_por_nombre,
                 "nivel": c.nivel,
                 "registro_consultable": c.registro_consultable,
                 "documento": {

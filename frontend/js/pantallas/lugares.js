@@ -5,7 +5,7 @@ import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
 import { TIPOS_LUGAR } from "../textos.js";
 import { abrirModal, campo, enviarCon, h, icono, seccion, toast, vacio } from "../ui.js";
-import { camposUbigeo } from "../ubigeo.js";
+import { camposUbigeo, lugares as textoUbicacion } from "../ubigeo.js";
 import { seccionesCooperativa } from "./vacia.js";
 
 const tipoTexto = (tipo) => TIPOS_LUGAR.find(([v]) => v === tipo)?.[1] ?? tipo;
@@ -101,7 +101,7 @@ export default async function lugares({ recargar }) {
                 {},
                 h("td", {}, h("b", {}, l.nombre), l.latitud != null && h("span", { class: "sec mono" }, `${l.latitud}, ${l.longitud}`)),
                 h("td", {}, tipoTexto(l.tipo)),
-                h("td", { class: "ocultar-sm" }, `${l.distrito}, ${l.provincia}, ${l.departamento}`),
+                h("td", { class: "ocultar-sm" }, textoUbicacion(l.distrito, l.provincia, l.departamento)),
                 h("td", {}, l.activo ? h("span", { class: "badge ok" }, h("span", { class: "dot" }), "Activo") : h("span", { class: "badge" }, h("span", { class: "dot" }), "Inactivo")),
                 admin && h("td", { class: "acciones" }, h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => abrirFormulario(l, recargar) }, "Editar")),
               ),
