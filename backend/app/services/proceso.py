@@ -6,6 +6,7 @@ reales. Las calidades no son texto libre: cada cooperativa mantiene su catálogo
 """
 
 import uuid
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -50,6 +51,8 @@ def etapas() -> list[EtapaCatalogo]:
                 )
                 for d in e.datos
             ],
+            metodos=list(catalogo.METODOS.get(e.numero, ())),
+            fija=e.numero in catalogo.FIJAS,
         )
         for e in catalogo.ETAPAS
     ]
@@ -81,9 +84,35 @@ def plantilla(contexto: Contexto) -> list[PlantillaFila]:
             metodo=filas[n].metodo if n in filas else None,
             distancia_m=filas[n].distancia_m if n in filas else None,
             duracion_horas=filas[n].duracion_horas if n in filas else None,
+            activa=filas[n].activa if n in filas else True,
         )
         for n in catalogo.NUMEROS
     ]
+
+
+def plantilla_sugerida(contexto: Contexto) -> list[PlantillaFila]:
+    """Valores habituales para llenar la plantilla de una vez: el primer lugar activo de la cooperativa del
+    tipo que toma cada etapa, el primer método sugerido y la duración habitual. No guarda nada: el
+    administrador revisa, corrige y guarda la plantilla. Las distancias quedan vacías, porque dependen de
+    cada cooperativa."""
+    cooperativa_id = cooperativa_del_contexto(contexto)
+    por_tipo: dict[str, uuid.UUID] = {}
+    activos = select(Lugar).where(Lugar.cooperativa_id == cooperativa_id, Lugar.activo.is_(True))
+    for lugar in contexto.sesion.scalars(activos.order_by(Lugar.nombre)):
+        por_tipo.setdefault(lugar.tipo, lugar.id)
+    filas = []
+    for n in catalogo.NUMEROS:
+        metodos = catalogo.METODOS.get(n, ())
+        horas = catalogo.HORAS_SUGERIDAS.get(n)
+        filas.append(
+            PlantillaFila(
+                numero=n,
+                lugar_id=por_tipo.get(catalogo.LUGAR_SUGERIDO[n]),
+                metodo=metodos[0] if metodos else None,
+                duracion_horas=Decimal(horas) if horas else None,
+            )
+        )
+    return filas
 
 
 def cambiar_plantilla(contexto: Contexto, datos: PlantillaCambio) -> list[PlantillaFila]:
@@ -95,6 +124,12 @@ def cambiar_plantilla(contexto: Contexto, datos: PlantillaCambio) -> list[Planti
     cambios = {}
     for fila in datos.filas:
         etapa = catalogo.POR_NUMERO[fila.numero]
+        if not fila.activa and fila.numero in catalogo.FIJAS:
+            raise error_api(
+                422,
+                "etapa_fija",
+                f"La etapa {fila.numero} no se puede desactivar: la llena el sistema o se usa al consolidar.",
+            )
         if fila.lugar_id:
             lugar = lugar_de_la_cooperativa(contexto.sesion, cooperativa_id, fila.lugar_id)
             if not lugar.activo:

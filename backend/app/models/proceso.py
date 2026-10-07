@@ -56,6 +56,8 @@ class PlantillaEtapa(ConFechas, Base):
         CheckConstraint("numero BETWEEN 1 AND 23", name="numero_valido"),
         CheckConstraint("distancia_m IS NULL OR distancia_m >= 0", name="distancia_no_negativa"),
         CheckConstraint("duracion_horas IS NULL OR duracion_horas >= 0", name="duracion_no_negativa"),
+        # Las etapas fijas no se desactivan (app/catalogos/etapas_proceso.FIJAS).
+        CheckConstraint("activa OR numero NOT IN (1, 3, 4, 13, 17, 19, 21)", name="etapa_fija_activa"),
     )
 
     cooperativa_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cooperativas.id"), primary_key=True)
@@ -64,6 +66,8 @@ class PlantillaEtapa(ConFechas, Base):
     metodo: Mapped[str | None] = mapped_column(Text)
     distancia_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 1))
     duracion_horas: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    # Una etapa desactivada nace como "no aplica" en las corridas nuevas.
+    activa: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
 
 
 class Corrida(ConFechas, Base):

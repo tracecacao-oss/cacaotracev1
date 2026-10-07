@@ -167,10 +167,15 @@ def _no_verificado(etapas: list[dict[str, Any]], ruta: str) -> list[str]:
         for e in etapas
         if e["desde_plantilla"]
     ]
-    lista.append(
-        "El peso final (etapa 19) y los kilos descartados (etapa 18) los declara quien registró la etapa; "
-        "ningún documento los respalda."
-    )
+    if any(e["numero"] == 18 and e["situacion"] == "registrada" for e in etapas):
+        lista.append(
+            "El peso final (etapa 19) y los kilos descartados (etapa 18) los declara quien registró la "
+            "etapa; ningún documento los respalda."
+        )
+    else:
+        lista.append(
+            "El peso final (etapa 19) lo declara quien registró la etapa; ningún documento lo respalda."
+        )
     if ruta == "completa":
         lista.append("La humedad (etapa 13) la declara quien registró la etapa.")
     lista.append("El sistema no comprueba el vínculo físico entre el grano que entró y el que salió.")

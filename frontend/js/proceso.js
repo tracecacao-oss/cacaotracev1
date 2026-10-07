@@ -118,6 +118,43 @@ export function datoPropio(etapa) {
 
 const conDesfase = (local) => (local ? `${local}:00-05:00` : null);
 
+const OTRO = "__otro";
+
+/**
+ * Método de una etapa (decisión del 2026-10-06): se elige de los métodos sugeridos del catálogo o se escribe
+ * en "Otro". El valor final va en un campo oculto con `name`, que es lo que lee el formulario. Sin métodos
+ * sugeridos, es un campo de texto.
+ */
+export function campoMetodo({ metodos = [], valor, name, requerido = false, vacio = "Elige el método…", etiqueta = "Método" }) {
+  if (!metodos.length) {
+    return h("input", { class: "input", name, value: valor ?? "", maxlength: 200, required: requerido, "aria-label": etiqueta });
+  }
+  const enLista = Boolean(valor) && metodos.includes(valor);
+  const oculto = h("input", { type: "hidden", name, value: valor ?? "" });
+  const lista = h(
+    "select",
+    { class: "select", required: requerido, "aria-label": etiqueta },
+    h("option", { value: "" }, vacio),
+    metodos.map((m) => h("option", { value: m }, m)),
+    h("option", { value: OTRO }, "Otro (escribir)"),
+  );
+  lista.value = !valor ? "" : enLista ? valor : OTRO;
+  const otro = h("input", { class: "input", maxlength: 200, value: enLista ? "" : (valor ?? ""), placeholder: "Escribe el método", "aria-label": `${etiqueta}: otro` });
+  const sincronizar = () => {
+    const esOtro = lista.value === OTRO;
+    otro.hidden = !esOtro;
+    otro.required = requerido && esOtro;
+    oculto.value = esOtro ? otro.value.trim() : lista.value;
+  };
+  lista.addEventListener("change", () => {
+    sincronizar();
+    if (lista.value === OTRO) otro.focus();
+  });
+  otro.addEventListener("input", sincronizar);
+  sincronizar();
+  return h("div", { class: "campo-metodo" }, lista, otro, oculto);
+}
+
 /** Suma horas a un "AAAA-MM-DDTHH:MM" de Lima. */
 function masHoras(local, n) {
   const fecha = new Date(`${local}:00-05:00`);
@@ -175,9 +212,9 @@ export function abrirEtapa({ corrida, etapa, catalogo, lugares, calidades, alGua
       campo({ etiqueta: "Inicio", name: "inicio", type: "datetime-local", required: true, value: inicio, max: momentoLima() }),
       campo({ etiqueta: "Fin", name: "fin", type: "datetime-local", required: true, value: fin, max: momentoLima() }),
     ),
-    campo({ etiqueta: "Método", name: "metodo", required: true, maxlength: 200, value: etapa.metodo ?? "", ayuda: "Cómo se hizo, en pocas palabras." }),
+    h("div", { class: "field" }, h("span", {}, "Método"), campoMetodo({ metodos: catalogo.metodos, valor: etapa.metodo, name: "metodo", requerido: true }), h("small", {}, "Elige cómo se hizo o escríbelo en \"Otro\".")),
     campo({ etiqueta: "Responsable", name: "responsable", required: true, maxlength: 200, value: etapa.responsable ?? usuario }),
-    etapa.transporte && campo({ etiqueta: "Distancia (m)", name: "distancia_m", type: "number", step: "0.1", min: "0", required: true, inputmode: "decimal", value: etapa.distancia_m ?? "", class: "input mono" }),
+    etapa.transporte && campo({ etiqueta: "Distancia (m, opcional)", name: "distancia_m", type: "number", step: "0.1", min: "0", inputmode: "decimal", value: etapa.distancia_m ?? "", class: "input mono" }),
     propios,
     h("label", { class: "field" }, "Observación (opcional)", h("textarea", { class: "input texto-libre", name: "observacion", maxlength: 4000, rows: 2 }, etapa.observacion ?? "")),
   );

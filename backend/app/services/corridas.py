@@ -448,8 +448,10 @@ def crear(contexto: Contexto, datos: CorridaNueva) -> CorridaDetalle:
     sesion.flush()
     plantilla = proceso.plantilla_de(sesion, cooperativa_id)
     for e in catalogo.ETAPAS:
-        aplica = catalogo.aplica(e, datos.ruta)
-        p = plantilla.get(e.numero) if aplica and not e.automatica else None
+        fila_plantilla = plantilla.get(e.numero)
+        # No aplica si no es de la ruta o si la cooperativa la desactivó en su plantilla.
+        aplica = catalogo.aplica(e, datos.ruta) and (fila_plantilla is None or fila_plantilla.activa)
+        p = fila_plantilla if aplica and not e.automatica else None
         sesion.add(
             CorridaEtapa(
                 corrida_id=corrida.id,
@@ -798,7 +800,11 @@ def registrar_etapa(
     etapa = catalogo.POR_NUMERO[numero]
     fila = etapas_de(sesion, [corrida.id])[corrida.id][numero]
     if fila.situacion == "no_aplica":
-        raise error_api(400, "etapa_no_aplica", "Esta etapa no aplica en la ruta de la corrida.")
+        raise error_api(
+            400,
+            "etapa_no_aplica",
+            "Esta etapa no aplica en esta corrida: no es de su ruta o la cooperativa no la usa.",
+        )
     if etapa.automatica:
         raise error_api(400, "etapa_automatica", "Esta etapa la llena el sistema con las tandas y sus DOP.")
     momento = ahora()
@@ -833,11 +839,9 @@ def registrar_etapa(
             )
             if not valor
         ]
-        if etapa.transporte and datos.distancia_m is None:
-            faltantes.append("distancia")
+        # La distancia de un traslado es opcional (decisión del 2026-10-06): la EUDR no la pide.
         if faltantes:
-            codigo = "distancia_requerida" if faltantes == ["distancia"] else "datos_incompletos"
-            raise error_api(422, codigo, f"Falta: {', '.join(faltantes)}.")
+            raise error_api(422, "datos_incompletos", f"Falta: {', '.join(faltantes)}.")
         if datos.inicio.tzinfo is None or datos.fin.tzinfo is None:
             raise error_api(422, "fecha_sin_zona", "Las fechas deben llevar su zona horaria.")
         if datos.fin < datos.inicio:

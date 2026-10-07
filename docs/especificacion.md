@@ -2458,14 +2458,14 @@ Además de su dato propio, cada etapa registra lo que pide el flujo: lugar, tiem
 | --- | --- |
 | Lugar | Un registro de `lugares`. Obligatorio |
 | Inicio y fin | Fecha y hora. El fin no puede ser anterior al inicio. La duración se calcula |
-| Método | Texto breve: cómo se hizo |
+| Método | Texto breve: cómo se hizo. Se elige de los métodos sugeridos de la etapa o se escribe en "Otro" (decisión del 2026-10-06, en "Plantilla de proceso") |
 | Responsable | Nombre de quien la ejecutó |
-| Distancia | En metros. Obligatoria solo en las etapas de transporte |
+| Distancia | En metros. Solo en las etapas de transporte, y opcional desde el 2026-10-06: la EUDR no la pide; el diagrama del DPP la muestra si está |
 | Observación | Opcional |
 
 ### Reglas del catálogo
 
-1. El catálogo es fijo y vive en `backend/app/catalogos/etapas_proceso.py`. Una cooperativa no agrega ni quita etapas.
+1. El catálogo es fijo y vive en `backend/app/catalogos/etapas_proceso.py`. Una cooperativa no agrega etapas. Desde el 2026-10-06 puede desactivar en su plantilla las que no usa, salvo las fijas (ver "Plantilla de proceso").
 2. Las etapas 7 y 14 pueden marcarse como "no ocurrió". Las demás son obligatorias en su ruta.
 3. En la ruta `seco`, las etapas 6 a 14 quedan como "no aplica" de forma automática.
 4. Las etapas 1, 3 y 4 no se digitan. El sistema las llena con los datos de las tandas y de sus DOP.
@@ -2514,12 +2514,53 @@ Al crear la corrida se generan sus 23 filas, ya llenas con la plantilla.
 
 ### Plantilla de proceso
 
-La tabla `plantilla_proceso` guarda, por cooperativa y por número de etapa, los valores habituales: `lugar_id`, `metodo`, `distancia_m` y `duracion_horas`.
+La tabla `plantilla_proceso` guarda, por cooperativa y por número de etapa, los valores habituales: `lugar_id`, `metodo`, `distancia_m` y `duracion_horas`, y si la cooperativa usa la etapa (`activa`).
 
 1. La edita un `admin_cooperativa`.
 2. Al crear una corrida, cada etapa toma su lugar, método y distancia de la plantilla.
 3. Los valores de la plantilla son solo un punto de partida. Una etapa cuenta como `registrada` cuando una persona la confirma con su inicio y su fin reales.
 4. Sin plantilla, las etapas nacen vacías y la corrida funciona igual.
+
+**Decisión del equipo del 2026-10-06: una plantilla más simple.** Llenar la plantilla a mano era engorroso para cada cooperativa: 23 etapas con 4 datos cada una, con el método en texto libre. Además, no todas las cooperativas trabajan igual.
+
+1. **Métodos sugeridos.**
+   - Cada etapa ofrece una lista fija de métodos, la misma para todas las cooperativas, y la opción "Otro" para escribir uno que no esté.
+   - La lista se usa en la plantilla y en el formulario de la etapa de la corrida.
+   - El método se sigue guardando como texto, así que no cambian la base de datos, el DPP ni `desde_plantilla`.
+   - Las etapas 1, 3 y 4 no tienen lista: su método lo pone el sistema.
+2. **Plantilla sugerida.**
+   - El botón "Llenar con la plantilla sugerida" (`GET /proceso/plantilla/sugerida`) completa solo las casillas vacías, con tres valores:
+     - el primer lugar activo de la cooperativa del tipo que toma la etapa: cancha de acopio en las etapas 1 a 5, planta de la 6 a la 21 y almacén en la 22 y la 23 (un traslado toma el lugar de su destino);
+     - el primer método sugerido;
+     - la duración habitual.
+   - No guarda: el administrador revisa, corrige y guarda.
+   - Las distancias quedan vacías, porque dependen de cada cooperativa.
+3. **Etapas que la cooperativa no usa.**
+   - En su plantilla, la cooperativa desmarca las etapas que no usa. En las corridas nuevas nacen como `no_aplica` y no se piden; las corridas ya creadas no cambian.
+   - El DPP las muestra con "La cooperativa no usa esta etapa", para distinguirlas de las que no aplican en la ruta seco.
+   - Las fijas no se desactivan, y la base también lo impide: las que llena el sistema (1, 3 y 4) y las que se usan al consolidar (13, 17, 19 y 21: humedad, calidad, peso final y sacos).
+   - La cooperativa no agrega etapas propias por ahora.
+4. **Distancia opcional.** La distancia de un traslado ya no es obligatoria, en la plantilla ni al registrar la etapa: la EUDR no la pide. Se anotaba porque el DPP dibuja las etapas como diagrama de análisis de proceso, que la muestra si está.
+5. **Propuesta por revisar con el equipo.** Las listas y las duraciones son una propuesta de Claude Code y viven en `backend/app/catalogos/etapas_proceso.py` (`METODOS`, `LUGAR_SUGERIDO` y `HORAS_SUGERIDAS`).
+
+| N.º | Métodos sugeridos (el primero va en la plantilla sugerida) | Duración habitual |
+| --- | --- | --- |
+| 2 | Revisión visual de una muestra; revisión visual de cada saco | 0.5 h |
+| 5 | Separación según el tipo de manejo; separación por productor; rechazo del cacao que no cumple | 0.5 h |
+| 6, 11, 15, 20 y 22 | Carretilla; sacos al hombro; motocarguero; camión | 0.5 h |
+| 7 | Baldes o tinas tapadas; sacos en patio techado | Sin duración: puede no ocurrir |
+| 8 | Llenado manual con baldes; descarga directa desde los sacos | 1 h |
+| 9 | Cajones de madera escalonados; cajones de madera en una fila; sacos de yute; montón cubierto con hojas de plátano | 144 h (6 días) |
+| 10 | Corte de 100 granos; corte de 50 granos; guillotina de 50 granos | 0.5 h |
+| 12 | Tendal solar de cemento; secador solar con techo (marquesina); camas o parihuelas de madera; secador mecánico | 120 h (5 días) |
+| 13 | Medidor electrónico de humedad; prueba manual (crujido del grano) | 0.5 h |
+| 14 | Cobertizo techado; cubierto con plástico | Sin duración: puede no ocurrir |
+| 16 | Zaranda manual; zarandeadora mecánica | 2 h |
+| 17 | Clasificación manual por tamaño y aspecto; clasificadora mecánica por mallas | 2 h |
+| 18 | Selección manual en mesa; selección manual en faja | 4 h |
+| 19 | Balanza de plataforma; balanza electrónica; balanza colgante (romana) | 0.5 h |
+| 21 | Sacos de yute nuevos, cosidos a mano; sacos de yute nuevos, cosidos a máquina | 1 h |
+| 23 | Sacos sobre parihuelas en almacén ventilado; sacos sobre parihuelas, separados de la pared | Sin duración: dura hasta que el grano sale en un lote |
 
 ## Reglas de la corrida
 
@@ -2672,6 +2713,7 @@ Son 23 endpoints. El módulo "Lotes y proceso" queda con cuatro secciones: Recep
 | --- | --- | --- |
 | `GET /proceso/etapas` | Personal | Catálogo de las 23 etapas |
 | `GET /proceso/plantilla` | Personal | Plantilla de la cooperativa |
+| `GET /proceso/plantilla/sugerida` | `admin_cooperativa` | Valores habituales para llenar la plantilla; no guarda nada |
 | `PUT /proceso/plantilla` | `admin_cooperativa` | Cambia la plantilla |
 | `GET /calidades` | Personal | Catálogo de calidades de la cooperativa |
 | `POST /calidades` | `admin_cooperativa` | Crea una calidad |
@@ -2751,7 +2793,7 @@ La Parte 6 está terminada cuando una corrida mezclada y una corrida de grano se
 | Iniciar una corrida sin tandas | 400 |
 | Agregar una tanda a una corrida `en_proceso` | 400 |
 | Etapa con fin anterior al inicio, o con fecha futura | 422 |
-| Etapa de transporte sin distancia | 422 |
+| Etapa de transporte sin distancia | Se guarda: la distancia es opcional desde el 2026-10-06 |
 | Marcar la etapa 9 como `no_ocurrio` | 422; solo las etapas 7 y 14 lo admiten |
 | Consolidar con una etapa `pendiente` | 400 con `etapas_incompletas` y la lista |
 | Consolidar con inicios que retroceden en el tiempo | 400 |

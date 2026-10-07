@@ -24,6 +24,7 @@ RUTA = {"completa": "Completa (cacao en baba)", "seco": "Seco (grano entregado s
 MANEJO = {"segregado": "Segregado (un solo productor)", "mezclado": "Mezclado (varios productores)"}
 SITUACION = {
     "no_aplica": "No aplica en la ruta seco",
+    "no_usada": "La cooperativa no usa esta etapa",
     "no_ocurrio": "No ocurrió",
     "pendiente": "Sin registrar",
 }
@@ -148,15 +149,22 @@ def _lima(valor: str) -> str:
     return datetime.fromisoformat(valor).astimezone(LIMA).strftime("%d/%m/%Y %H:%M")
 
 
-def _tiempo(e: dict[str, Any]) -> str:
+def _situacion(e: dict[str, Any], ruta: str) -> str:
+    """Una etapa que no aplica: o no es de la ruta seco, o la cooperativa la desactivó en su plantilla."""
+    if e["situacion"] == "no_aplica" and (ruta != "seco" or catalogo.POR_NUMERO[e["numero"]].en_ruta_seco):
+        return SITUACION["no_usada"]
+    return SITUACION.get(e["situacion"], "—")
+
+
+def _tiempo(e: dict[str, Any], ruta: str) -> str:
     if not e.get("inicio"):
-        return SITUACION.get(e["situacion"], "—")
+        return _situacion(e, ruta)
     horas = e.get("duracion_horas")
     duracion = f" ({float(horas):g} h)" if horas not in (None, "") else ""
     return f"{_lima(e['inicio'])} a {_lima(e['fin'])}{duracion}"
 
 
-def _diagrama(pdf: Documento, etapas: list[dict[str, Any]]) -> None:
+def _diagrama(pdf: Documento, etapas: list[dict[str, Any]], ruta: str) -> None:
     """Una fila por etapa: número, símbolo, etapa, lugar, tiempo, distancia y dato propio."""
     anchos = [7, 8, 50, 30, 40, 14, pdf.ancho - 149]
     encabezados = ["N.º", "", "Etapa", "Lugar", "Tiempo", "Dist. (m)", "Dato propio"]
@@ -182,9 +190,9 @@ def _diagrama(pdf: Documento, etapas: list[dict[str, Any]]) -> None:
             "",
             e["nombre"],
             e.get("lugar") or "—",
-            _tiempo(e),
+            _tiempo(e, ruta),
             str(e["distancia_m"]) if e.get("distancia_m") not in (None, "") else "",
-            _dato_propio(e) if activa else SITUACION.get(e["situacion"], ""),
+            _dato_propio(e) if activa else _situacion(e, ruta),
         ]
         pdf.set_font("Jakarta", "", 6.6)
         lineas = max(
@@ -259,7 +267,7 @@ def documento(contenido: dict[str, Any], huella: str, url: str) -> Documento:
         "Diagrama de análisis de proceso",
         "Las 23 etapas del catálogo, con el símbolo de su tipo, su lugar, su tiempo y su distancia.",
     )
-    _diagrama(pdf, c["etapas"])
+    _diagrama(pdf, c["etapas"], c["identificacion"]["ruta"])
 
     s = c["salida"]
     pdf.seccion("Salida", "La tanda final que entró al stock.")
