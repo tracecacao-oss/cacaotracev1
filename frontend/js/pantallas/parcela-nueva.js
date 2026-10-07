@@ -1,4 +1,6 @@
-// Asistente de nueva parcela en 3 pasos: Geometría, Datos y Revisión.
+// Asistente de nueva parcela en 3 pasos (decisión del equipo del 2026-10-06): Nombre, Ubicación en el mapa
+// y Confirmar. La ubicación (departamento, provincia y distrito) sale de las coordenadas con los límites del
+// INEI y las áreas vienen llenas: la persona solo confirma o corrige. El código PA-… lo pone CacaoTrace.
 // Lo usan el personal (#/productores/{id}/parcelas/nueva) y el productor (#/mis-parcelas/nueva).
 // "Guardar parcela" solo está en el último paso.
 
@@ -9,7 +11,7 @@ import { ALERTAS, ESTADOS_MIDAGRI, hectareas, insigniaAlerta } from "../textos.j
 import { campo, conRetraso, h, reemplazar, toast } from "../ui.js";
 import { camposUbigeo } from "../ubigeo.js";
 
-const PASOS = ["Geometría", "Datos", "Revisión"];
+const PASOS = ["Nombre", "Ubicación en el mapa", "Confirmar"];
 const AYUDA_MODO = {
   dibujar: "Dibuja un polígono tocando cada vértice, o marca un punto si la parcela mide menos de 4 ha.",
   archivo: "Sube el archivo y elige una geometría.",
@@ -58,7 +60,12 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     // Sin parcelas vecinas el asistente sigue funcionando.
   }
 
-  // ---------- Paso 1: Geometría ----------
+  const geometriaLista = () => {
+    const geo = seleccion();
+    return Boolean(geo && geo.valida && !geo.superposiciones.some((s) => s.propia));
+  };
+
+  // ---------- Paso 2: Ubicación en el mapa ----------
   const estadoGeometria = h("div", { class: "geometria-estado", "aria-live": "polite" });
   const listaCandidatas = h("div", { class: "candidatas" });
 
@@ -78,7 +85,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
 
   function mostrarResultado() {
     const geo = seleccion();
-    siguiente.disabled = !(geo && geo.valida && !geo.superposiciones.some((s) => s.propia));
+    if (st.paso === 1) siguiente.disabled = !geometriaLista();
     if (!geo) {
       estadoGeometria.replaceChildren(
         h("p", { class: "panel-sub" }, AYUDA_MODO[st.modo]),
@@ -88,6 +95,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     const items = [];
     if (!geo.valida) items.push(h("p", { class: "alerta bad" }, geo.errores[0].mensaje));
     else items.push(h("p", { class: "alerta info" }, geo.tipo === "poligono" ? `Polígono válido de ${hectareas(geo.area_ha)} (área calculada).` : "Punto válido. En el siguiente paso indica su área total; debe ser menor de 4 ha."));
+    if (geo.valida && geo.ubicacion) items.push(h("p", { class: "panel-sub" }, `Queda en ${geo.ubicacion.distrito}, ${geo.ubicacion.provincia}, ${geo.ubicacion.departamento}.`));
     for (const s of geo.superposiciones.filter((x) => x.propia)) {
       items.push(h("p", { class: "alerta bad" }, `Se superpone con otra parcela del mismo productor: ${s.codigo} «${s.nombre}». Corrige el dibujo.`));
     }
@@ -239,9 +247,9 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
       ),
     ),
   );
-  const paso1 = h(
+  const pasoMapa = h(
     "div",
-    { class: "form" },
+    { class: "form", hidden: true },
     modos,
     !satelitalDisponible && h("p", { class: "alerta warn" }, "La capa satelital todavía no está activa: el mapa muestra solo calles."),
     bloqueArchivo,
@@ -249,95 +257,122 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     estadoGeometria,
   );
 
-  // ---------- Paso 2: Datos ----------
+  // ---------- Paso 1: Nombre ----------
+  const formNombre = h(
+    "form",
+    { class: "form", novalidate: true, onsubmit: (e) => (e.preventDefault(), siguiente.click()) },
+    campo({ etiqueta: "Nombre de la parcela", name: "nombre", required: true, maxlength: 200, ayuda: "Como la conoce el productor. El código (PA-…) lo pone CacaoTrace al guardar." }),
+    campo({ etiqueta: "Caserío o centro poblado (opcional)", name: "centro_poblado", maxlength: 200 }),
+  );
+  const pasoNombre = h("div", { class: "form" }, formNombre);
+
+  // ---------- Paso 3: Confirmar ----------
+  // La ubicación y las áreas se llenan una vez por geometría elegida: si la persona corrige algo y vuelve a
+  // este paso sin cambiar la geometría, lo corregido se queda.
+  const ubicacion = h("div", { class: "form" });
+  const areaTotal = h("div");
+  const cultivada = campo({ etiqueta: "Área con cacao (ha)", name: "area_cultivada_ha", type: "number", step: "0.0001", min: "0.0001", required: true, inputmode: "decimal", ayuda: "Viene llena con toda la parcela: confírmala, o bájala si solo una parte tiene cacao." });
+  const inputCultivada = cultivada.querySelector("input");
+  inputCultivada.addEventListener("input", () => pintarResumen());
+  let llenadaPara = null;
+
+  function llenarConfirmacion(geo) {
+    if (llenadaPara === geo) return;
+    llenadaPara = geo;
+    const [departamento, provincia, distrito] = camposUbigeo(geo.ubicacion ?? {});
+    reemplazar(
+      ubicacion,
+      h("div", { class: "grid2" }, departamento, provincia),
+      h("div", { class: "grid2" }, distrito),
+      h(
+        "p",
+        { class: geo.ubicacion ? "panel-sub" : "alerta warn" },
+        geo.ubicacion
+          ? "Llenada desde las coordenadas, con los límites distritales del INEI (referenciales). Si no es así, corrígela."
+          : "Las coordenadas no caen en ningún distrito de los límites del INEI: elige la ubicación.",
+      ),
+    );
+    if (geo.tipo === "poligono") {
+      reemplazar(areaTotal, h("div", { class: "field" }, h("span", {}, "Área total"), h("b", { class: "mono" }, hectareas(geo.area_ha)), h("small", {}, "La calcula CacaoTrace con el polígono dibujado.")));
+      inputCultivada.value = Number(geo.area_ha).toFixed(4);
+      return;
+    }
+    const declarada = campo({ etiqueta: "Área total de la parcela (ha)", name: "area_declarada_ha", type: "number", step: "0.0001", min: "0.0001", required: true, inputmode: "decimal", ayuda: "Un punto no tiene área: escríbela. Debe ser menor de 4 ha." });
+    const inputDeclarada = declarada.querySelector("input");
+    let anterior = "";
+    inputDeclarada.addEventListener("input", () => {
+      // El área con cacao sigue al total mientras la persona no la cambie.
+      if (!inputCultivada.value || inputCultivada.value === anterior) inputCultivada.value = inputDeclarada.value;
+      anterior = inputDeclarada.value;
+      pintarResumen();
+    });
+    reemplazar(areaTotal, declarada);
+    inputCultivada.value = "";
+  }
+
   const sustento = h("input", { class: "input", type: "file", name: "sustento", accept: "image/jpeg,image/png,application/pdf" });
   const bloqueSustento = h("label", { class: "field", hidden: true }, "Documento de sustento de MIDAGRI (opcional)", sustento, h("small", {}, "Constancia, reporte o captura que muestra la parcela en MIDAGRI."));
   const estadoMidagri = campo({ etiqueta: "Estado en MIDAGRI", name: "midagri_estado", opciones: ESTADOS_MIDAGRI });
   estadoMidagri.querySelector("select").addEventListener("change", (e) => {
     bloqueSustento.hidden = e.target.value === "no_registrada";
+    pintarResumen();
   });
-  const areaDeclarada = campo({ etiqueta: "Área total declarada (ha)", name: "area_declarada_ha", type: "number", step: "0.0001", min: "0" });
-  const [departamento, provincia, distrito] = camposUbigeo();
-  const formDatos = h(
+  const formConfirmar = h(
     "form",
     { class: "form", novalidate: true },
-    campo({ etiqueta: "Nombre de la parcela", name: "nombre", required: true, maxlength: 200, ayuda: "Como la conoce el productor." }),
+    h("h3", { class: "subtitulo-seccion" }, "Ubicación"),
+    ubicacion,
+    h("h3", { class: "subtitulo-seccion" }, "Áreas"),
+    h("div", { class: "grid2" }, areaTotal, cultivada),
     h(
-      "div",
-      { class: "grid2" },
-      departamento,
-      provincia,
+      "details",
+      { class: "historial-analisis" },
+      h("summary", {}, "Registro en MIDAGRI (opcional)"),
+      h("div", { class: "form" }, h("div", { class: "grid2" }, estadoMidagri, campo({ etiqueta: "Código en MIDAGRI (opcional)", name: "midagri_codigo", maxlength: 60 })), bloqueSustento),
     ),
-    h(
-      "div",
-      { class: "grid2" },
-      distrito,
-      campo({ etiqueta: "Caserío o centro poblado (opcional)", name: "centro_poblado", maxlength: 200 }),
-    ),
-    h(
-      "div",
-      { class: "grid2" },
-      areaDeclarada,
-      campo({ etiqueta: "Área con cacao (ha)", name: "area_cultivada_ha", type: "number", step: "0.0001", min: "0.0001", required: true }),
-    ),
-    h("div", { class: "grid2" }, estadoMidagri, campo({ etiqueta: "Código en MIDAGRI (opcional)", name: "midagri_codigo", maxlength: 60 })),
-    bloqueSustento,
   );
-  const mensajeDatos = h("p", { class: "alerta bad", role: "alert", hidden: true });
+  const resumen = h("div", { class: "form" });
+  const mensajeGuardar = h("p", { class: "alerta bad", role: "alert", hidden: true });
+  const pasoConfirmar = h("div", { class: "form", hidden: true }, formConfirmar, resumen, mensajeGuardar);
 
   function leerDatos() {
-    const datos = Object.fromEntries(new FormData(formDatos));
+    const datos = { ...Object.fromEntries(new FormData(formNombre)), ...Object.fromEntries(new FormData(formConfirmar)) };
     delete datos.sustento;
     for (const [k, v] of Object.entries(datos)) if (v === "") delete datos[k];
     return datos;
   }
 
-  function validarDatos() {
+  function validarConfirmacion() {
     const geo = seleccion();
-    const input = areaDeclarada.querySelector("input");
-    input.required = geo?.tipo === "punto";
-    if (![...formDatos.querySelectorAll("input,select")].every((i) => i.reportValidity())) return false;
+    if (![...formConfirmar.querySelectorAll("input,select")].every((i) => i.reportValidity())) return false;
     const datos = leerDatos();
     const total = geo.tipo === "poligono" ? Number(geo.area_ha) : Number(datos.area_declarada_ha);
-    if (geo.tipo === "punto" && total >= 4) return mostrarError("Una parcela de 4 ha o más debe registrarse como polígono. Vuelve al paso 1 y dibújala.");
+    if (geo.tipo === "punto" && total >= 4) return mostrarError("Una parcela de 4 ha o más debe registrarse como polígono. Vuelve al paso 2 y dibújala.");
     if (Number(datos.area_cultivada_ha) > total) return mostrarError(`El área con cacao no puede ser mayor que el área total (${hectareas(total)}).`);
-    mensajeDatos.hidden = true;
+    mensajeGuardar.hidden = true;
     st.datos = datos;
     st.sustento = bloqueSustento.hidden ? null : sustento.files[0] ?? null;
     return true;
   }
   function mostrarError(texto) {
-    mensajeDatos.textContent = texto;
-    mensajeDatos.hidden = false;
+    mensajeGuardar.textContent = texto;
+    mensajeGuardar.hidden = false;
     return false;
   }
-  const paso2 = h("div", { class: "form", hidden: true }, formDatos, mensajeDatos);
 
-  // ---------- Paso 3: Revisión ----------
-  const resumen = h("div", { class: "form" });
-  const mensajeGuardar = h("p", { class: "alerta bad", role: "alert", hidden: true });
-  const paso3 = h("div", { class: "form", hidden: true }, resumen, mensajeGuardar);
-
+  /** Lo que se verá al habilitar: alertas previstas y superposiciones con otras parcelas. */
   function pintarResumen() {
     const geo = seleccion();
-    const alertas = alertasPrevistas(geo, st.datos, Boolean(st.sustento));
+    if (!geo || st.paso !== 2) return;
+    const datos = leerDatos();
+    const alertas = alertasPrevistas(geo, datos, Boolean(!bloqueSustento.hidden && sustento.files[0]));
     const ajenas = geo.superposiciones.filter((s) => !s.propia);
     reemplazar(
       resumen,
-      h(
-        "dl",
-        { class: "kv" },
-        h("div", {}, h("dt", {}, "Nombre"), h("dd", {}, st.datos.nombre)),
-        h("div", {}, h("dt", {}, "Ubicación"), h("dd", {}, [st.datos.centro_poblado, st.datos.distrito, st.datos.provincia, st.datos.departamento].filter(Boolean).join(", "))),
-        h("div", {}, h("dt", {}, "Geometría"), h("dd", {}, geo.tipo === "poligono" ? "Polígono" : "Punto", ORIGEN[st.modo])),
-        h("div", {}, h("dt", {}, "Área calculada"), h("dd", { class: "mono" }, geo.tipo === "poligono" ? hectareas(geo.area_ha) : "No aplica (punto)")),
-        h("div", {}, h("dt", {}, "Área declarada"), h("dd", { class: "mono" }, hectareas(st.datos.area_declarada_ha))),
-        h("div", {}, h("dt", {}, "Área con cacao"), h("dd", { class: "mono" }, hectareas(st.datos.area_cultivada_ha))),
-      ),
-      h("h3", { class: "subtitulo-seccion" }, "Alertas"),
+      h("h3", { class: "subtitulo-seccion" }, "Antes de guardar"),
+      h("p", { class: "panel-sub" }, `${geo.tipo === "poligono" ? "Polígono" : "Punto"}${ORIGEN[st.modo]}.`),
       alertas.length ? h("div", { class: "fila-acciones" }, alertas.map((a) => insigniaAlerta(a))) : h("p", { class: "panel-sub" }, "Sin alertas."),
       alertas.length ? h("p", { class: "panel-sub" }, "Las alertas no impiden guardar; se revisan al habilitar la parcela.") : null,
-      h("h3", { class: "subtitulo-seccion" }, "Superposiciones detectadas"),
       ajenas.length
         ? h(
             "ul",
@@ -346,7 +381,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
               h("li", {}, s.otra_cooperativa ? "Con una parcela de otra cooperativa" : `Con ${s.codigo ?? "otra parcela"} «${s.nombre ?? "de otro productor"}»`, s.area_ha ? ` · ${hectareas(s.area_ha)} en común (${s.porcentaje} %)` : " · el punto cae dentro de esa parcela"),
             ),
           )
-        : h("p", { class: "panel-sub" }, "Ninguna con las parcelas activas de la plataforma."),
+        : h("p", { class: "panel-sub" }, "No se superpone con las parcelas activas de la plataforma."),
       ajenas.length ? h("p", { class: "alerta warn" }, ALERTAS.superposicion + ". Se guardará y quedará abierta para revisión.") : null,
     );
   }
@@ -390,29 +425,26 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
   // ---------- Navegación entre pasos ----------
   const indicador = h("div", { class: "pasos" }, PASOS.map((p, i) => h("span", { "aria-current": i === 0 ? "step" : "false" }, `${i + 1}. ${p}`)));
   const atras = h("button", { class: "btn btn-ghost", type: "button", hidden: true }, "Atrás");
-  const siguiente = h("button", { class: "btn btn-primary", type: "button", disabled: true }, "Siguiente");
+  const siguiente = h("button", { class: "btn btn-primary", type: "button" }, "Siguiente");
 
   function irA(paso) {
     st.paso = paso;
-    [paso1, paso2, paso3].forEach((p, i) => (p.hidden = i !== paso));
+    [pasoNombre, pasoMapa, pasoConfirmar].forEach((p, i) => (p.hidden = i !== paso));
     [...indicador.children].forEach((s, i) => s.setAttribute("aria-current", i === paso ? "step" : "false"));
     atras.hidden = paso === 0;
     siguiente.textContent = paso === 2 ? "Guardar parcela" : "Siguiente";
-    siguiente.disabled = paso === 0 && !seleccion()?.valida;
-    if (paso === 1) {
-      const nombre = formDatos.querySelector("[name=nombre]");
-      if (!nombre.value && seleccion()?.nombre) nombre.value = seleccion().nombre;
-      areaDeclarada.querySelector("small")?.remove();
-      areaDeclarada.append(h("small", {}, seleccion()?.tipo === "punto" ? "Obligatoria para un punto; debe ser menor de 4 ha." : "Opcional para un polígono."));
+    siguiente.disabled = paso === 1 && !geometriaLista();
+    if (paso === 2) {
+      llenarConfirmacion(seleccion());
+      pintarResumen();
     }
-    if (paso === 2) pintarResumen();
     window.scrollTo(0, 0);
   }
   atras.addEventListener("click", () => irA(st.paso - 1));
   siguiente.addEventListener("click", () => {
-    if (st.paso === 0) return irA(1);
-    if (st.paso === 1) return validarDatos() && irA(2);
-    guardar();
+    if (st.paso === 0) return formNombre.querySelector("[name=nombre]").reportValidity() && irA(1);
+    if (st.paso === 1) return irA(2);
+    if (validarConfirmacion()) guardar();
   });
 
   mostrarResultado();
@@ -420,7 +452,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
   return {
     titulo: "Nueva parcela",
     antetitulo: delProductor ? "Mis parcelas" : nombreProductor,
-    descripcion: "Captura la geometría, completa los datos y revisa antes de guardar.",
+    descripcion: "Ponle nombre, ubícala en el mapa y confirma: la ubicación y las áreas se llenan solas.",
     migas: delProductor ? [["Mis parcelas", "#/mis-parcelas"], ["Nueva parcela"]] : [["Productores", "#/productores"], [nombreProductor, volver], ["Nueva parcela"]],
     contenido: h(
       "div",
@@ -430,7 +462,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
         "section",
         { class: "panel asistente-panel" },
         h("div", { class: "panel-h" }, indicador),
-        h("div", { class: "panel-b" }, paso1, paso2, paso3),
+        h("div", { class: "panel-b" }, pasoNombre, pasoMapa, pasoConfirmar),
         h("div", { class: "modal-f" }, h("a", { class: "btn btn-ghost", href: volver }, "Cancelar"), atras, siguiente),
       ),
     ),

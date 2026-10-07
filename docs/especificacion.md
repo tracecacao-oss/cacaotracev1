@@ -1270,9 +1270,31 @@ El módulo Productores queda con tres secciones para el personal: Padrón, Mapa 
 
 ### Asistente de nueva parcela
 
-1. Geometría: el usuario elige "Dibujar", "Subir archivo" o "Coordenadas". Los errores de validación aparecen aquí, junto al mapa, y no dejan avanzar.
-2. Datos: nombre, ubicación, área declarada, área cultivada, estado en MIDAGRI, código y documento de sustento.
-3. Revisión: área calculada, alertas y superposiciones detectadas. El botón "Guardar parcela" está solo en este paso.
+**Decisión del equipo del 2026-10-06: menos que escribir.**
+- **Orden de los pasos.** Se pide primero el nombre. El nombre es solo el apodo con que el productor conoce la parcela; su código (PA-…) lo pone CacaoTrace al guardar.
+- **Ubicación.** El departamento, la provincia y el distrito salen de las coordenadas.
+- **Áreas.** Vienen llenas, y la persona solo confirma o corrige.
+
+El asistente queda así:
+
+1. **Nombre:** nombre de la parcela y, si se quiere, caserío o centro poblado.
+2. **Ubicación en el mapa:** el usuario elige "Dibujar", "Subir archivo" o "Coordenadas". Los errores de validación aparecen aquí, junto al mapa, y no dejan avanzar. Con una geometría válida, el paso dice en qué distrito queda.
+3. **Confirmar:**
+   - **Ubicación.** El departamento, la provincia y el distrito vienen llenos y se pueden corregir.
+     - Salen de los límites distritales del INEI, versión 2023 (`limites_distritales`, migración 0015, cargada desde `backend/app/datos/limites_distritales_inei.json.gz`).
+     - El INEI advierte que esos límites son referenciales.
+     - Si la geometría cruza un límite, se toma el distrito donde tiene más área. Si cae justo fuera de todo límite, se toma el más cercano a menos de 1 km.
+     - El polígono de cada distrito está simplificado a unos 20 m (`backend/scripts/preparar_limites_distritales.py`).
+     - Los nombres salen del catálogo `ubigeo_inei.csv` por el código.
+     - El distrito Alto Trujillo (130112) está en el catálogo pero no en los límites del INEI 2023, así que nunca se llena solo.
+     - `POST /parcelas/analizar-archivo` devuelve la ubicación sugerida en `ubicacion`.
+   - **Área total y área con cacao.**
+     - En un polígono, el área total es la calculada y no se escribe: el área declarada sale del formulario. Se pierde la comparación entre lo declarado y lo dibujado (`area_discrepante`), aunque la API sigue aceptando el área declarada.
+     - En un punto, el área total se escribe y debe ser menor de 4 ha.
+     - El área con cacao viene llena con el área total, y la persona la confirma o la baja.
+   - **Registro en MIDAGRI:** estado, código y documento de sustento, en un bloque plegado y opcional.
+   - **Antes de guardar:** alertas previstas y superposiciones detectadas.
+   - El botón "Guardar parcela" está solo en este paso.
 
 ### Productor
 
