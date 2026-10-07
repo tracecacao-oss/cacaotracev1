@@ -150,6 +150,73 @@ def test_crear_corrida_con_sus_23_etapas_y_la_plantilla(api, sesion, admin, oper
     assert len(api.get("/proceso/etapas").json()) == 23
 
 
+def test_metodos_sugeridos_de_cada_etapa(api, operador):
+    etapas = {e["numero"]: e for e in api.como(operador).get("/proceso/etapas").json()}
+    for numero, etapa in etapas.items():
+        if etapa["automatica"]:
+            assert etapa["metodos"] == [], numero  # su método lo pone el sistema
+        else:
+            assert len(etapa["metodos"]) >= 2 and len(set(etapa["metodos"])) == len(etapa["metodos"]), numero
+    assert "Carretilla" in etapas[6]["metodos"] and "Tendal solar de cemento" in etapas[12]["metodos"]
+
+
+def test_plantilla_sugerida_propone_sin_guardar(api, sesion, admin, operador, cancha, planta, almacen):
+    lugar(sesion, admin.cooperativa_id, "Aaa planta vieja", tipo="planta").activo = False
+    sesion.flush()
+    assert api.como(operador).get("/proceso/plantilla/sugerida").status_code == 403
+    sugerida = {f["numero"]: f for f in api.como(admin).get("/proceso/plantilla/sugerida").json()}
+    assert sorted(sugerida) == list(range(1, 24))
+    # El primer lugar activo del tipo de cada etapa; un traslado toma el de su destino.
+    assert {sugerida[n]["lugar_id"] for n in range(1, 6)} == {str(cancha.id)}
+    assert {sugerida[n]["lugar_id"] for n in range(6, 22)} == {str(planta.id)}
+    assert {sugerida[n]["lugar_id"] for n in (22, 23)} == {str(almacen.id)}
+    assert sugerida[9]["metodo"] == "Cajones de madera escalonados"
+    assert Decimal(sugerida[9]["duracion_horas"]) == 144 and Decimal(sugerida[12]["duracion_horas"]) == 120
+    assert sugerida[1]["metodo"] is None and sugerida[23]["duracion_horas"] is None
+    assert all(f["distancia_m"] is None for f in sugerida.values())
+    # Solo propone: la plantilla sigue vacía y nada queda en la auditoría.
+    assert all(f["metodo"] is None for f in api.get("/proceso/plantilla").json())
+    assert sesion.query(Auditoria).filter_by(accion="plantilla.cambiar").count() == 0
+    # Guardada tal cual, una corrida nueva nace con esos valores.
+    assert api.put("/proceso/plantilla", json={"filas": list(sugerida.values())}).status_code == 200
+    etapas = {e["numero"]: e for e in _corrida(api.como(operador))["etapas"]}
+    assert (etapas[12]["metodo"], etapas[12]["lugar_id"]) == ("Tendal solar de cemento", str(planta.id))
+
+
+def test_la_cooperativa_desactiva_etapas(api, sesion, admin, operador, planta, almacen, grado, tanda):
+    from app.pdf import dpp as pdf_dpp
+    from app.services.dpps import url_verificacion
+
+    etapas = api.como(operador).get("/proceso/etapas").json()
+    assert {e["numero"] for e in etapas if e["fija"]} == {1, 3, 4, 13, 17, 19, 21}
+    fija = api.como(admin).put("/proceso/plantilla", json={"filas": [{"numero": 19, "activa": False}]})
+    assert fija.status_code == 422 and fija.json()["error"]["codigo"] == "etapa_fija"
+    desactivadas = {"filas": [{"numero": n, "activa": False} for n in (6, 7, 18)]}
+    assert api.put("/proceso/plantilla", json=desactivadas).status_code == 200
+    plantilla = api.get("/proceso/plantilla").json()
+    assert [f["numero"] for f in plantilla if not f["activa"]] == [6, 7, 18]
+    # Las corridas nuevas nacen con esas etapas como "no aplica" y se consolidan sin ellas.
+    corrida = _lista(api, operador, [tanda], planta, grado)
+    situacion = {e["numero"]: e["situacion"] for e in corrida["etapas"]}
+    assert [n for n, s in situacion.items() if s == "no_aplica"] == [6, 7, 18]
+    consolidada = _consolidar(api, corrida, almacen)
+    assert consolidada.status_code == 200, consolidada.text
+    dpp = sesion.get(Dpp, uuid.UUID(consolidada.json()["dpp"]["id"]))
+    assert not any("etapa 18" in linea for linea in dpp.contenido["no_verificado"])
+    documento = pdf_dpp.documento(dpp.contenido, dpp.contenido_sha256, url_verificacion(dpp.codigo))
+    documento.output()
+    assert "La cooperativa no usa esta etapa" in documento.textos
+    assert "No aplica en la ruta seco" not in documento.textos
+
+
+def test_una_etapa_fija_no_se_desactiva_ni_en_la_base(sesion, coop):
+    from app.models import PlantillaEtapa
+
+    sesion.add(PlantillaEtapa(cooperativa_id=coop.id, numero=17, activa=False))
+    with pytest.raises(DBAPIError, match="ck_plantilla_proceso_etapa_fija_activa"):
+        sesion.flush()
+
+
 def test_ruta_seco_salta_fermentacion_y_secado(api, operador, planta):
     corrida = _corrida(api.como(operador), ruta="seco")
     no_aplica = sorted(e["numero"] for e in corrida["etapas"] if e["situacion"] == "no_aplica")
@@ -247,7 +314,8 @@ def test_reglas_de_las_etapas(api, operador, planta, tanda):
     sin_distancia = datos_de_etapa(6, planta.id, momento)
     sin_distancia.pop("distancia_m")
     respuesta = api.patch(f"{ruta}/6", json=sin_distancia)
-    assert respuesta.status_code == 422 and respuesta.json()["error"]["codigo"] == "distancia_requerida"
+    assert respuesta.status_code == 200  # la distancia de un traslado es opcional
+    assert next(e for e in respuesta.json()["etapas"] if e["numero"] == 6)["distancia_m"] is None
     respuesta = api.patch(f"{ruta}/9", json={"situacion": "no_ocurrio"})
     assert respuesta.status_code == 422 and respuesta.json()["error"]["codigo"] == "no_ocurrio_no_admitido"
     respuesta = api.patch(f"{ruta}/7", json={"situacion": "no_ocurrio"})

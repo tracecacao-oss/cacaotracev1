@@ -55,6 +55,12 @@ def plantilla(contexto: Lectura):
     return proceso.plantilla(contexto)
 
 
+@router.get("/proceso/plantilla/sugerida", response_model=list[PlantillaFila])
+def plantilla_sugerida(contexto: Administrador):
+    """Valores habituales para llenar la plantilla de una vez. No guarda nada."""
+    return proceso.plantilla_sugerida(contexto)
+
+
 @router.put("/proceso/plantilla", response_model=list[PlantillaFila])
 def cambiar_plantilla(datos: PlantillaCambio, contexto: Administrador):
     return proceso.cambiar_plantilla(contexto, datos)

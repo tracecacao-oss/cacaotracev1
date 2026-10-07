@@ -4,7 +4,7 @@
 
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
-import { FASES, horas, simbolo } from "../proceso.js";
+import { campoMetodo, FASES, horas, simbolo } from "../proceso.js";
 import { abrirModal, campo, enviarCon, h, icono, seccion, toast, vacio } from "../ui.js";
 import { seccionesCooperativa } from "./vacia.js";
 
@@ -38,8 +38,8 @@ export default async function plantillaProceso({ recargar }) {
   const porNumero = Object.fromEntries(plantilla.map((p) => [p.numero, p]));
   const nombreLugar = Object.fromEntries(lugares.map((l) => [l.id, l.nombre]));
 
-  function fila(e) {
-    const p = porNumero[e.numero] ?? {};
+  function fila(e, valores) {
+    const p = valores[e.numero] ?? {};
     const lugar = admin
       ? h(
           "select",
@@ -50,13 +50,38 @@ export default async function plantillaProceso({ recargar }) {
       : nombreLugar[p.lugar_id] ?? "—";
     if (admin) lugar.value = p.lugar_id ?? "";
     const entrada = (nombre, valor, extra) => h("input", { class: "input", name: `${nombre}_${e.numero}`, value: valor ?? "", ...extra });
+    // Decisión del 2026-10-06: la cooperativa desactiva las etapas que no usa, salvo las fijas.
+    const usada = p.activa !== false;
+    const usa = e.fija
+      ? h("span", { class: "badge", title: "La llena el sistema o se usa al consolidar: no se desactiva." }, "Fija")
+      : admin
+        ? h("input", {
+            type: "checkbox",
+            name: `activa_${e.numero}`,
+            value: "si",
+            checked: usada,
+            "aria-label": `Se usa la etapa ${e.numero}`,
+            onchange: (evento) => evento.target.closest("tr").classList.toggle("fila-inactiva", !evento.target.checked),
+          })
+        : usada
+          ? "Sí"
+          : "No";
     return h(
       "tr",
-      {},
+      { class: usada ? false : "fila-inactiva" },
       h("td", { class: "mono" }, String(e.numero)),
+      h("td", { class: "celda-usa" }, usa),
       h("td", {}, h("span", { class: "etapa-h" }, simbolo(e.tipo), h("b", {}, e.nombre)), h("span", { class: "sec" }, [e.tipo_nombre, e.automatica && "la llena el sistema", e.opcional && "puede no ocurrir", !e.en_ruta_seco && "solo ruta completa"].filter(Boolean).join(" · "))),
       h("td", {}, lugar),
-      h("td", {}, admin ? entrada("metodo", p.metodo, { maxlength: 200, "aria-label": `Método de la etapa ${e.numero}` }) : p.metodo ?? "—"),
+      h(
+        "td",
+        {},
+        e.automatica
+          ? h("span", { class: "sec" }, "Lo pone el sistema")
+          : admin
+            ? campoMetodo({ metodos: e.metodos, valor: p.metodo, name: `metodo_${e.numero}`, vacio: "Sin método", etiqueta: `Método de la etapa ${e.numero}` })
+            : (p.metodo ?? "—"),
+      ),
       h(
         "td",
         { class: "num" },
@@ -70,18 +95,69 @@ export default async function plantillaProceso({ recargar }) {
     );
   }
 
-  const tabla = h(
-    "div",
-    { class: "tbl-box" },
+  const armarTabla = (valores) =>
     h(
-      "table",
-      { class: "tabla tabla-plantilla" },
-      h("thead", {}, h("tr", {}, h("th", {}, "N.º"), h("th", {}, "Etapa"), h("th", {}, "Lugar"), h("th", {}, "Método"), h("th", { class: "num" }, "Distancia (m)"), h("th", { class: "num" }, "Duración (h)"))),
-      FASES.map(([clave, nombre]) => h("tbody", {}, h("tr", { class: "fila-fase" }, h("th", { colspan: 6, scope: "rowgroup" }, nombre)), catalogo.filter((e) => e.fase === clave).map(fila))),
-    ),
-  );
+      "div",
+      { class: "tbl-box" },
+      h(
+        "table",
+        { class: "tabla tabla-plantilla" },
+        h("thead", {}, h("tr", {}, h("th", {}, "N.º"), h("th", {}, "Se usa"), h("th", {}, "Etapa"), h("th", {}, "Lugar"), h("th", {}, "Método"), h("th", { class: "num" }, "Distancia (m)"), h("th", { class: "num" }, "Duración (h)"))),
+        FASES.map(([clave, nombre]) => h("tbody", {}, h("tr", { class: "fila-fase" }, h("th", { colspan: 7, scope: "rowgroup" }, nombre)), catalogo.filter((e) => e.fase === clave).map((e) => fila(e, valores)))),
+      ),
+    );
+  let tabla = armarTabla(porNumero);
   const guardar = h("button", { class: "btn btn-primary", type: "submit", form: "form-plantilla" }, icono("check"), "Guardar plantilla");
   const formulario = h("form", { class: "form", id: "form-plantilla" }, tabla, admin && h("div", { class: "fila-acciones" }, guardar));
+
+  /** Lo que hay escrito ahora en la tabla, sin guardar, por número de etapa. */
+  function escrito() {
+    const datos = new FormData(formulario);
+    const valor = (nombre) => (datos.get(nombre) ?? "").toString().trim() || null;
+    return Object.fromEntries(
+      catalogo.map((e) => [
+        e.numero,
+        {
+          lugar_id: valor(`lugar_${e.numero}`),
+          metodo: valor(`metodo_${e.numero}`),
+          distancia_m: valor(`distancia_${e.numero}`),
+          duracion_horas: valor(`duracion_${e.numero}`),
+          activa: e.fija || datos.get(`activa_${e.numero}`) === "si",
+        },
+      ]),
+    );
+  }
+
+  /** Llena solo las casillas vacías con la plantilla sugerida. No guarda: el administrador revisa y guarda. */
+  async function llenarConSugerida(evento) {
+    const boton = evento.currentTarget;
+    boton.classList.add("is-loading");
+    try {
+      const sugerida = await llamarApi("/proceso/plantilla/sugerida");
+      const valores = escrito();
+      let llenadas = 0;
+      for (const s of sugerida) {
+        const actual = valores[s.numero];
+        for (const clave of ["lugar_id", "metodo", "duracion_horas"]) {
+          if (actual[clave] == null && s[clave] != null) {
+            actual[clave] = String(s[clave]);
+            llenadas += 1;
+          }
+        }
+      }
+      const nueva = armarTabla(valores);
+      tabla.replaceWith(nueva);
+      tabla = nueva;
+      const sinLugar = sugerida.some((s) => s.lugar_id == null && valores[s.numero].lugar_id == null);
+      const aviso = sinLugar ? " Algunas etapas quedaron sin lugar: crea en Lugares una cancha de acopio, una planta y un almacén." : "";
+      toast(`${llenadas ? `Se llenaron ${llenadas} casillas vacías. Revisa y guarda la plantilla.` : "No había casillas vacías que la sugerencia pudiera llenar."}${aviso}`);
+    } catch (error) {
+      toast(error.message, "bad");
+    } finally {
+      boton.classList.remove("is-loading");
+    }
+  }
+  const sugerir = admin && h("button", { class: "btn btn-sm", type: "button", onclick: llenarConSugerida }, icono("zap"), "Llenar con la plantilla sugerida");
   if (admin) {
     enviarCon(formulario, guardar, async (datos) => {
       const filas = catalogo.map((e) => ({
@@ -90,6 +166,7 @@ export default async function plantillaProceso({ recargar }) {
         metodo: datos[`metodo_${e.numero}`]?.trim() || null,
         distancia_m: e.transporte ? datos[`distancia_${e.numero}`] || null : null,
         duracion_horas: datos[`duracion_${e.numero}`] || null,
+        activa: e.fija || datos[`activa_${e.numero}`] === "si",
       }));
       await llamarApi("/proceso/plantilla", { metodo: "PUT", cuerpo: { filas } });
       toast("Plantilla guardada. Las corridas nuevas nacen con estos valores.");
@@ -124,7 +201,10 @@ export default async function plantillaProceso({ recargar }) {
       { class: "panel inspector" },
       seccion({
         titulo: "Etapas",
-        sub: admin ? "Lugar, método, distancia (solo en los traslados) y duración habitual. Lo vacío lo llena el operador en cada corrida." : "Solo el administrador cambia la plantilla.",
+        sub: admin
+          ? "Desmarca las etapas que tu cooperativa no usa: las corridas nuevas no las piden. Las fijas las necesita el sistema. \"Llenar con la plantilla sugerida\" completa lo vacío con valores habituales; la distancia de los traslados es opcional. Lo que quede vacío lo llena el operador en cada corrida."
+          : "Solo el administrador cambia la plantilla.",
+        acciones: sugerir,
         contenido: formulario,
       }),
       seccion({

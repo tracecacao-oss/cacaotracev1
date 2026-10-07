@@ -40,6 +40,10 @@ class EtapaCatalogo(BaseModel):
     opcional: bool
     transporte: bool
     datos: list[DatoCatalogo]
+    # Métodos sugeridos para elegir; si el de la cooperativa no está, se escribe.
+    metodos: list[str] = []
+    # Fija: la cooperativa no la desactiva en su plantilla.
+    fija: bool = False
 
 
 class PlantillaFila(Entrada):
@@ -48,6 +52,8 @@ class PlantillaFila(Entrada):
     metodo: TextoOpcional | None = None
     distancia_m: Metros | None = None
     duracion_horas: Horas | None = None
+    # Falsa: la cooperativa no usa la etapa y nace como "no aplica" en las corridas nuevas.
+    activa: bool = True
 
 
 class PlantillaCambio(Entrada):

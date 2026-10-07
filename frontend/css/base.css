@@ -2060,6 +2060,20 @@ textarea.input.texto-libre {
   font-size: 10.5px;
   color: var(--ink-4);
 }
+/* Método de una etapa: lista de métodos sugeridos y, con "Otro", el texto debajo. */
+.campo-metodo {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.tabla-plantilla .campo-metodo {
+  min-width: 220px;
+}
+/* Etapa que la cooperativa no usa: se ve apagada y las corridas nuevas no la piden. */
+.tabla-plantilla tr.fila-inactiva td:not(.celda-usa) {
+  opacity: 0.45;
+}
+
 /* Parte 10: cuántas consultas esperan en la cola de análisis. */
 .nota-cola {
   display: flex;
