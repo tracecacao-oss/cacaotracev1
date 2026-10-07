@@ -37,6 +37,7 @@ Las pruebas nunca llaman a Supabase: el Auth admin se simula con `AuthFalso` (te
 
 Scripts de operación en `backend/scripts/`: los corre una persona del equipo con las variables reales en su terminal, nunca Claude Code.
 - `crear_superadmin.py` crea un superadministrador.
+- `generar_simulacion.py` arma el paquete de simulación para carga manual (decisión del 2026-10-06): guion HTML, PDF de muestra, GeoJSON y KML en `simulacion/cacaotrace-simulacion.zip`, ignorado por git y sin conectarse a ninguna base. Los datos están en `app/demo/simulacion.py` y la prueba `tests/test_simulacion.py` los carga por la capa de servicios.
 - `reiniciar_datos.py` deja el sistema vacío (decisión del 2026-10-06, especificación, Parte 10, "Reinicio"): conserva solo a los superadministradores y no se corre cuando ya haya datos reales.
 - `respaldar_storage.py` baja el bucket a una carpeta fuera del repositorio y solo lo que falte; su encabezado trae las órdenes de `pg_dump` y del ensayo de restauración (Parte 10, "Copias de respaldo").
 
