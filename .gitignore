@@ -22,3 +22,6 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Paquete de simulación generado por backend/scripts/generar_simulacion.py
+/simulacion/

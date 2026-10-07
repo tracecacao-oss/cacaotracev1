@@ -4356,6 +4356,47 @@ Construido en `feat/parte-10-piloto`:
   - No vuelve a bajar un archivo que ya está en la carpeta con el mismo tamaño.
 - **Choque de correos de acceso.** El correo técnico del productor (`{dni}@productores.cacaotrace.local`) es el mismo para la demostración y para lo real. Mientras un productor de demostración con DNI `00000001` a `00000007` tenga acceso, un productor real con el mismo DNI no podría recibirlo.
 
+### Paquete de simulación para carga manual
+
+**Decisión del equipo del 2026-10-06.** En vez de la siembra automática, el equipo carga la simulación a mano en producción. `backend/scripts/generar_simulacion.py` arma el paquete y lo deja en `simulacion/cacaotrace-simulacion.zip`, una carpeta ignorada por git. No se conecta a ninguna base.
+
+**Escenario.** Dos cooperativas agrarias de demostración, cada una con:
+- 3 productores con 3 parcelas cada uno;
+- una tanda por parcela;
+- dos corridas: una segregada con las 3 tandas del primer productor y una mezclada con las otras 6;
+- una orden, su lote armado con la sugerencia FIFO, los cuatro documentos de embarque y el DEX.
+
+**Solo camino feliz:**
+- sin documentos vencidos y sin superposiciones;
+- rendimientos dentro de la banda y volúmenes muy por debajo del tope;
+- fechas entre agosto y el día en que se genera; solo los vencimientos son posteriores al 31/03/2027.
+
+**Qué trae el ZIP (154 archivos):**
+- un guion de carga en HTML, en el orden en que se navega la aplicación y separado por cooperativa. Cada campo lleva su nombre exacto en la pantalla y su valor con un botón para copiarlo, y cada cooperativa termina con su resultado esperado: stock y genealogía del lote;
+- los PDF de cada documento, con la marca "MUESTRA - SIN VALOR LEGAL" en cada página y sin logos, sellos ni elementos de seguridad;
+- la geometría de cada parcela en GeoJSON y en KML;
+- un LEEME.
+
+**Datos.**
+- Están en `backend/app/demo/simulacion.py`; los PDF se arman en `simulacion_pdf.py`.
+- Las geometrías están en `simulacion_parcelas.json`: 18 polígonos de 1.8 a 2.7 ha en zonas agrícolas de Sacanche (Huallaga) y Juanjuí (Mariscal Cáceres). Se eligieron porque MapBiomas Perú (Colección 3) los clasifica sin bosque, agua ni zona urbana entre 2015 y 2024.
+- Whisp y GFW no se pueden comprobar de antemano. Si una parcela sale con alerta, el guion explica la revisión de imágenes y trae las notas listas.
+
+**Prueba automática.** `backend/tests/test_simulacion.py` comprueba:
+- las reglas de los datos;
+- la carga completa por la capa de servicios (`app/demo/carga_simulacion.py`), con Whisp y GFW simulados sin alertas, sin que falle ningún paso;
+- que la genealogía y los saldos coinciden con los del guion;
+- que en el DEX solo pidan atención las exenciones declaradas;
+- el contenido del ZIP.
+
+**Decisiones del guion:**
+- Las dos cooperativas son de demostración.
+- Hay un administrador y un operador por cooperativa: el operador registra las tandas y el administrador las valida, para evitar el hallazgo de misma persona.
+- El CUSAF y la autorización forestal se declaran "no aplica" con su motivo; los otros cuatro documentos de la parcela se cargan.
+- La plantilla de proceso se llena con la sugerida.
+- La fecha de entrega de cada orden es el día en que se genera el paquete.
+- La clasificación del país no está en el guion: la registra el equipo con su referencia oficial.
+
 ## Cómo entregar este documento a Claude Code
 
 El documento se usa en dos formatos: Markdown dentro del repositorio, para que Claude Code lo consulte en cada sesión, y PDF para el equipo.
