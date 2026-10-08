@@ -5,7 +5,6 @@ import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
 import { ALERTAS_CORRIDA, ESTADOS_CORRIDA, FASES, RUTAS, etiqueta, insignia, insigniaManejo } from "../proceso.js";
 import { kilos } from "../textos.js";
-import { seccionesLotes } from "../tandas.js";
 import { fecha, h, icono, seccion } from "../ui.js";
 
 function tarjeta(c) {
@@ -55,7 +54,6 @@ export default async function corridas() {
     antetitulo: "Lotes y proceso",
     descripcion: "Cada corrida lleva una o varias tandas validadas por las 23 etapas del proceso hasta el stock.",
     migas: [["Lotes y proceso", "#/lotes"], ["Corridas"]],
-    secciones: seccionesLotes(),
     accion: opera && h("a", { class: "btn btn-primary", href: "#/lotes/corridas/nueva" }, icono("plus"), "Nueva corrida"),
     contenido: [
       tablero,

@@ -4,7 +4,6 @@
 
 import { llamarApi } from "../api.js";
 import { abrirModal, cabeceraFicha, campo, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
-import { seccionesPlataforma } from "./cooperativas.js";
 
 const CLASIFICACIONES = [
   ["", "Sin registrar"],
@@ -43,7 +42,6 @@ export default async function plataformaConfiguracion({ recargar }) {
   return {
     titulo: "Configuración de plataforma",
     migas: [["Plataforma", "#/plataforma/cooperativas"], ["Configuración"]],
-    secciones: seccionesPlataforma(),
     cabecera: null,
     contenido: h(
       "section",

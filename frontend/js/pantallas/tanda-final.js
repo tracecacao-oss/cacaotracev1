@@ -4,7 +4,6 @@
 import { llamarApi } from "../api.js";
 import { ESTADOS_TANDA_FINAL, insignia } from "../proceso.js";
 import { kilos } from "../textos.js";
-import { seccionesLotes } from "../tandas.js";
 import { cabeceraFicha, fecha, h, icono, rejilla, seccion } from "../ui.js";
 
 export default async function tandaFinal({ parametros: [id] }) {
@@ -13,7 +12,6 @@ export default async function tandaFinal({ parametros: [id] }) {
   return {
     titulo: f.codigo,
     migas: [["Lotes y proceso", "#/lotes"], ["Stock", "#/lotes/stock"], [f.codigo]],
-    secciones: seccionesLotes(),
     cabecera: null,
     contenido: h(
       "section",

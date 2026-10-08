@@ -4,7 +4,6 @@
 import { llamarApi } from "../api.js";
 import { ESTADOS_CASILLA, ESTADOS_HABILITACION, REQUISITOS, insigniaAlerta } from "../textos.js";
 import { fecha, h, icono, reemplazar, seccion, vacio } from "../ui.js";
-import { seccionesProductores } from "./productores.js";
 
 const ORDEN = ["pendiente", "observada", "habilitada", "excluida"];
 const ICONO = { pendiente: "clock", observada: "alert", habilitada: "check", excluida: "x" };
@@ -116,7 +115,6 @@ export default async function habilitacion() {
     antetitulo: "Productores",
     descripcion: "Parcelas por estado de habilitación, lo que le falta a cada una y los documentos legales que vencen pronto.",
     migas: [["Productores", "#/productores"], ["Habilitación"]],
-    secciones: seccionesProductores(),
     contenido: [
       tarjetas,
       h("section", { class: "panel inspector" }, lista),

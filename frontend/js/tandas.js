@@ -7,16 +7,6 @@ import { ALERTAS, ALERTAS_TANDA, REQUISITOS_TANDA, TIPOS_DOC_ENTREGA, VARIEDADES
 import { lugar } from "./ubigeo.js";
 import { campo, h, icono, toast } from "./ui.js";
 
-export function seccionesLotes() {
-  return [
-    ["Recepción", "#/lotes/recepcion"],
-    ["DOP", "#/lotes/dop"],
-    // Parte 6
-    ["Corridas", "#/lotes/corridas"],
-    ["Stock", "#/lotes/stock"],
-  ];
-}
-
 // ---------- Fechas en hora de Lima (Perú no cambia de hora: siempre UTC-5) ----------
 
 /** El valor del campo de fecha y hora ("AAAA-MM-DDTHH:MM", ver fechas.js) es hora de Lima: se envía con su desfase. */

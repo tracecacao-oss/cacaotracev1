@@ -5,7 +5,6 @@
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
 import { campo, enviarCon, h, icono, rejilla, seccion, toast } from "../ui.js";
-import { seccionesCooperativa } from "./vacia.js";
 
 const PARAMETROS = [
   {
@@ -118,7 +117,6 @@ export default async function configuracion({ recargar }) {
     antetitulo: "Cooperativa",
     descripcion: admin ? "Los parámetros con que se evalúa cada tanda en la recepción." : "Los parámetros con que se evalúa cada tanda. Solo el administrador los cambia.",
     migas: [["Cooperativa", "#/cooperativa"], ["Configuración"]],
-    secciones: seccionesCooperativa(),
     contenido: [
       aviso(conf),
       h(

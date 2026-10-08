@@ -4,7 +4,6 @@
 import { llamarApi } from "../api.js";
 import { MANEJOS, RUTAS } from "../proceso.js";
 import { PRODUCTO, kilos } from "../textos.js";
-import { seccionesLotes } from "../tandas.js";
 import { cargando, errorDeCarga, fecha, h, icono, reemplazar, seccion, toast, vacio } from "../ui.js";
 
 function opciones(nombre, lista, valor, alCambiar) {
@@ -130,7 +129,6 @@ export default async function corridaNueva({ navegar }) {
     antetitulo: "Corridas",
     descripcion: "Elige la ruta y el tipo de manejo, marca las tandas e inicia. Una tanda entra completa a una sola corrida.",
     migas: [["Lotes y proceso", "#/lotes"], ["Corridas", "#/lotes/corridas"], ["Nueva"]],
-    secciones: seccionesLotes(),
     contenido: h(
       "section",
       { class: "panel inspector" },

@@ -3,7 +3,7 @@
 
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
-import { estadoLote, estadoOrden, seccionesExportacion } from "../exportacion.js";
+import { estadoLote, estadoOrden } from "../exportacion.js";
 import { kilos } from "../textos.js";
 import { cargando, errorDeCarga, fecha, h, icono, reemplazar, seccion, vacio } from "../ui.js";
 
@@ -53,7 +53,7 @@ function tabla(ordenes) {
 
 export default async function ordenes() {
   const lista = h("div", {}, cargando());
-  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado de la orden" });
+  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado de la orden", "data-etiqueta": "Estado" });
   async function cargar() {
     for (const b of chips.children) b.setAttribute("aria-pressed", String(b.dataset.valor === filtro));
     reemplazar(lista, cargando());
@@ -73,7 +73,6 @@ export default async function ordenes() {
     antetitulo: "Exportación",
     descripcion: "Cada orden de compra pide una cantidad y una calidad. Su lote de exportación toma el stock del más antiguo al más nuevo.",
     migas: [["Exportación", "#/exportacion"], ["Órdenes"]],
-    secciones: seccionesExportacion(),
     accion: opera && h("a", { class: "btn btn-primary", href: "#/exportacion/ordenes/nueva" }, icono("plus"), "Nueva orden"),
     contenido: h("section", { class: "panel inspector" }, h("div", { class: "barra-lista" }, chips), seccion({ titulo: "Órdenes de compra", contenido: lista })),
   };

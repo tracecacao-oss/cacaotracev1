@@ -2,7 +2,6 @@
 
 import { llamarApi } from "../api.js";
 import { cargando, h, reemplazar, vacio } from "../ui.js";
-import { seccionesPlataforma } from "./cooperativas.js";
 import { tarjetaSuperposicion } from "./superposiciones.js";
 
 export default async function superposicionesPlataforma() {
@@ -25,7 +24,6 @@ export default async function superposicionesPlataforma() {
   return {
     titulo: "Superposiciones entre cooperativas",
     migas: [["Plataforma"], ["Superposiciones"]],
-    secciones: seccionesPlataforma(),
     contenido: lista,
   };
 }

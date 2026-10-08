@@ -21,7 +21,6 @@ import {
   toast,
   vacio,
 } from "../ui.js";
-import { seccionesCooperativa } from "./vacia.js";
 
 const ROLES_PERSONAL = [
   ["operador", "Operador · registra y edita datos"],
@@ -216,7 +215,6 @@ export default async function usuarios({ recargar }) {
     antetitulo: "Cooperativa",
     descripcion: "Personas que trabajan en CacaoTrace por la cooperativa, con su rol y su último ingreso.",
     migas: [["Cooperativa", "#/cooperativa"], ["Usuarios"]],
-    secciones: seccionesCooperativa(),
     accion:
       gestiona &&
       h(

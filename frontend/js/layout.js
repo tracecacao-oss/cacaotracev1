@@ -1,9 +1,11 @@
 // Estructura de toda pantalla, con el aspecto del diseño de referencia: barra lateral (que se
-// puede contraer), barra superior con la ruta de navegación, encabezado (título y como máximo
-// un botón principal) y secciones como control segmentado. Bajo 900 px la barra se pliega en un menú.
+// puede contraer), barra superior con la ruta de navegación y encabezado (título y como máximo
+// un botón principal). Las secciones del módulo abierto van en la barra lateral (decisión del
+// 2026-10-07, secciones.js). Bajo 900 px la barra se pliega en un menú.
 
 import { enConsulta, esDemo, estado, fijarConsulta, nombreCooperativa, rolEfectivo, ROTULOS_ROL } from "./estado.js";
 import { alternarMenu, cambiarTema, menuContraido, temaActual } from "./preferencias.js";
+import { seccionActiva, seccionesDe } from "./secciones.js";
 import { avatar, h, icono, marca } from "./ui.js";
 
 const MODULOS_COOPERATIVA = [
@@ -52,14 +54,34 @@ function barraLateral(hash, alSalir) {
   const coop = nombreCooperativa();
   const enlaces = gruposDeNavegacion().map((grupo) => [
     grupo.titulo && h("div", { class: "side-g" }, grupo.titulo),
-    grupo.items.map((item) =>
-      h(
-        "a",
-        { class: "side-i", href: item.ruta, title: item.texto, "aria-current": activo(item.ruta, hash) ? "page" : false, onclick: cerrarMenu },
-        icono(item.icono),
-        h("span", { class: "side-t" }, item.texto),
-      ),
-    ),
+    grupo.items.map((item) => {
+      const abierto = activo(item.ruta, hash);
+      // Solo el módulo abierto despliega sus secciones; la sección actual es la que se marca.
+      const secciones = abierto ? seccionesDe(item.ruta) : [];
+      const actual = seccionActiva(secciones, hash);
+      return [
+        h(
+          "a",
+          {
+            class: `side-i${abierto ? " abierto" : ""}`,
+            href: item.ruta,
+            title: item.texto,
+            "aria-current": abierto && !secciones.length ? "page" : false,
+            onclick: cerrarMenu,
+          },
+          icono(item.icono),
+          h("span", { class: "side-t" }, item.texto),
+        ),
+        secciones.length > 0 &&
+          h(
+            "div",
+            { class: "side-sub", role: "group", "aria-label": `Secciones de ${item.texto}` },
+            secciones.map(([texto, destino]) =>
+              h("a", { class: "side-s", href: destino, "aria-current": destino === actual ? "page" : false, onclick: cerrarMenu }, texto),
+            ),
+          ),
+      ];
+    }),
   ]);
 
   const contraer = h(
@@ -174,8 +196,7 @@ function franjaConsulta(alCambiar) {
 }
 
 /**
- * vista: { titulo, migas: [[texto, ruta?]], antetitulo, descripcion, accion: Node,
- *          secciones: [[texto, ruta]], cabecera: Node, contenido }
+ * vista: { titulo, migas: [[texto, ruta?]], antetitulo, descripcion, accion: Node, cabecera: Node, contenido }
  * `cabecera` reemplaza al encabezado común; las fichas (productor, parcela, cooperativa) pasan
  * null porque muestran el título dentro de su propio panel, como en el diseño.
  */
@@ -221,14 +242,21 @@ export function estructura(vista, hash, { alSalir, navegar }) {
   altoFranjas.disconnect();
   altoFranjas.observe(franjas);
 
-  const secciones = vista.secciones?.length
+  // Con la barra lateral contraída a íconos, las secciones del módulo vuelven bajo el título (solo ahí:
+  // el CSS las oculta en los demás casos).
+  const modulo = gruposDeNavegacion()
+    .flatMap((g) => g.items)
+    .find((item) => activo(item.ruta, hash));
+  const delModulo = modulo ? seccionesDe(modulo.ruta) : [];
+  const actual = seccionActiva(delModulo, hash);
+  const secciones = delModulo.length
     ? h(
         "div",
-        { class: "seg-scroll" },
+        { class: "seg-scroll secciones-pagina" },
         h(
           "nav",
           { class: "seg", "aria-label": "Secciones" },
-          vista.secciones.map(([texto, destino]) => h("a", { href: destino, "aria-current": hash === destino ? "page" : false }, texto)),
+          delModulo.map(([texto, destino]) => h("a", { href: destino, "aria-current": destino === actual ? "page" : false }, texto)),
         ),
       )
     : null;

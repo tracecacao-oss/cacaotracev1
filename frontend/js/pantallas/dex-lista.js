@@ -2,7 +2,7 @@
 // y estado. Cada fila lleva a la pestaña DEX de su lote, donde están la huella, el código QR y las descargas.
 
 import { llamarApi } from "../api.js";
-import { insignia, seccionesExportacion } from "../exportacion.js";
+import { insignia } from "../exportacion.js";
 import { kilos } from "../textos.js";
 import { cargando, errorDeCarga, fecha, h, reemplazar, seccion, vacio } from "../ui.js";
 
@@ -45,7 +45,7 @@ function tabla(lista) {
 
 export default async function dexLista() {
   const lista = h("div", {}, cargando());
-  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado del DEX" });
+  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado del DEX", "data-etiqueta": "Estado" });
   const importadores = await llamarApi("/importadores").catch(() => []);
   async function cargar() {
     for (const b of chips.children) b.setAttribute("aria-pressed", String(b.dataset.valor === filtros.estado));
@@ -72,7 +72,6 @@ export default async function dexLista() {
     antetitulo: "Exportación",
     descripcion: "El expediente que la cooperativa descarga y envía al importador. No declara un nivel de riesgo ni reemplaza la DDS.",
     migas: [["Exportación", "#/exportacion"], ["DEX"]],
-    secciones: seccionesExportacion(),
     contenido: h("section", { class: "panel inspector" }, h("div", { class: "barra-lista" }, chips, selector), seccion({ titulo: "Expedientes emitidos", contenido: lista })),
   };
 }

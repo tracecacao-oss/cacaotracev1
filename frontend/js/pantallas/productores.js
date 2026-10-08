@@ -21,15 +21,6 @@ import {
   vacio,
 } from "../ui.js";
 
-export function seccionesProductores() {
-  return [
-    ["Padrón", "#/productores"],
-    ["Mapa de parcelas", "#/productores/mapa"],
-    ["Superposiciones", "#/productores/superposiciones"],
-    ["Habilitación", "#/productores/habilitacion"],
-  ];
-}
-
 export function insigniaAcceso(acceso) {
   if (!acceso.existe) return h("span", { class: "badge" }, h("span", { class: "dot" }), "Sin acceso");
   if (!acceso.activo) return h("span", { class: "badge bad" }, h("span", { class: "dot" }), "Acceso desactivado");
@@ -404,7 +395,6 @@ export default async function productores({ navegar }) {
     antetitulo: "Productores",
     descripcion: "Productores afiliados a la cooperativa, con sus parcelas y lo que les falta para respaldar un DOP.",
     migas: [["Productores", "#/productores"], ["Padrón"]],
-    secciones: seccionesProductores(),
     accion:
       puedeRegistrar &&
       h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirAlta(navegar) }, icono("mas"), "Nuevo productor"),

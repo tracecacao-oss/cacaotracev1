@@ -3,7 +3,7 @@
 
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
-import { estadoLote, estadoOrden, seccionesExportacion } from "../exportacion.js";
+import { estadoLote, estadoOrden } from "../exportacion.js";
 import { kilos } from "../textos.js";
 import { abrirModal, cabeceraFicha, campo, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 
@@ -77,7 +77,6 @@ export default async function orden({ parametros: [id], navegar, recargar }) {
   return {
     titulo: o.codigo,
     migas: [["Exportación", "#/exportacion"], ["Órdenes", "#/exportacion/ordenes"], [o.codigo]],
-    secciones: seccionesExportacion(),
     cabecera: null,
     contenido: h(
       "section",
