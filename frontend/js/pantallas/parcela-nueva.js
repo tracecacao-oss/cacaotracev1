@@ -9,7 +9,7 @@ import { estado } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo, satelitalDisponible } from "../mapa.js";
 import { ALERTAS, ESTADOS_MIDAGRI, hectareas, insigniaAlerta } from "../textos.js";
 import { campo, conRetraso, h, reemplazar, toast } from "../ui.js";
-import { camposUbigeo } from "../ubigeo.js";
+import { camposUbigeo, lugares } from "../ubigeo.js";
 
 const PASOS = ["Nombre", "Ubicación en el mapa", "Confirmar"];
 const AYUDA_MODO = {
@@ -95,7 +95,7 @@ export default async function parcelaNueva({ hash, parametros, navegar }) {
     const items = [];
     if (!geo.valida) items.push(h("p", { class: "alerta bad" }, geo.errores[0].mensaje));
     else items.push(h("p", { class: "alerta info" }, geo.tipo === "poligono" ? `Polígono válido de ${hectareas(geo.area_ha)} (área calculada).` : "Punto válido. En el siguiente paso indica su área total; debe ser menor de 4 ha."));
-    if (geo.valida && geo.ubicacion) items.push(h("p", { class: "panel-sub" }, `Queda en ${geo.ubicacion.distrito}, ${geo.ubicacion.provincia}, ${geo.ubicacion.departamento}.`));
+    if (geo.valida && geo.ubicacion) items.push(h("p", { class: "panel-sub" }, `Queda en ${lugares(geo.ubicacion.distrito, geo.ubicacion.provincia, geo.ubicacion.departamento)}.`));
     for (const s of geo.superposiciones.filter((x) => x.propia)) {
       items.push(h("p", { class: "alerta bad" }, `Se superpone con otra parcela del mismo productor: ${s.codigo} «${s.nombre}». Corrige el dibujo.`));
     }

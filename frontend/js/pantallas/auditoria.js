@@ -2,7 +2,7 @@
 
 import { llamarApi } from "../api.js";
 import { ROTULOS_ROL } from "../estado.js";
-import { cargando, errorDeCarga, fecha, h, paginador, reemplazar, vacio } from "../ui.js";
+import { campo, cargando, errorDeCarga, fecha, h, paginador, reemplazar, vacio } from "../ui.js";
 import { seccionesCooperativa } from "./vacia.js";
 
 const ACCIONES = [
@@ -114,11 +114,19 @@ const TEXTO_ACCION = {
   "plataforma.configurar": "Cambió la clasificación del país",
 };
 
+/** Un valor ISO del detalle se muestra dd/mm/aaaa (con hora de Lima si la trae); lo demás, tal cual. */
+function legible(valor) {
+  if (typeof valor !== "string") return valor;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return fecha(valor);
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(valor) && !Number.isNaN(Date.parse(valor))) return fecha(valor, { hora: true });
+  return valor;
+}
+
 function resumen(detalle) {
   const partes = Object.entries(detalle ?? {}).map(([campo, valor]) => {
-    if (valor && typeof valor === "object" && "antes" in valor) return `${campo}: ${valor.antes ?? "—"} → ${valor.despues ?? "—"}`;
+    if (valor && typeof valor === "object" && "antes" in valor) return `${campo}: ${legible(valor.antes) ?? "—"} → ${legible(valor.despues) ?? "—"}`;
     if (campo === "geometria_anterior") return "geometría anterior guardada";
-    return `${campo}: ${typeof valor === "object" ? JSON.stringify(valor) : valor}`;
+    return `${campo}: ${typeof valor === "object" ? JSON.stringify(valor) : legible(valor)}`;
   });
   return partes.join(" · ");
 }
@@ -184,6 +192,21 @@ export default async function auditoria() {
     return control;
   }
 
+  // Fecha dd/mm/aaaa: filtra cuando la fecha escrita queda completa o se borra (el oculto lleva el ISO).
+  function filtroFecha(nombre, etiqueta) {
+    const control = campo({ etiqueta, type: "date", id: `filtro-${nombre}` });
+    control.addEventListener("input", () => {
+      const valor = control.querySelector("input").value;
+      if (valor === filtros[nombre]) return;
+      filtros[nombre] = valor;
+      pagina = 1;
+      cargar();
+    });
+    // Sin formulario que la muestre, una fecha que no existe se avisa al salir del campo.
+    control.addEventListener("change", (evento) => evento.target.reportValidity());
+    return control;
+  }
+
   cargar();
   return {
     titulo: "Auditoría",
@@ -197,8 +220,8 @@ export default async function auditoria() {
       h(
         "div",
         { class: "barra-lista filtros" },
-        h("label", { class: "field" }, "Desde", filtro("desde", h("input", { class: "input", type: "date" }))),
-        h("label", { class: "field" }, "Hasta", filtro("hasta", h("input", { class: "input", type: "date" }))),
+        filtroFecha("desde", "Desde"),
+        filtroFecha("hasta", "Hasta"),
         h(
           "label",
           { class: "field" },

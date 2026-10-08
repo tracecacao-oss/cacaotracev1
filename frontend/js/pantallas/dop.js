@@ -5,7 +5,14 @@ import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
 import { ALERTAS, ALERTAS_TANDA, ESTADOS_CASILLA, ESTADOS_HABILITACION, ESTADOS_MIDAGRI, OBSERVACIONES_2020, OBSERVACIONES_CAMBIO, PRODUCTO, REQUISITOS, hectareas, insigniaDop, insigniaNivel, kilos } from "../textos.js";
 import { codigoQr, descargarPdf, huella } from "../tandas.js";
+import { lugares } from "../ubigeo.js";
 import { abrirModal, cabeceraFicha, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
+
+/** Desde la versión 4 del DOP, la pérdida de bosque y la alteración de la vegetación van por separado. */
+function marcasCambio(fila) {
+  if (!("registra_perdida" in fila)) return fila.registra_cambio ? ["Registra cambios"] : [];
+  return [fila.registra_perdida && "Registra pérdida de bosque", fila.registra_alteracion && "Registra alteración de la vegetación"].filter(Boolean);
+}
 
 function insignia(clase, texto) {
   return h("span", { class: `badge ${clase}` }, h("span", { class: "dot" }), texto);
@@ -147,7 +154,7 @@ export default async function dop({ parametros: [id], recargar }) {
   const pa = c.parcela;
   const t = c.tanda;
   const vigente = d.estado === "vigente";
-  const ubicacion = [pa.ubicacion.centro_poblado, pa.ubicacion.distrito, pa.ubicacion.provincia, pa.ubicacion.departamento].filter(Boolean).join(", ");
+  const ubicacion = [pa.ubicacion.centro_poblado, lugares(pa.ubicacion.distrito, pa.ubicacion.provincia, pa.ubicacion.departamento)].filter(Boolean).join(", ");
   const procedencia = pa.procedencia ?? {};
 
   const sello = seccion({
@@ -289,7 +296,7 @@ export default async function dop({ parametros: [id], recargar }) {
                       h("td", {}, fila.nombre),
                       h("td", {}, fila.vias.join(" y ")),
                       h("td", {}, medidas(fila.al_2020), fila.registra_bosque_2020 && h("span", { class: "sec" }, "Registra bosque")),
-                      h("td", {}, medidas(fila.despues_2020), fila.registra_cambio && h("span", { class: "sec" }, "Registra cambios")),
+                      h("td", {}, medidas(fila.despues_2020), marcasCambio(fila).map((m) => h("span", { class: "sec" }, m))),
                     ),
                   ),
                 ),
@@ -328,7 +335,9 @@ export default async function dop({ parametros: [id], recargar }) {
                     ? [`N.º ${doc.numero} · ${doc.entidad_emisora}`, h("span", { class: "sec" }, `Emitido ${fecha(doc.fecha_emision)}${doc.fecha_vencimiento ? ` · vence ${fecha(doc.fecha_vencimiento)}` : ""}`)]
                     : cas.exencion
                       ? `No aplica: ${cas.exencion.motivo}`
-                      : "—",
+                      : cas.cubierta_por_nombre
+                        ? `No requerida: la tenencia está cubierta por ${cas.cubierta_por_nombre}`
+                        : "—",
                 ),
               );
             }),
@@ -340,7 +349,7 @@ export default async function dop({ parametros: [id], recargar }) {
       titulo: "Tanda",
       contenido: rejilla([
         { etiqueta: "Código", valor: h("a", { href: `#/tandas/${d.tanda_id}`, class: "mono" }, t.codigo) },
-        { etiqueta: "Lugar", valor: `${t.lugar.nombre} (${t.lugar.distrito}, ${t.lugar.provincia})` },
+        { etiqueta: "Lugar", valor: `${t.lugar.nombre} (${lugares(t.lugar.distrito, t.lugar.provincia)})` },
         { etiqueta: "Recepción", valor: fecha(t.recibida_en, { hora: true }) },
         { etiqueta: "Producto", valor: PRODUCTO[t.estado_producto] },
         { etiqueta: "Peso en balanza", valor: kilos(t.peso_kg), mono: true },

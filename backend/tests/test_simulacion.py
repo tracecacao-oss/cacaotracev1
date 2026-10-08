@@ -24,8 +24,8 @@ from tests.habilitacion_util import fuentes_configuradas
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "generar_simulacion.py"
 SIN_ESPERAS = analisis.Ritmo(reloj=lambda: 0.0, dormir=lambda segundos: None)
-# Lo único que puede pedir atención en el DEX del camino feliz: las exenciones que el guion declara.
-ATENCION_PERMITIDA = {"exencion_declarada"}
+# En el camino feliz nada pide atención: las exenciones que declara el guion van en No verificado.
+ATENCION_PERMITIDA: set[str] = set()
 
 
 def _whisp_limpio() -> bytes:

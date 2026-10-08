@@ -3,6 +3,7 @@
 
 import { llamarApi } from "../api.js";
 import { REQUISITOS_PRODUCTOR, hectareas, insigniaAlerta, insigniaHabilitacion } from "../textos.js";
+import { lugares } from "../ubigeo.js";
 import { h, icono, vacio } from "../ui.js";
 
 // Alertas que ya se dicen, en lenguaje simple, en la lista de lo que falta.
@@ -26,7 +27,7 @@ export default async function misParcelas({ navegar }) {
               { class: "panel tarjeta-parcela", href: `#/mis-parcelas/${p.id}` },
               h("span", { class: "tarjeta-r" }, h("b", {}, p.nombre), insigniaHabilitacion(p.habilitacion_estado)),
               h("span", { class: "tarjeta-r mono" }, h("span", {}, p.codigo), h("span", {}, hectareas(p.area_total_ha))),
-              h("span", { class: "sec" }, `${p.distrito}, ${p.provincia}`),
+              h("span", { class: "sec" }, lugares(p.distrito, p.provincia)),
               p.requisitos_pendientes.length
                 ? h("ul", { class: "lista-simple" }, p.requisitos_pendientes.map((r) => h("li", {}, REQUISITOS_PRODUCTOR[r] ?? r)))
                 : null,

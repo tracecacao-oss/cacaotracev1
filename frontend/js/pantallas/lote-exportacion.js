@@ -9,6 +9,7 @@ import { llamarApi } from "../api.js";
 import { anularDocumento, verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
 import { estadoLote, insignia, insigniaFifo, seccionesExportacion, tarjetasIndicadores, vistaGenealogia } from "../exportacion.js";
+import { hoyLima as hoy } from "../fechas.js";
 import { mensajeFinal, vistaInforme } from "../informe.js";
 import { codigoQr, huella } from "../tandas.js";
 import { kilos } from "../textos.js";
@@ -37,7 +38,6 @@ const RESULTADO = {
   sin_observaciones: ["ok", "Sin observaciones"],
   con_observaciones: ["warn", "Con observaciones"],
 };
-const hoy = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
 let recordada = { id: null, clave: "seleccion" };
 
 function abrirAnulacion(l, alAnular) {

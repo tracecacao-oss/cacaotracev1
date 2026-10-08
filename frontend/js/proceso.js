@@ -3,7 +3,7 @@
 
 import { llamarApi } from "./api.js";
 import { estado } from "./estado.js";
-import { momentoLima } from "./tandas.js";
+import { leerFechasHora, momentoLima, mostrarFechaHora } from "./fechas.js";
 import { abrirModal, campo, enviarCon, h, toast } from "./ui.js";
 
 export const RUTAS = [
@@ -178,12 +178,14 @@ export function abrirEtapa({ corrida, etapa, catalogo, lugares, calidades, alGua
       return campo({ etiqueta: d.etiqueta, name: `dato_${d.clave}`, opciones: [["", "Elige la calidad…"], ...calidades.filter((c) => c.activo).map((c) => [c.id, c.nombre])], value: valor ?? "" });
     }
     if (d.tipo === "fechas") {
-      return h(
-        "label",
-        { class: "field" },
-        `${d.etiqueta} (una por línea, AAAA-MM-DD HH:MM)`,
-        h("textarea", { class: "input mono", name: `dato_${d.clave}`, rows: 3, placeholder: "2026-10-06 08:00" }, (valor ?? []).map((f) => momentoLima(f).replace("T", " ")).join("\n")),
+      // Una fecha y hora por línea, dd/mm/aaaa hh:mm (24 horas); una línea que no sirve se avisa al enviar.
+      const fechas = h(
+        "textarea",
+        { class: "input mono", name: `dato_${d.clave}`, rows: 3, placeholder: "dd/mm/aaaa hh:mm", autocomplete: "off", spellcheck: "false" },
+        (valor ?? []).map((f) => mostrarFechaHora(momentoLima(f))).join("\n"),
       );
+      fechas.addEventListener("input", () => fechas.setCustomValidity(leerFechasHora(fechas.value).problema ?? ""));
+      return h("label", { class: "field" }, `${d.etiqueta} (una por línea, dd/mm/aaaa hh:mm)`, fechas);
     }
     if (d.tipo === "texto") {
       return h("label", { class: "field" }, d.etiqueta, h("textarea", { class: "input texto-libre", name: `dato_${d.clave}`, maxlength: 4000, rows: 2 }, valor ?? ""));
@@ -248,7 +250,7 @@ export function abrirEtapa({ corrida, etapa, catalogo, lugares, calidades, alGua
     for (const d of catalogo.datos) {
       const valor = (datos[`dato_${d.clave}`] ?? "").trim();
       if (!valor) continue;
-      propiosCuerpo[d.clave] = d.tipo === "fechas" ? valor.split(/\n+/).map((l) => conDesfase(l.trim().replace(" ", "T"))).filter(Boolean) : valor;
+      propiosCuerpo[d.clave] = d.tipo === "fechas" ? leerFechasHora(valor).valores.map(conDesfase) : valor;
     }
     const cuerpo = {
       lugar_id: datos.lugar_id,

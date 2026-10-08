@@ -111,6 +111,8 @@ Se muestra en el detalle de la parcela y se copia al contenido sellado del DOP y
 5. La frase solo cuenta. No lleva adjetivos, no dice que la parcela cumple y no resume en una palabra.
 6. Si dos conjuntos responden distinto a la misma pregunta, la tabla muestra los dos valores tal cual.
 
+> **Pedido del equipo del 2026-10-07.** La frase separa la pérdida de bosque de la alteración de la vegetación: "Conjuntos de datos consultados: N. Registran bosque en 2020: A de B que lo miden. Registran pérdida de bosque después de 2020: C de D que la miden. Registran alteración de la vegetación después de 2020: E de F que la miden." Cada conjunto del catálogo tiene su tipo en `TIPO_CAMBIO` (`backend/app/catalogos/conjuntos_datos.py`): alteración de la vegetación son las alertas DIST, el cambio de clase de Esri Land Cover y los dos de área quemada (MODIS y FireCCI); los demás, pérdida de bosque. La clasificación la propuso Claude Code y la revisa el equipo. La tabla marca cada fila con lo que registra. Los DOP sellados antes guardan la frase anterior y la pantalla y el PDF la muestran tal cual.
+
 ## 7. Cambios en textos y alertas
 
 ### 7.1 Textos de las tarjetas
@@ -147,6 +149,11 @@ Se suman al catálogo cuando se construya la Parte 9.
 | `mapbiomas_sin_cobertura_reciente` | Siempre que se use MapBiomas: no cubre lo ocurrido después de su último año | 1 | No verificado |
 
 En "Datos del lote" se agrega cuántos conjuntos de datos se consultaron por parcela, con el mínimo y el máximo del lote.
+
+> **Pedido del equipo del 2026-10-07.**
+> - `conjuntos_discrepan` deja de existir: dos conjuntos que responden distinto ya se ven en la tabla y en la proporción.
+> - `conjuntos_registran_cambio_posterior` cuenta solo la pérdida de bosque; la alteración de la vegetación queda en la tabla y en la frase de conteo.
+> - Los dos hallazgos dicen siempre la proporción ("1 de 13 conjuntos de datos registra bosque en 2020"), en el hecho y en el mensaje final, nunca "algún conjunto".
 
 ## 9. Pruebas mínimas
 

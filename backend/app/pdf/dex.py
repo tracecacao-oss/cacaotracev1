@@ -12,7 +12,7 @@ import math
 from datetime import datetime
 from typing import Any
 
-from app import textos
+from app import textos, ubigeo
 from app.fechas import LIMA
 from app.pdf.base import AMBAR, ESMERALDA, FONDO, LINEA, TINTA, TINTA_3, Documento
 from app.services.hallazgos.catalogo import GRUPOS
@@ -288,7 +288,7 @@ def _genealogia(pdf: Pdf, c: dict[str, Any]) -> None:
             [
                 f"{p['codigo']}\n{p['nombre']}",
                 p["productor"],
-                ", ".join(v for v in (u["distrito"], u["provincia"], u["departamento"]) if v),
+                ", ".join(ubigeo.mostrar(v) for v in (u["distrito"], u["provincia"], u["departamento"]) if v),
                 _ha(p["area_ha"]),
                 pdf.L("poligono") if p["tipo_geometria"] == "poligono" else pdf.L("punto"),
                 _kg(p["kg"]),
@@ -431,15 +431,17 @@ def _respaldo(pdf: Pdf, c: dict[str, Any], png: dict[str, dict[str, bytes]]) -> 
             tamano=6.5,
         )
         conteos = (r.get("convergencia") or {}).get("conteos")
-        if conteos:
+        if conteos and "perdida_registran" in conteos:
             pdf.parrafo(
                 pdf.L(
                     "convergencia_frase",
                     n=conteos["consultados"],
                     a=conteos["bosque_registran"],
                     b=conteos["bosque_miden"],
-                    c=conteos["cambio_registran"],
-                    d=conteos["cambio_miden"],
+                    c=conteos["perdida_registran"],
+                    d=conteos["perdida_miden"],
+                    e=conteos["alteracion_registran"],
+                    f=conteos["alteracion_miden"],
                 ),
                 tamano=8,
             )
@@ -453,6 +455,8 @@ def _respaldo(pdf: Pdf, c: dict[str, Any], png: dict[str, dict[str, bytes]]) -> 
                 detalle = _detalle_documento(pdf, doc)
             elif exencion:
                 detalle = pdf.L("exencion", motivo=pdf.original(exencion["motivo"]))
+            elif casilla.get("cubierta_por"):
+                detalle = pdf.L("tenencia_cubierta", documento=pdf.documento(casilla["cubierta_por"]))
             else:
                 detalle = ""
             filas.append(

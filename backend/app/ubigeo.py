@@ -79,3 +79,55 @@ def normalizar(valores: dict, actual: object | None = None) -> None:
         return
     terna = [valores.get(campo) or getattr(actual, campo) for campo in CAMPOS]
     valores.update(zip(CAMPOS, oficial(*terna), strict=True))
+
+
+# Los 25 departamentos con su ortografía (pedido del equipo del 2026-10-07). El catálogo oficial del INEI los
+# trae en mayúsculas y sin tildes, igual que a las provincias y los distritos.
+DEPARTAMENTOS_ESCRITOS = {
+    "AMAZONAS": "Amazonas",
+    "ANCASH": "Áncash",
+    "APURIMAC": "Apurímac",
+    "AREQUIPA": "Arequipa",
+    "AYACUCHO": "Ayacucho",
+    "CAJAMARCA": "Cajamarca",
+    "CALLAO": "Callao",
+    "CUSCO": "Cusco",
+    "HUANCAVELICA": "Huancavelica",
+    "HUANUCO": "Huánuco",
+    "ICA": "Ica",
+    "JUNIN": "Junín",
+    "LA LIBERTAD": "La Libertad",
+    "LAMBAYEQUE": "Lambayeque",
+    "LIMA": "Lima",
+    "LORETO": "Loreto",
+    "MADRE DE DIOS": "Madre de Dios",
+    "MOQUEGUA": "Moquegua",
+    "PASCO": "Pasco",
+    "PIURA": "Piura",
+    "PUNO": "Puno",
+    "SAN MARTIN": "San Martín",
+    "TACNA": "Tacna",
+    "TUMBES": "Tumbes",
+    "UCAYALI": "Ucayali",
+}
+MINUSCULAS = {"de", "del", "la", "las", "los", "el", "y", "en"}
+
+
+def mostrar(nombre: str | None) -> str:
+    """Un nombre del catálogo para leerlo: "SAN MARTIN" → "San Martín" y "MARISCAL CACERES" →
+    "Mariscal Caceres".
+
+    Un nombre igual al de un departamento lleva sus tildes, sea departamento, provincia o distrito. A los
+    demás no se les agregan tildes, porque el catálogo oficial no las trae: solo pasan a mayúsculas y
+    minúsculas.
+    """
+    if not nombre:
+        return nombre or ""
+    escrito = DEPARTAMENTOS_ESCRITOS.get(_clave(nombre))
+    if escrito:
+        return escrito
+    palabras = nombre.strip().lower().split()
+    return " ".join(
+        p if i and p in MINUSCULAS else p[:1].upper() + p[1:] for i, p in enumerate(palabras)
+    )
+

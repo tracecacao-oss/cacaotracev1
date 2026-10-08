@@ -5,12 +5,12 @@
 
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
+import { hoyLima as hoy } from "../fechas.js";
 import { capaGeojson, cargarMapas, encuadrar, estilo } from "../mapa.js";
 import { OBSERVACIONES_2020, OBSERVACIONES_CAMBIO, PAPELES_IMAGEN } from "../textos.js";
 import { abrirModal, campo, enviarCon, fecha, h, icono, reemplazar, seccion, toast, vacio } from "../ui.js";
 
 const CORTE = "2020-12-31";
-const hoy = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
 const etiqueta = (lista, valor) => lista.find(([v]) => v === valor)?.[1] ?? valor;
 const numero = (valor) => Number(valor).toLocaleString("es-PE", { maximumFractionDigits: 2 });
 

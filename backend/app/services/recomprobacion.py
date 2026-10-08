@@ -44,6 +44,7 @@ NOMBRES_ESTADO = {
     "por_vencer": "por vencer",
     "vencido": "vencido",
     "faltante": "faltante",
+    "no_requerida": "no requerida",
 }
 
 COMPROBACIONES = (

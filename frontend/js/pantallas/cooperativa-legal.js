@@ -6,11 +6,11 @@
 import { llamarApi } from "../api.js";
 import { anularDocumento, verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
+import { hoyLima as hoy } from "../fechas.js";
 import { ESTADOS_CASILLA, insigniaNivel } from "../textos.js";
+import { lugares } from "../ubigeo.js";
 import { abrirModal, cabeceraFicha, campo, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 import { seccionesCooperativa } from "./vacia.js";
-
-const hoy = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
 
 function insignia(clase, texto) {
   return h("span", { class: `badge ${clase}`.trim() }, h("span", { class: "dot" }), texto);
@@ -127,7 +127,7 @@ export default async function cooperativaLegal({ recargar }) {
         inicio: h("span", { class: "ins-icono" }, icono("cooperativa")),
         titulo: c.razon_social,
         insignias: [insignia(exp.estado === "completo" ? "ok" : "warn", exp.estado === "completo" ? "Expediente completo" : "Expediente incompleto")],
-        detalle: [h("span", { class: "mono" }, `RUC ${c.ruc}`), c.codigo ? ` · código ${c.codigo}` : "", ` · ${c.distrito}, ${c.provincia}, ${c.departamento}`],
+        detalle: [h("span", { class: "mono" }, `RUC ${c.ruc}`), c.codigo ? ` · código ${c.codigo}` : "", ` · ${lugares(c.distrito, c.provincia, c.departamento)}`],
       }),
       seccion({
         titulo: "Datos de la cooperativa",

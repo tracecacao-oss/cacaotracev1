@@ -31,12 +31,12 @@ CATALOGO: dict[str, Entrada] = {
     "superposicion_aceptada": Entrada("requiere_atencion", 1, 3),
     "superposicion_con_excluida": Entrada("requiere_atencion", 1, 3),
     "tenencia_solo_posesion": Entrada("requiere_atencion", 1, 4),
-    "exencion_declarada": Entrada("requiere_atencion", 1, 4),
+    # Pedido del equipo del 2026-10-07: una declaración de la cooperativa sin documento que la respalde.
+    "exencion_declarada": Entrada("no_verificado", 1, 4),
     "documento_por_vencer": Entrada("requiere_atencion", 1, 4),
     # Adenda de la Parte 4, sección 8
     "conjuntos_registran_bosque_2020": Entrada("requiere_atencion", 1, 1),
     "conjuntos_registran_cambio_posterior": Entrada("requiere_atencion", 1, 1),
-    "conjuntos_discrepan": Entrada("requiere_atencion", 1, 1),
     # Adenda 2 de la Parte 4, sección 12
     "revision_de_imagenes_registrada": Entrada("requiere_atencion", 1, 1),
     "habilitada_con_cambio_visible": Entrada("requiere_atencion", 1, 1),

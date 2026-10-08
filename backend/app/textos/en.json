@@ -26,9 +26,13 @@
   "citas": {
     "sin_resultado": "{fuente}: no result",
     "whisp": "Whisp: {valor}",
-    "gfw_cero": "GFW: no alerts or loss recorded since 2021",
-    "gfw": "GFW: {alertas} alerts and {perdida} ha of loss since 2021",
-    "gfw_extra": "{base}; {bosque} ha of natural forest in 2020; {dist} DIST alerts since 2021",
+    "gfw": "GFW: {medidas}",
+    "gfw_alertas_uno": "{n} integrated deforestation alert since 2021",
+    "gfw_alertas_varios": "{n} integrated deforestation alerts since 2021",
+    "gfw_perdida": "{n} ha of tree cover loss since 2021",
+    "gfw_bosque": "{n} ha of natural forest in 2020",
+    "gfw_dist_uno": "{n} DIST vegetation disturbance alert since 2021",
+    "gfw_dist_varios": "{n} DIST vegetation disturbance alerts since 2021",
     "mapbiomas": "MapBiomas Perú: in 2020, predominant class {clase}; {bosque} ha of forest in 2020; {cambio} ha changed from forest to another class between 2020 and {anio}"
   },
   "whisp_valores": {
@@ -66,9 +70,8 @@
     "analisis_por_aproximacion": "{parcela} is recorded as a point and was analysed as a circle with its declared area.",
     "documento_sin_registro_consultable": "{documento} of {parcela} has no public registry to be checked against.",
     "documento_sin_cotejar": "{documento} of {parcela} has a public registry and was not checked against it.",
-    "conjuntos_registran_bosque_2020": "In {parcela}, {n} of {total} datasets record forest on 31 December 2020: {conjuntos}.",
-    "conjuntos_registran_cambio_posterior": "In {parcela}, {n} of {total} datasets record changes after 2020: {conjuntos}.",
-    "conjuntos_discrepan": "In {parcela}, the datasets give different answers on {preguntas}.",
+    "conjuntos_registran_bosque_2020": "In {parcela}, {n} of {total} datasets {verbo} forest on 31 December 2020: {conjuntos}.",
+    "conjuntos_registran_cambio_posterior": "In {parcela}, {n} of {total} datasets {verbo} forest loss after 2020: {conjuntos}.",
     "mapbiomas_pocos_pixeles": "{parcela} has {pixeles} pixels in MapBiomas, fewer than 10.",
     "mapbiomas_sin_cobertura_reciente": "MapBiomas does not cover what happened in {parcela} after {anio}.",
     "revision_de_imagenes_registrada": "{revisor} reviewed the images of {parcela} on {fecha} (before the cut-off: {fecha_previa}; recent: {fecha_reciente}) and recorded “{obs_2020}” before the cut-off and “{obs_cambio}” after the cut-off.",
@@ -107,9 +110,8 @@
     "analisis_por_aproximacion": "Plots recorded as points and analysed as circles: {sujetos}, which {aporta} {peso} % of the lot.",
     "documento_sin_registro_consultable": "Documents with no public registry to be checked against ({n}), in {sujetos}, which {aporta} {peso} % of the lot.",
     "documento_sin_cotejar": "Documents with a public registry that were not checked against it ({n}), in {sujetos}, which {aporta} {peso} % of the lot.",
-    "conjuntos_registran_bosque_2020": "Plots where some dataset records forest on 31 December 2020: {sujetos}, which {aporta} {peso} % of the lot.",
-    "conjuntos_registran_cambio_posterior": "Plots where some dataset records changes after 2020: {sujetos}, which {aporta} {peso} % of the lot.",
-    "conjuntos_discrepan": "Plots where the datasets give different answers: {sujetos}, which {aporta} {peso} % of the lot.",
+    "conjuntos_registran_bosque_2020": "Plots where datasets record forest on 31 December 2020: {sujetos}, which {aporta} {peso} % of the lot.",
+    "conjuntos_registran_cambio_posterior": "Plots where datasets record forest loss after 2020: {sujetos}, which {aporta} {peso} % of the lot.",
     "mapbiomas_pocos_pixeles": "Plots with fewer than 10 pixels in MapBiomas: {sujetos}, which {aporta} {peso} % of the lot.",
     "mapbiomas_sin_cobertura_reciente": "MapBiomas does not cover what happened after its last year in {sujetos}, which {aporta} {peso} % of the lot.",
     "revision_de_imagenes_registrada": "The cooperative reviewed the satellite images of {sujetos}, which {aporta} {peso} % of the lot.",
@@ -157,9 +159,7 @@
     "revision_imagenes_fija": "The image review is done by cooperative staff. The reviewed images are attached so that the operator can repeat it.",
     "registrada_productor": "the producer",
     "registrada_cooperativa": "the cooperative",
-    "preguntas_estado_2020": "the status on 31 December 2020",
-    "preguntas_cambio_posterior": "the changes after 2020",
-    "citas_bosque_2020": "{n} datasets that record forest on 31 December 2020",
+    "citas_bosque_2020": "{n} of {total} datasets {verbo} forest on 31 December 2020",
     "sin_fecha": "no image",
     "meses": [
       "January",
@@ -178,7 +178,10 @@
     "fecha": "{dia} {mes} {anio}",
     "preliminar": "Preliminary report: it changes with the data until the DEX is issued.",
     "sellado": "Report sealed in DEX {codigo}.",
-    "criterio_citado": "“{criterio}”"
+    "criterio_citado": "“{criterio}”",
+    "proporcion_conjuntos": "{parcela} ({n} of {total} datasets)",
+    "registra_uno": "records",
+    "registra_varios": "record"
   },
   "clasificaciones": {
     "bajo": "low",
@@ -203,7 +206,8 @@
     "por_vencer": "about to expire",
     "vencido": "expired",
     "faltante": "missing",
-    "no_aplica": "not applicable"
+    "no_aplica": "not applicable",
+    "no_requerida": "not required"
   },
   "niveles": {
     "declarado": "Declared",
@@ -357,7 +361,7 @@
     "version": "Version",
     "resultado": "Result",
     "huella_respuesta": "Fingerprint of the response",
-    "convergencia_frase": "Datasets consulted: {n}. Record forest in 2020: {a} of {b} that measure it. Record changes after 2020: {c} of {d} that measure it.",
+    "convergencia_frase": "Datasets consulted: {n}. Record forest in 2020: {a} of {b} that measure it. Record forest loss after 2020: {c} of {d} that measure it. Record vegetation disturbance after 2020: {e} of {f} that measure it.",
     "convergencia": "Datasets consulted",
     "casillas": "Legal file",
     "casilla": "Item",
@@ -411,7 +415,8 @@
     "completa": "Full (wet cocoa)",
     "seco": "Dry (beans delivered dry)",
     "segregado": "Segregated",
-    "mezclado": "Mixed"
+    "mezclado": "Mixed",
+    "tenencia_cubierta": "Not required: tenure is covered by {documento}"
   },
   "anexo": {
     "nota_general": "Help for the importer with the due diligence statement fields that come from this flow, in the order of Annex II to Regulation (EU) 2023/1115 (consolidated text of 18/09/2026). It is not a submission to TRACES and does not use its interface.",

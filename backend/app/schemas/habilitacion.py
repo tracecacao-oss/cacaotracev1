@@ -80,13 +80,16 @@ class FilaConvergencia(BaseModel):
     despues_2020: list[MedidaSalida] | None
     registra_bosque_2020: bool | None
     registra_cambio: bool | None
+    # Desde el 2026-10-07: pérdida de bosque o alteración de la vegetación, con su conteo aparte.
+    tipo_cambio: Literal["perdida_bosque", "alteracion_vegetacion"] | None = None
+    registra_perdida: bool | None = None
+    registra_alteracion: bool | None = None
 
 
 class ConvergenciaSalida(BaseModel):
     filas: list[FilaConvergencia]
     frase: str
     conteos: dict[str, int]
-    discrepan: dict[str, bool]
     umbral_bosque_2020_pct: float
     # Cuántos conjuntos deben registrar bosque el 31/12/2020 para pedir revisión, y si se alcanzan.
     mapas_minimos_bosque_2020: int = 3
@@ -128,7 +131,10 @@ class CasillaSalida(BaseModel):
     tenencia: bool
     registro_consultable: bool
     admite_exencion: bool
-    estado: Literal["vigente", "por_vencer", "vencido", "no_aplica", "faltante"]
+    estado: Literal["vigente", "por_vencer", "vencido", "no_aplica", "no_requerida", "faltante"]
+    # Con estado no_requerida: el documento de tenencia que ya cubre la casilla.
+    cubierta_por: str | None = None
+    cubierta_por_nombre: str | None = None
     nivel: Literal["documentado", "verificado_en_fuente"] | None
     vence_en: date | None
     documentos: list[DocumentoSalida]

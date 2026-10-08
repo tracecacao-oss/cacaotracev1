@@ -36,3 +36,31 @@ CONJUNTOS = {
     "gfw_integrated_alerts": "Alertas integradas de deforestación de GFW (GLAD-L, GLAD-S2 y RADD)",
     "mapbiomas_peru_c3": "MapBiomas Perú, Colección 3",
 }
+
+# Qué mide cada conjunto que responde "después de 2020" (pedido del equipo del 2026-10-07): la pérdida de
+# bosque o una alteración de la vegetación en general (incendio, disturbio, cambio de clase). Solo la
+# pérdida de bosque llega al hallazgo que pide atención; la alteración se muestra en la tabla de convergencia
+# con su propio conteo. Clasificación de Claude Code según la documentación de cada conjunto, por revisar
+# con el equipo.
+PERDIDA_BOSQUE = "perdida_bosque"
+ALTERACION_VEGETACION = "alteracion_vegetacion"
+TIPO_CAMBIO = {
+    # Pérdida o degradación de bosque: miden lo que le pasa a la cobertura forestal.
+    "jrc_tmf": PERDIDA_BOSQUE,
+    "umd_gfc": PERDIDA_BOSQUE,
+    "wur_radd": PERDIDA_BOSQUE,
+    "umd_glad_l": PERDIDA_BOSQUE,
+    "umd_glad_s2": PERDIDA_BOSQUE,
+    "gfw_integrated_alerts": PERDIDA_BOSQUE,
+    "mapbiomas_peru_c3": PERDIDA_BOSQUE,
+    # Alteración de la vegetación en general: no distinguen bosque de cultivo, pasto o matorral.
+    "umd_glad_dist": ALTERACION_VEGETACION,
+    "esri_lulc": ALTERACION_VEGETACION,
+    "modis_fire": ALTERACION_VEGETACION,
+    "esa_firecci": ALTERACION_VEGETACION,
+}
+
+
+def tipo_cambio(conjunto: str) -> str:
+    """Un conjunto sin clasificar cuenta como pérdida de bosque: así nunca se esconde una señal."""
+    return TIPO_CAMBIO.get(conjunto, PERDIDA_BOSQUE)

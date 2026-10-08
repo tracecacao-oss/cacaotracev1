@@ -26,9 +26,13 @@
   "citas": {
     "sin_resultado": "{fuente}: sin resultado",
     "whisp": "Whisp: {valor}",
-    "gfw_cero": "GFW: sin alertas ni pérdida registrada desde 2021",
-    "gfw": "GFW: {alertas} alertas y {perdida} ha de pérdida desde 2021",
-    "gfw_extra": "{base}; {bosque} ha de bosque natural en 2020; {dist} alertas DIST desde 2021",
+    "gfw": "GFW: {medidas}",
+    "gfw_alertas_uno": "{n} alerta integrada de deforestación desde 2021",
+    "gfw_alertas_varios": "{n} alertas integradas de deforestación desde 2021",
+    "gfw_perdida": "{n} ha de pérdida de cobertura arbórea desde 2021",
+    "gfw_bosque": "{n} ha de bosque natural en 2020",
+    "gfw_dist_uno": "{n} alerta DIST de alteración de la vegetación desde 2021",
+    "gfw_dist_varios": "{n} alertas DIST de alteración de la vegetación desde 2021",
     "mapbiomas": "MapBiomas Perú: en 2020, clase predominante {clase}; {bosque} ha de bosque en 2020; {cambio} ha pasaron de bosque a otra clase entre 2020 y {anio}"
   },
   "whisp_valores": {
@@ -66,9 +70,8 @@
     "analisis_por_aproximacion": "{parcela} está registrada como un punto y se analizó como un círculo con su área declarada.",
     "documento_sin_registro_consultable": "{documento} de {parcela} no tiene registro público contra el cual cotejarse.",
     "documento_sin_cotejar": "{documento} de {parcela} tiene registro público y no se cotejó.",
-    "conjuntos_registran_bosque_2020": "En {parcela}, {n} de {total} conjuntos de datos registran bosque al 31 de diciembre de 2020: {conjuntos}.",
-    "conjuntos_registran_cambio_posterior": "En {parcela}, {n} de {total} conjuntos de datos registran cambios después de 2020: {conjuntos}.",
-    "conjuntos_discrepan": "En {parcela}, los conjuntos de datos responden distinto sobre {preguntas}.",
+    "conjuntos_registran_bosque_2020": "En {parcela}, {n} de {total} conjuntos de datos {verbo} bosque al 31 de diciembre de 2020: {conjuntos}.",
+    "conjuntos_registran_cambio_posterior": "En {parcela}, {n} de {total} conjuntos de datos {verbo} pérdida de bosque después de 2020: {conjuntos}.",
     "mapbiomas_pocos_pixeles": "{parcela} tiene {pixeles} píxeles en MapBiomas, menos de 10.",
     "mapbiomas_sin_cobertura_reciente": "MapBiomas no cubre lo ocurrido en {parcela} después de {anio}.",
     "revision_de_imagenes_registrada": "{revisor} revisó las imágenes de {parcela} el {fecha} (anterior al corte: {fecha_previa}; reciente: {fecha_reciente}) y registró «{obs_2020}» antes del corte y «{obs_cambio}» después del corte.",
@@ -107,9 +110,8 @@
     "analisis_por_aproximacion": "Parcelas registradas como punto y analizadas como círculo: {sujetos}, que {aporta} {peso} % del lote.",
     "documento_sin_registro_consultable": "Documentos sin registro público contra el cual cotejarse ({n}), en {sujetos}, que {aporta} {peso} % del lote.",
     "documento_sin_cotejar": "Documentos con registro público que no se cotejaron ({n}), en {sujetos}, que {aporta} {peso} % del lote.",
-    "conjuntos_registran_bosque_2020": "Parcelas en las que algún conjunto de datos registra bosque al 31 de diciembre de 2020: {sujetos}, que {aporta} {peso} % del lote.",
-    "conjuntos_registran_cambio_posterior": "Parcelas en las que algún conjunto de datos registra cambios después de 2020: {sujetos}, que {aporta} {peso} % del lote.",
-    "conjuntos_discrepan": "Parcelas en las que los conjuntos de datos responden distinto: {sujetos}, que {aporta} {peso} % del lote.",
+    "conjuntos_registran_bosque_2020": "Parcelas en las que conjuntos de datos registran bosque al 31 de diciembre de 2020: {sujetos}, que {aporta} {peso} % del lote.",
+    "conjuntos_registran_cambio_posterior": "Parcelas en las que conjuntos de datos registran pérdida de bosque después de 2020: {sujetos}, que {aporta} {peso} % del lote.",
     "mapbiomas_pocos_pixeles": "Parcelas con menos de 10 píxeles en MapBiomas: {sujetos}, que {aporta} {peso} % del lote.",
     "mapbiomas_sin_cobertura_reciente": "MapBiomas no cubre lo ocurrido después de su último año en {sujetos}, que {aporta} {peso} % del lote.",
     "revision_de_imagenes_registrada": "La cooperativa revisó las imágenes satelitales de {sujetos}, que {aporta} {peso} % del lote.",
@@ -157,9 +159,7 @@
     "revision_imagenes_fija": "La revisión de imágenes la hace personal de la cooperativa. Las imágenes revisadas se adjuntan para que el operador pueda repetirla.",
     "registrada_productor": "el productor",
     "registrada_cooperativa": "la cooperativa",
-    "preguntas_estado_2020": "el estado al 31 de diciembre de 2020",
-    "preguntas_cambio_posterior": "los cambios después de 2020",
-    "citas_bosque_2020": "{n} conjuntos de datos que registran bosque al 31 de diciembre de 2020",
+    "citas_bosque_2020": "{n} de {total} conjuntos de datos {verbo} bosque al 31 de diciembre de 2020",
     "sin_fecha": "sin imagen",
     "meses": [
       "enero",
@@ -178,7 +178,10 @@
     "fecha": "{dia} de {mes} de {anio}",
     "preliminar": "Informe preliminar: cambia con los datos hasta que se emita el DEX.",
     "sellado": "Informe sellado en el DEX {codigo}.",
-    "criterio_citado": "«{criterio}»"
+    "criterio_citado": "«{criterio}»",
+    "proporcion_conjuntos": "{parcela} ({n} de {total} conjuntos de datos)",
+    "registra_uno": "registra",
+    "registra_varios": "registran"
   },
   "clasificaciones": {
     "bajo": "bajo",
@@ -203,7 +206,8 @@
     "por_vencer": "por vencer",
     "vencido": "vencido",
     "faltante": "faltante",
-    "no_aplica": "no aplica"
+    "no_aplica": "no aplica",
+    "no_requerida": "no requerida"
   },
   "niveles": {
     "declarado": "Declarado",
@@ -357,7 +361,7 @@
     "version": "Versión",
     "resultado": "Resultado",
     "huella_respuesta": "Huella de la respuesta",
-    "convergencia_frase": "Conjuntos de datos consultados: {n}. Registran bosque en 2020: {a} de {b} que lo miden. Registran cambios después de 2020: {c} de {d} que lo miden.",
+    "convergencia_frase": "Conjuntos de datos consultados: {n}. Registran bosque en 2020: {a} de {b} que lo miden. Registran pérdida de bosque después de 2020: {c} de {d} que la miden. Registran alteración de la vegetación después de 2020: {e} de {f} que la miden.",
     "convergencia": "Conjuntos de datos consultados",
     "casillas": "Expediente legal",
     "casilla": "Casilla",
@@ -411,7 +415,8 @@
     "completa": "Completa (cacao en baba)",
     "seco": "Seco (grano entregado seco)",
     "segregado": "Segregado",
-    "mezclado": "Mezclado"
+    "mezclado": "Mezclado",
+    "tenencia_cubierta": "No requerida: la tenencia está cubierta por {documento}"
   },
   "anexo": {
     "nota_general": "Ayuda para el importador con los campos de la declaración de diligencia debida que salen de este flujo, en el orden del Anexo II del Reglamento (UE) 2023/1115 (texto consolidado del 18/09/2026). No es un envío a TRACES ni usa su interfaz.",

@@ -18,7 +18,7 @@ import {
   vacio,
 } from "../ui.js";
 import { TIPOS_ORGANIZACION } from "../textos.js";
-import { camposUbigeo } from "../ubigeo.js";
+import { camposUbigeo, lugares } from "../ubigeo.js";
 
 export function seccionesPlataforma() {
   return [
@@ -318,7 +318,7 @@ export default async function cooperativas({ navegar }) {
                   "td",
                   {},
                   h("a", { href: `#/plataforma/cooperativas/${c.id}` }, c.nombre_comercial || c.razon_social),
-                  h("span", { class: "sec" }, `${c.distrito}, ${c.provincia}${c.es_demo ? " · demostración" : ""}`),
+                  h("span", { class: "sec" }, `${lugares(c.distrito, c.provincia)}${c.es_demo ? " · demostración" : ""}`),
                 ),
                 h("td", { class: "mono ocultar-sm" }, c.ruc),
                 h("td", {}, insigniaEstado(c)),

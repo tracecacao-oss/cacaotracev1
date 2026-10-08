@@ -251,12 +251,14 @@ def convergencia_salida(sesion: Session, fuentes: dict[str, Fuente], parcela: Pa
                 despues_2020=celda(f.despues_2020),
                 registra_bosque_2020=f.registra_bosque_2020,
                 registra_cambio=f.registra_cambio,
+                tipo_cambio=f.tipo_cambio,
+                registra_perdida=f.registra_perdida,
+                registra_alteracion=f.registra_alteracion,
             )
             for f in c.filas
         ],
         frase=c.frase,
         conteos=c.conteos,
-        discrepan=c.discrepan,
         umbral_bosque_2020_pct=c.umbral_pct,
         mapas_minimos_bosque_2020=servicio_convergencia.MAPAS_MINIMOS_BOSQUE_2020,
         hubo_bosque_2020=c.hubo_bosque_2020,

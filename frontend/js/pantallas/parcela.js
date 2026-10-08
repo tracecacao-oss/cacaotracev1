@@ -10,7 +10,7 @@ import { puede } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo } from "../mapa.js";
 import { ESTADOS_MIDAGRI, MOTIVOS_VISITA, hectareas, insigniaAlerta, insigniaHabilitacion, insigniaNivel } from "../textos.js";
 import { abrirModal, cabeceraFicha, campo, confirmar, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
-import { camposUbigeo } from "../ubigeo.js";
+import { camposUbigeo, lugares } from "../ubigeo.js";
 import { cargarPestana, pestanaCobertura, pestanaExpediente, pestanaHabilitacion } from "./parcela-habilitacion.js";
 import { pestanaImagenes } from "./parcela-imagenes.js";
 
@@ -257,7 +257,7 @@ export default async function parcela({ hash, parametros, recargar }) {
     contenido: rejilla([
       { etiqueta: "Nombre", valor: p.nombre },
       { etiqueta: "Productor", valor: `${p.productor.nombres} ${p.productor.apellidos}` },
-      { etiqueta: "Ubicación", valor: [p.centro_poblado, p.distrito, p.provincia, p.departamento].filter(Boolean).join(", ") },
+      { etiqueta: "Ubicación", valor: [p.centro_poblado, lugares(p.distrito, p.provincia, p.departamento)].filter(Boolean).join(", ") },
       { etiqueta: "Estado en MIDAGRI", valor: midagri, extra: insigniaNivel(p.nivel_midagri) },
       { etiqueta: "Código en MIDAGRI", valor: p.midagri_codigo, mono: true },
       { etiqueta: "Estado", valor: p.estado === "activa" ? "Activa" : "Inactiva" },
@@ -356,7 +356,7 @@ export default async function parcela({ hash, parametros, recargar }) {
           h("b", {}, p.nombre),
           " · ",
           delProductor ? `${p.productor.nombres} ${p.productor.apellidos}` : h("a", { href: `#/productores/${p.productor.id}` }, `${p.productor.nombres} ${p.productor.apellidos}`),
-          ` · ${p.distrito}, ${p.provincia}`,
+          ` · ${lugares(p.distrito, p.provincia)}`,
         ],
         cifra: hectareas(p.area_total_ha),
         cifraTexto: esPoligono ? "área calculada" : "área declarada (punto)",

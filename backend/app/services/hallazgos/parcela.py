@@ -27,6 +27,11 @@ def _nuevo(d: DatosLote, codigo: str, p: Parcela, explicacion: str | None = None
     )
 
 
+def _verbo(idioma: str, n: int) -> str:
+    """"1 de 13 conjuntos de datos registra", "2 de 13 registran"."""
+    return textos.obtener(idioma, "comun.registra_uno" if n == 1 else "comun.registra_varios")
+
+
 def _g(valor: Any) -> str:
     return f"{valor:g}" if isinstance(valor, int | float) else str(valor)
 
@@ -43,24 +48,19 @@ def texto_fuente(idioma: str, fuente: str, resultado_fuente: str | None, indicad
         and ind.get("alertas_desde_2021") is not None
         and ind.get("perdida_ha_total") is not None
     ):
-        if ind["alertas_desde_2021"] == 0 and ind["perdida_ha_total"] == 0:
-            texto = textos.t(idioma, "citas.gfw_cero")
-        else:
-            texto = textos.t(
-                idioma,
-                "citas.gfw",
-                alertas=_g(ind["alertas_desde_2021"]),
-                perdida=_g(ind["perdida_ha_total"]),
-            )
-        if ind.get("bosque_natural_2020_ha") is not None and ind.get("alertas_dist_desde_2021") is not None:
-            texto = textos.t(
-                idioma,
-                "citas.gfw_extra",
-                base=texto,
-                bosque=_g(ind["bosque_natural_2020_ha"]),
-                dist=_g(ind["alertas_dist_desde_2021"]),
-            )
-        return texto
+        # Cada medida por separado, con singular para 1 (pedido del equipo del 2026-10-07).
+        def alertas(clave: str, valor) -> str:
+            return textos.t(idioma, f"citas.{clave}_{'uno' if valor == 1 else 'varios'}", n=_g(valor))
+
+        partes = [
+            alertas("gfw_alertas", ind["alertas_desde_2021"]),
+            textos.t(idioma, "citas.gfw_perdida", n=_g(ind["perdida_ha_total"])),
+        ]
+        if ind.get("bosque_natural_2020_ha") is not None:
+            partes.append(textos.t(idioma, "citas.gfw_bosque", n=_g(ind["bosque_natural_2020_ha"])))
+        if ind.get("alertas_dist_desde_2021") is not None:
+            partes.append(alertas("gfw_dist", ind["alertas_dist_desde_2021"]))
+        return textos.t(idioma, "citas.gfw", medidas="; ".join(partes))
     claves = ("clase_predominante_2020", "bosque_2020_ha", "cambio_bosque_a_no_bosque_ha")
     if fuente == "mapbiomas" and all(ind.get(k) is not None for k in claves):
         return textos.t(
@@ -106,7 +106,16 @@ def analisis_requiere_revision(d: DatosLote) -> list[Hallazgo]:
         for idioma in textos.IDIOMAS:
             lista = [cita(idioma, a) for a in piden]
             if resumen.get("bosque_2020"):
-                lista.append(textos.t(idioma, "comun.citas_bosque_2020", n=len(resumen["bosque_2020"])))
+                n = len(resumen["bosque_2020"])
+                lista.append(
+                    textos.t(
+                        idioma,
+                        "comun.citas_bosque_2020",
+                        n=n,
+                        total=d.convergencias[p.id].conteos["bosque_miden"],
+                        verbo=_verbo(idioma, n),
+                    )
+                )
             citas[idioma] = lista
         resultado.append(
             _nuevo(
@@ -261,6 +270,7 @@ def conjuntos_registran_bosque_2020(d: DatosLote) -> list[Hallazgo]:
                 d.nota_habilitacion(p.id),
                 n=len(filas),
                 total=conv.conteos["bosque_miden"],
+                verbo={i: _verbo(i, len(filas)) for i in textos.IDIOMAS},
                 conjuntos={i: textos.lista(i, conjuntos) for i in textos.IDIOMAS},
             )
         )
@@ -268,10 +278,13 @@ def conjuntos_registran_bosque_2020(d: DatosLote) -> list[Hallazgo]:
 
 
 def conjuntos_registran_cambio_posterior(d: DatosLote) -> list[Hallazgo]:
+    """Solo la pérdida de bosque pide atención (pedido del equipo del 2026-10-07). La alteración de la
+    vegetación (DIST-ALERT, incendios, cambio de clase en Esri Land Cover) se ve en la tabla de
+    convergencia."""
     resultado = []
     for p in d.parcelas_ordenadas():
         conv = d.convergencias[p.id]
-        nombres = [f.nombre for f in conv.filas if f.registra_cambio]
+        nombres = [f.nombre for f in conv.filas if f.registra_perdida]
         if nombres:
             resultado.append(
                 _nuevo(
@@ -280,29 +293,9 @@ def conjuntos_registran_cambio_posterior(d: DatosLote) -> list[Hallazgo]:
                     p,
                     d.nota_habilitacion(p.id),
                     n=len(nombres),
-                    total=conv.conteos["cambio_miden"],
+                    total=conv.conteos["perdida_miden"],
+                    verbo={i: _verbo(i, len(nombres)) for i in textos.IDIOMAS},
                     conjuntos={i: textos.lista(i, nombres) for i in textos.IDIOMAS},
-                )
-            )
-    return resultado
-
-
-def conjuntos_discrepan(d: DatosLote) -> list[Hallazgo]:
-    resultado = []
-    for p in d.parcelas_ordenadas():
-        discrepan = d.convergencias[p.id].discrepan
-        preguntas = [q for q in ("estado_2020", "cambio_posterior") if discrepan.get(q)]
-        if preguntas:
-            resultado.append(
-                _nuevo(
-                    d,
-                    "conjuntos_discrepan",
-                    p,
-                    d.nota_habilitacion(p.id),
-                    preguntas={
-                        i: textos.lista(i, [textos.obtener(i, f"comun.preguntas_{q}") for q in preguntas])
-                        for i in textos.IDIOMAS
-                    },
                 )
             )
     return resultado
@@ -494,7 +487,6 @@ REGLAS = (
     documento_por_vencer,
     conjuntos_registran_bosque_2020,
     conjuntos_registran_cambio_posterior,
-    conjuntos_discrepan,
     revision_de_imagenes_registrada,
     habilitada_con_cambio_visible,
     coordenada_no_recorrida,

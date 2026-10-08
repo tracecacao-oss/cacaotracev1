@@ -397,6 +397,13 @@ def test_validar_emite_el_dop(api, sesion, coop, cancha, operador, productor, pa
     assert dop.contenido["identificacion"]["misma_persona"] is True
     assert dop.contenido["habilitacion"]["decision"]["nota"] == NOTA_HABILITAR
     assert len(dop.contenido["expediente"]["casillas"]) == 7
+    # Versión 4: la casilla de tenencia que no se requiere dice qué documento la cubre.
+    assert dop.contenido["version"] == 4
+    por_codigo = {c["codigo"]: c for c in dop.contenido["expediente"]["casillas"]}
+    assert por_codigo["titulo_sunarp"]["estado"] == "vigente"
+    assert por_codigo["constancia_posesion"]["estado"] == "no_requerida"
+    constancia = por_codigo["constancia_posesion"]
+    assert constancia["cubierta_por_nombre"] == "Título de propiedad inscrito en SUNARP"
     assert {c["fuente"] for c in dop.contenido["cobertura"]} == {"whisp", "gfw"}
     acciones = [
         a.accion

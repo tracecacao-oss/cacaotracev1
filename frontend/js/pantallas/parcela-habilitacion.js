@@ -6,6 +6,7 @@
 import { llamarApi } from "../api.js";
 import { verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
+import { hoyLima as hoy } from "../fechas.js";
 import {
   ESTADOS_CASILLA,
   FUENTES,
@@ -18,8 +19,6 @@ import {
   insigniaNivel,
 } from "../textos.js";
 import { abrirModal, campo, cargando, enviarCon, errorDeCarga, fecha, h, icono, reemplazar, seccion, toast } from "../ui.js";
-
-const hoy = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
 
 function insignia(clase, texto) {
   return h("span", { class: `badge ${clase}` }, h("span", { class: "dot" }), texto);
@@ -137,7 +136,7 @@ function indicadoresGfw(ind) {
     ind.bosque_natural_2020_ha != null && ["Bosque natural en 2020 (SBTN)", hectareas(ind.bosque_natural_2020_ha)],
     ind.alertas_dist_desde_2021 != null && ["Alertas DIST desde 2021", String(ind.alertas_dist_desde_2021)],
     ...Object.entries(ind.perdida_ha_por_anio ?? {}).map(([anio, ha]) => [`Pérdida en ${anio}`, hectareas(ha)]),
-    ["Rango consultado", ind.desde ? `${ind.desde} a ${ind.hasta}` : "—"],
+    ["Rango consultado", ind.desde ? `${fecha(ind.desde)} a ${fecha(ind.hasta)}` : "—"],
     ["Umbral de densidad arbórea 2000", ind.umbral_densidad_2000_porcentaje != null ? `${ind.umbral_densidad_2000_porcentaje} %` : "—"],
   ].filter(Boolean);
   return filas.map(([etiqueta, valor]) => h("div", {}, h("dt", {}, etiqueta), h("dd", {}, valor)));
@@ -394,7 +393,13 @@ function tablaDeFilas(filas) {
             h("td", {}, f.vias.join(" y ")),
             h("td", { class: "fecha" }, fechasDe(f)),
             h("td", {}, medidas(f.al_2020), f.registra_bosque_2020 && insignia("warn", `Bosque el ${CORTE}`)),
-            h("td", {}, medidas(f.despues_2020), f.registra_cambio && insignia("warn", "Cambios desde 2021")),
+            h(
+              "td",
+              {},
+              medidas(f.despues_2020),
+              f.registra_perdida && insignia("warn", "Pérdida de bosque desde 2021"),
+              f.registra_alteracion && insignia("", "Alteración de la vegetación desde 2021"),
+            ),
           ),
         ),
       ),
@@ -417,7 +422,7 @@ function tablaConvergencia(tabla) {
     h(
       "p",
       { class: "panel-sub" },
-      `"Registran bosque en 2020" quiere decir que el mapa vio bosque en la parcela el ${CORTE}, la fecha de corte: es la foto de ese día, no una pérdida. Se pide revisar imágenes cuando ${tabla.mapas_minimos_bosque_2020 ?? 3} o más mapas lo ven. Los cambios cuentan solo desde el 1 de enero de 2021.`,
+      `"Registran bosque en 2020" quiere decir que el mapa vio bosque en la parcela el ${CORTE}, la fecha de corte: es la foto de ese día, no una pérdida. Se pide revisar imágenes cuando ${tabla.mapas_minimos_bosque_2020 ?? 3} o más mapas lo ven. Los cambios cuentan solo desde el 1 de enero de 2021, y se cuentan aparte: la pérdida de bosque, y la alteración de la vegetación (alertas DIST, cambio de clase, fuego), que puede ser poda, cosecha o renovación del cultivo.`,
     ),
     marcadas.length > 0 && tablaDeFilas(marcadas),
     h(
@@ -427,7 +432,7 @@ function tablaConvergencia(tabla) {
       h(
         "p",
         { class: "panel-sub" },
-        `Un conjunto registra bosque en 2020 si su medida de bosque alcanza el ${tabla.umbral_bosque_2020_pct} % del área de la parcela, y registra cambios si alguna de sus medidas desde 2021 es mayor que cero.`,
+        `Un conjunto registra bosque en 2020 si su medida de bosque alcanza el ${tabla.umbral_bosque_2020_pct} % del área de la parcela. Registra pérdida de bosque o alteración de la vegetación, según lo que mide, si alguna de sus medidas desde 2021 es mayor que cero.`,
       ),
       tablaDeFilas(tabla.filas),
     ),
@@ -470,11 +475,13 @@ function hallazgos(ultimos, tabla, bosque) {
     if (f.registra_cambio && cuenta) {
       cambios = true;
       const medidas = numeros(f.despues_2020 ?? []).filter((m) => m.valor > 0);
-      const que = ALERTAS_SATELITE.has(f.conjunto)
-        ? "Son avisos del satélite de que la vegetación cambió; no dicen la causa."
-        : AREA_QUEMADA.has(f.conjunto)
-          ? "Marca área quemada."
-          : "Marca pérdida o cambio de la cobertura.";
+      const que = AREA_QUEMADA.has(f.conjunto)
+        ? "Marca área quemada: alteración de la vegetación, no necesariamente pérdida de bosque."
+        : f.registra_alteracion
+          ? "Es alteración de la vegetación, no necesariamente pérdida de bosque: no dice la causa."
+          : ALERTAS_SATELITE.has(f.conjunto)
+            ? "Son avisos del satélite de pérdida de cobertura arbórea; no dicen la causa."
+            : "Marca pérdida de bosque.";
       puntos.push([f.nombre, `Registró ${medidas.map((m) => cifra(m, areaHa)).join(" y ") || "cambios"} desde el 1 de enero de 2021. ${que}`]);
     }
   }
@@ -706,9 +713,9 @@ function abrirExencion(casilla, ctx) {
   });
 }
 
-function filaCasilla(c, ctx, puedo, tenenciaCubierta) {
-  // La tenencia se cumple con el título o con la constancia: la otra no falta.
-  const [clase, texto] = c.tenencia && c.estado === "faltante" && tenenciaCubierta ? ["", "No necesaria"] : ESTADOS_CASILLA[c.estado];
+function filaCasilla(c, ctx, puedo) {
+  // La tenencia se cumple con el título o con la constancia: la otra llega como no_requerida.
+  const [clase, texto] = ESTADOS_CASILLA[c.estado] ?? ["", c.estado];
   const vigentes = c.documentos.filter((d) => d.vigente);
   const exencion = c.exencion && !c.exencion.retirada_en ? c.exencion : null;
   return h(
@@ -720,6 +727,7 @@ function filaCasilla(c, ctx, puedo, tenenciaCubierta) {
       h("div", {}, h("b", {}, c.nombre), h("span", { class: "sec" }, `${c.grupo}${c.registro_consultable ? " · con registro público" : " · sin registro público consultable"}`)),
       h("span", { class: "fila-acciones" }, insignia(clase, texto), c.nivel && insigniaNivel(c.nivel), c.vence_en && h("span", { class: "badge" }, `vence ${fecha(c.vence_en)}`)),
     ),
+    c.estado === "no_requerida" && c.cubierta_por_nombre && h("div", { class: "casilla-doc" }, h("span", {}, `No requerida: la tenencia está cubierta por ${c.cubierta_por_nombre}.`)),
     vigentes.map((d) =>
       h(
         "div",
@@ -779,7 +787,7 @@ export async function pestanaExpediente(ctx) {
     contenido: [
       exp.faltan.length > 0 && h("p", { class: "alerta warn" }, `Falta: ${exp.faltan.map((c) => (c === "tenencia" ? "tenencia (título o constancia de posesión)" : nombres[c])).join(", ")}.`),
       exp.tenencia_solo_posesion && h("p", { class: "alerta info" }, "La tenencia se apoya solo en una constancia de posesión, que no tiene registro público contra el cual cotejarse."),
-      h("ul", { class: "casillas" }, exp.casillas.map((c) => filaCasilla(c, ctx, puedo, !exp.faltan.includes("tenencia")))),
+      h("ul", { class: "casillas" }, exp.casillas.map((c) => filaCasilla(c, ctx, puedo))),
     ],
   });
 }
