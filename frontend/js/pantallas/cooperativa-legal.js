@@ -10,7 +10,6 @@ import { hoyLima as hoy } from "../fechas.js";
 import { ESTADOS_CASILLA, insigniaNivel } from "../textos.js";
 import { lugares } from "../ubigeo.js";
 import { abrirModal, cabeceraFicha, campo, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
-import { seccionesCooperativa } from "./vacia.js";
 
 function insignia(clase, texto) {
   return h("span", { class: `badge ${clase}`.trim() }, h("span", { class: "dot" }), texto);
@@ -118,7 +117,6 @@ export default async function cooperativaLegal({ recargar }) {
   return {
     titulo: "Datos y expediente legal",
     migas: [["Cooperativa", "#/cooperativa"], ["Datos y expediente legal"]],
-    secciones: seccionesCooperativa(),
     cabecera: null,
     contenido: h(
       "section",

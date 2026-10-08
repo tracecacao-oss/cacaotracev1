@@ -7,7 +7,6 @@ import { estado, rolEfectivo } from "../estado.js";
 import { COLORES, capaGeojson, crearMapa, encuadrar, estilo } from "../mapa.js";
 import { hectareas } from "../textos.js";
 import { abrirModal, campo, cargando, enviarCon, fecha, h, icono, reemplazar, toast, vacio } from "../ui.js";
-import { seccionesProductores } from "./productores.js";
 
 const ESTADOS = [
   ["abierta", "Abiertas"],
@@ -119,7 +118,7 @@ export default async function superposiciones() {
   // Filtro por estado con los chips del diseño.
   const selector = h(
     "div",
-    { class: "fchips", role: "group", "aria-label": "Estado" },
+    { class: "fchips", role: "group", "aria-label": "Estado", "data-etiqueta": "Estado" },
     ESTADOS.map(([v, t]) =>
       h(
         "button",
@@ -147,7 +146,6 @@ export default async function superposiciones() {
         ? "Parcelas que se cruzan. Una superposición con otra cooperativa solo la acepta el equipo CacaoTrace."
         : "Parcelas que se cruzan. Solo el administrador de la cooperativa acepta superposiciones.",
     migas: [["Productores", "#/productores"], ["Superposiciones"]],
-    secciones: seccionesProductores(),
     contenido: [h("div", {}, selector), lista],
   };
 }

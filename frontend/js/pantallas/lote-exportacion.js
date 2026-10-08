@@ -8,7 +8,7 @@
 import { llamarApi } from "../api.js";
 import { anularDocumento, verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
-import { estadoLote, insignia, insigniaFifo, seccionesExportacion, tarjetasIndicadores, vistaGenealogia } from "../exportacion.js";
+import { estadoLote, insignia, insigniaFifo, tarjetasIndicadores, vistaGenealogia } from "../exportacion.js";
 import { hoyLima as hoy } from "../fechas.js";
 import { mensajeFinal, vistaInforme } from "../informe.js";
 import { codigoQr, huella } from "../tandas.js";
@@ -532,7 +532,6 @@ export default async function loteExportacion({ parametros: [id, pestana], recar
   return {
     titulo: l.codigo,
     migas: [["Exportación", "#/exportacion"], ["Lotes", "#/exportacion/lotes"], [l.codigo]],
-    secciones: seccionesExportacion(),
     cabecera: null,
     contenido: h(
       "section",

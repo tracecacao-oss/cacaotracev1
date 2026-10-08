@@ -6,7 +6,6 @@ import { rolEfectivo } from "../estado.js";
 import { TIPOS_LUGAR } from "../textos.js";
 import { abrirModal, campo, enviarCon, h, icono, seccion, toast, vacio } from "../ui.js";
 import { camposUbigeo, lugares as textoUbicacion } from "../ubigeo.js";
-import { seccionesCooperativa } from "./vacia.js";
 
 const tipoTexto = (tipo) => TIPOS_LUGAR.find(([v]) => v === tipo)?.[1] ?? tipo;
 
@@ -116,7 +115,6 @@ export default async function lugares({ recargar }) {
     antetitulo: "Cooperativa",
     descripcion: "Los sitios físicos de la cooperativa. La tanda se pesa en una cancha de acopio.",
     migas: [["Cooperativa", "#/cooperativa"], ["Lugares"]],
-    secciones: seccionesCooperativa(),
     accion: nuevo,
     contenido: h("section", { class: "panel inspector" }, seccion({ titulo: "Lugares", contenido: tabla })),
   };

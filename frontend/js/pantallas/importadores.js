@@ -3,7 +3,6 @@
 
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
-import { seccionesExportacion } from "../exportacion.js";
 import { abrirModal, campo, enviarCon, h, icono, seccion, toast, vacio } from "../ui.js";
 
 /** Campos del importador; los usa también el primer paso de "Nueva orden". */
@@ -90,7 +89,6 @@ export default async function importadores({ recargar }) {
     antetitulo: "Exportación",
     descripcion: "Quienes compran el cacao de la cooperativa. No inician sesión.",
     migas: [["Exportación", "#/exportacion"], ["Importadores"]],
-    secciones: seccionesExportacion(),
     accion: opera && h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirFormulario(null, recargar) }, icono("plus"), "Nuevo importador"),
     contenido: h("section", { class: "panel inspector" }, seccion({ titulo: "Importadores", contenido: tabla })),
   };

@@ -5,7 +5,6 @@
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
 import { ESTADOS_TANDA, PRODUCTO, kilos } from "../textos.js";
-import { seccionesLotes } from "../tandas.js";
 import { buscador, cargando, conRetraso, errorDeCarga, fecha, h, icono, reemplazar, seccion, vacio } from "../ui.js";
 
 const ORDEN = ["registrada", "observada", "validada", "anulada"];
@@ -136,7 +135,6 @@ export default async function recepcion({ hash, navegar }) {
     antetitulo: "Lotes y proceso",
     descripcion: "Las tandas que la cooperativa pesa en cancha. Cada tanda viene de una sola parcela y, al validarse, emite su DOP.",
     migas: [["Lotes y proceso", "#/lotes"], ["Recepción"]],
-    secciones: seccionesLotes(),
     accion:
       puedeRegistrar &&
       !aviso &&

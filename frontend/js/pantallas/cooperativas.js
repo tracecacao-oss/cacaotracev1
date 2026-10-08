@@ -20,14 +20,6 @@ import {
 import { TIPOS_ORGANIZACION } from "../textos.js";
 import { camposUbigeo, lugares } from "../ubigeo.js";
 
-export function seccionesPlataforma() {
-  return [
-    ["Cooperativas", "#/plataforma/cooperativas"],
-    ["Superposiciones", "#/plataforma/superposiciones"],
-    ["Configuración", "#/plataforma/configuracion"],
-  ];
-}
-
 export function insigniaEstado(cooperativa) {
   return cooperativa.estado === "activa"
     ? h("span", { class: "badge ok" }, h("span", { class: "dot" }), "Activa")
@@ -349,7 +341,6 @@ export default async function cooperativas({ navegar }) {
     antetitulo: "Plataforma",
     descripcion: "Cooperativas que usan CacaoTrace, con su estado y sus usuarios.",
     migas: [["Plataforma"], ["Cooperativas"]],
-    secciones: seccionesPlataforma(),
     accion: h("button", { class: "btn btn-primary", type: "button", onclick: () => abrirAlta(navegar) }, icono("mas"), "Nueva cooperativa"),
     contenido: [
       uso,

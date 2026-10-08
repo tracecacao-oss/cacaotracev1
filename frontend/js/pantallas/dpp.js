@@ -5,7 +5,7 @@ import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
 import { ALERTAS_CORRIDA, FASES, MANEJOS, RUTAS, SITUACIONES, datoPropio, etiqueta, horas, insignia, simbolo } from "../proceso.js";
 import { PRODUCTO, kilos } from "../textos.js";
-import { codigoQr, descargarPdf, huella, seccionesLotes } from "../tandas.js";
+import { codigoQr, descargarPdf, huella } from "../tandas.js";
 import { abrirModal, cabeceraFicha, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 
 function abrirAnulacion(d, alAnular) {
@@ -172,7 +172,6 @@ export default async function dpp({ parametros: [id], recargar }) {
   return {
     titulo: d.codigo,
     migas: [["Lotes y proceso", "#/lotes"], ["Corridas", "#/lotes/corridas"], [d.corrida_codigo, `#/corridas/${d.corrida_id}`], [d.codigo]],
-    secciones: seccionesLotes(),
     cabecera: null,
     contenido: h(
       "section",

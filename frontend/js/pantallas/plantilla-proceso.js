@@ -6,7 +6,6 @@ import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
 import { campoMetodo, FASES, horas, simbolo } from "../proceso.js";
 import { abrirModal, campo, enviarCon, h, icono, seccion, toast, vacio } from "../ui.js";
-import { seccionesCooperativa } from "./vacia.js";
 
 function abrirCalidad(calidad, alGuardar) {
   const nueva = !calidad;
@@ -195,7 +194,6 @@ export default async function plantillaProceso({ recargar }) {
     antetitulo: "Cooperativa",
     descripcion: "Los valores habituales de cada etapa. Cada corrida nace con ellos y el operador los confirma o corrige.",
     migas: [["Cooperativa", "#/cooperativa"], ["Plantilla de proceso"]],
-    secciones: seccionesCooperativa(),
     contenido: h(
       "section",
       { class: "panel inspector" },

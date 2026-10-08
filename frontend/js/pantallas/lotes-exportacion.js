@@ -1,7 +1,7 @@
 // Lotes (segunda sección de Exportación): código, orden, masa, número de parcelas y estado.
 
 import { llamarApi } from "../api.js";
-import { estadoLote, insigniaFifo, seccionesExportacion } from "../exportacion.js";
+import { estadoLote, insigniaFifo } from "../exportacion.js";
 import { kilos } from "../textos.js";
 import { cargando, errorDeCarga, fecha, h, reemplazar, seccion, vacio } from "../ui.js";
 
@@ -46,7 +46,7 @@ function tabla(lotes) {
 
 export default async function lotesExportacion() {
   const lista = h("div", {}, cargando());
-  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado del lote" });
+  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado del lote", "data-etiqueta": "Estado" });
   async function cargar() {
     for (const b of chips.children) b.setAttribute("aria-pressed", String(b.dataset.valor === filtro));
     reemplazar(lista, cargando());
@@ -65,7 +65,6 @@ export default async function lotesExportacion() {
     antetitulo: "Exportación",
     descripcion: "Cada lote reúne el stock que cumple una orden. Al confirmarse descuenta los saldos y calcula de qué parcelas viene.",
     migas: [["Exportación", "#/exportacion"], ["Lotes"]],
-    secciones: seccionesExportacion(),
     contenido: h("section", { class: "panel inspector" }, h("div", { class: "barra-lista" }, chips), seccion({ titulo: "Lotes de exportación", contenido: lista })),
   };
 }

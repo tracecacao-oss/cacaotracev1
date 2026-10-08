@@ -4,7 +4,6 @@
 import { llamarApi } from "../api.js";
 import { ESTADOS_TANDA_FINAL, insignia } from "../proceso.js";
 import { kilos } from "../textos.js";
-import { seccionesLotes } from "../tandas.js";
 import { cargando, errorDeCarga, fecha, h, reemplazar, seccion, vacio } from "../ui.js";
 
 const FILTROS = [
@@ -58,7 +57,7 @@ function tabla(finales) {
 export default async function stock() {
   const calidades = await llamarApi("/calidades");
   const lista = h("div", {}, cargando());
-  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado de la tanda final" });
+  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado de la tanda final", "data-etiqueta": "Estado" });
   const selector = h(
     "select",
     { class: "select", "aria-label": "Calidad", onchange: (e) => ((filtro.calidad_id = e.target.value), cargar()) },
@@ -86,7 +85,6 @@ export default async function stock() {
     antetitulo: "Lotes y proceso",
     descripcion: "Las tandas finales de las corridas consolidadas: grano seco listo para las órdenes de compra.",
     migas: [["Lotes y proceso", "#/lotes"], ["Stock"]],
-    secciones: seccionesLotes(),
     contenido: h("section", { class: "panel inspector" }, h("div", { class: "barra-lista" }, chips, calidades.length > 0 && selector), seccion({ titulo: "Tandas finales", contenido: lista })),
   };
 }

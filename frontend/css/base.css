@@ -926,6 +926,39 @@ dialog.modal::backdrop {
 .side-i[aria-current="page"] .ic {
   color: var(--emerald);
 }
+/* Módulo abierto: sus secciones van debajo, con una línea que las une al módulo (decisión del 2026-10-07). */
+.side-i.abierto {
+  color: var(--emerald-ink);
+}
+.side-i.abierto .ic {
+  color: var(--emerald);
+}
+.side-sub {
+  display: grid;
+  gap: 1px;
+  margin: 2px 0 6px 19px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.side-s {
+  display: block;
+  padding: 6px 10px;
+  border-radius: var(--r-md);
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+}
+.side-s:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.side-s[aria-current="page"] {
+  background: var(--emerald-tint);
+  color: var(--emerald-ink);
+}
 .side-t {
   flex: 1;
   min-width: 0;
@@ -990,6 +1023,21 @@ body.side-min .side-user {
 }
 body.side-min .side-contraer .ic {
   transform: rotate(180deg);
+}
+/* Contraída a íconos: sin secciones en la barra; el módulo abierto queda marcado y las secciones
+   vuelven bajo el título de la página. */
+body.side-min .side-sub {
+  display: none;
+}
+body.side-min .side-i.abierto {
+  background: var(--emerald-tint);
+  box-shadow: inset 3px 0 0 var(--emerald);
+}
+.secciones-pagina {
+  display: none;
+}
+body.side-min .secciones-pagina {
+  display: block;
 }
 
 .principal {
@@ -1326,6 +1374,17 @@ a.kpi:hover {
   body.side-min .side-coop,
   body.side-min .side-g {
     display: revert;
+  }
+  /* En el celular la barra es un menú desplegable: las secciones siempre van en él. */
+  body.side-min .side-sub {
+    display: grid;
+  }
+  body.side-min .side-i.abierto {
+    background: none;
+    box-shadow: none;
+  }
+  body.side-min .secciones-pagina {
+    display: none;
   }
   .side-contraer {
     display: none;
@@ -1793,35 +1852,43 @@ a.kpi:hover {
   color: var(--ink-3);
   margin-top: 2px;
 }
+/* Filtros de una lista: chips sueltos con su etiqueta, para que no se confundan con la navegación. */
 .fchips {
   display: inline-flex;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 9px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  align-items: center;
+  gap: 6px;
   max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
 }
+.fchips[data-etiqueta]::before {
+  content: attr(data-etiqueta);
+  margin-right: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
 .fchip {
   height: 28px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
   color: var(--ink-3);
   font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 .fchip:hover {
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 .fchip[aria-pressed="true"] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow-sm), 0 0 0 1px var(--line);
+  background: var(--emerald-tint);
+  border-color: color-mix(in srgb, var(--emerald) 45%, transparent);
+  color: var(--emerald-ink);
 }
 .panel-mapa {
   padding: 6px;

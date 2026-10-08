@@ -4,7 +4,6 @@
 // se muestran los kilos que faltan y "Confirmar lote" queda apagado.
 
 import { llamarApi } from "../api.js";
-import { seccionesExportacion } from "../exportacion.js";
 import { kilos } from "../textos.js";
 import { fecha, h, icono, seccion, toast } from "../ui.js";
 
@@ -18,7 +17,6 @@ export default async function loteArmar({ parametros: [id], navegar }) {
     return {
       titulo: `Armar ${lote.codigo}`,
       migas,
-      secciones: seccionesExportacion(),
       contenido: h("section", { class: "panel" }, h("p", { class: "panel-sub" }, "El lote ya no está en armado: su selección no cambia. "), h("a", { class: "btn", href: `#/lotes-exportacion/${lote.id}` }, "Ver el lote")),
     };
   }
@@ -159,7 +157,6 @@ export default async function loteArmar({ parametros: [id], navegar }) {
     antetitulo: "Exportación",
     descripcion: `Orden ${lote.orden.codigo} · ${lote.importador} · ${lote.calidad}. La sugerencia FIFO toma el stock del más antiguo al más nuevo y no reserva nada.`,
     migas,
-    secciones: seccionesExportacion(),
     contenido: h(
       "section",
       { class: "panel inspector" },

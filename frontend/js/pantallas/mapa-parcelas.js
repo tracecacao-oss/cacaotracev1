@@ -5,7 +5,6 @@ import { llamarApi } from "../api.js";
 import { COLORES, agregarLeyenda, capaGeojson, crearMapa, encuadrar, estilo } from "../mapa.js";
 import { hectareas } from "../textos.js";
 import { h } from "../ui.js";
-import { seccionesProductores } from "./productores.js";
 
 export default async function mapaParcelas({ navegar }) {
   const contenedor = h("div", { class: "mapa mapa-grande" });
@@ -43,7 +42,6 @@ export default async function mapaParcelas({ navegar }) {
     antetitulo: "Productores",
     descripcion: resumen,
     migas: [["Productores", "#/productores"], ["Mapa de parcelas"]],
-    secciones: seccionesProductores(),
     contenido: h("section", { class: "panel panel-mapa" }, contenedor),
   };
 }

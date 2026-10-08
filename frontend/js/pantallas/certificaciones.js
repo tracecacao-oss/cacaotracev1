@@ -6,7 +6,6 @@ import { llamarApi } from "../api.js";
 import { verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
 import { abrirModal, cabeceraFicha, campo, enviarCon, fecha, h, icono, seccion, toast, vacio } from "../ui.js";
-import { seccionesCooperativa } from "./vacia.js";
 
 const ESTADOS = {
   vigente: ["ok", "Vigente"],
@@ -122,7 +121,6 @@ export default async function certificaciones({ recargar }) {
   return {
     titulo: "Certificaciones",
     migas: [["Cooperativa", "#/cooperativa"], ["Certificaciones"]],
-    secciones: seccionesCooperativa(),
     cabecera: null,
     contenido: h(
       "section",

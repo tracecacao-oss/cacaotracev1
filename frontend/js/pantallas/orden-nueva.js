@@ -2,7 +2,6 @@
 // destino y entrega. La partida del Sistema Armonizado es siempre 1801, cacao en grano.
 
 import { llamarApi } from "../api.js";
-import { seccionesExportacion } from "../exportacion.js";
 import { campo, h, icono, toast } from "../ui.js";
 import { camposImportador, cuerpoImportador } from "./importadores.js";
 
@@ -153,7 +152,6 @@ export default async function ordenNueva({ navegar }) {
     antetitulo: "Exportación",
     descripcion: "Registra lo que pidió el importador y a dónde va. El lote se arma después, desde la orden.",
     migas: [["Exportación", "#/exportacion"], ["Órdenes", "#/exportacion/ordenes"], ["Nueva"]],
-    secciones: seccionesExportacion(),
     contenido: h(
       "section",
       { class: "panel asistente-tanda" },

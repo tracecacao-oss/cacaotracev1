@@ -2,7 +2,6 @@
 
 import { llamarApi } from "../api.js";
 import { PRODUCTO, insigniaDop, kilos } from "../textos.js";
-import { seccionesLotes } from "../tandas.js";
 import { cargando, errorDeCarga, fecha, h, reemplazar, seccion, vacio } from "../ui.js";
 
 const FILTROS = [
@@ -48,7 +47,7 @@ function tabla(dops) {
 
 export default async function dops() {
   const lista = h("div", {}, cargando());
-  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado del DOP" });
+  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Estado del DOP", "data-etiqueta": "Estado" });
 
   async function cargar() {
     for (const b of chips.children) b.setAttribute("aria-pressed", String(b.dataset.valor === filtro));
@@ -69,7 +68,6 @@ export default async function dops() {
     antetitulo: "Lotes y proceso",
     descripcion: "Cada DOP es la copia sellada de lo que respaldaba una tanda al validarse. No cambia; solo se anula, con motivo.",
     migas: [["Lotes y proceso", "#/lotes"], ["DOP"]],
-    secciones: seccionesLotes(),
     contenido: h("section", { class: "panel inspector" }, h("div", { class: "barra-lista" }, chips), seccion({ titulo: "Documentos de origen", contenido: lista })),
   };
 }

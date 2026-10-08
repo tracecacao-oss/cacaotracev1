@@ -3,7 +3,6 @@
 import { llamarApi } from "../api.js";
 import { ROTULOS_ROL } from "../estado.js";
 import { campo, cargando, errorDeCarga, fecha, h, paginador, reemplazar, vacio } from "../ui.js";
-import { seccionesCooperativa } from "./vacia.js";
 
 const ACCIONES = [
   ["", "Todas las acciones"],
@@ -213,7 +212,6 @@ export default async function auditoria() {
     antetitulo: "Cooperativa",
     descripcion: "Cada acción que crea o cambia un dato, con su autor y la hora.",
     migas: [["Cooperativa", "#/cooperativa"], ["Auditoría"]],
-    secciones: seccionesCooperativa(),
     contenido: h(
       "section",
       { class: "panel" },

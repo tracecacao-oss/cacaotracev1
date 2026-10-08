@@ -20,7 +20,6 @@ import {
   simbolo,
 } from "../proceso.js";
 import { PRODUCTO, kilos } from "../textos.js";
-import { seccionesLotes } from "../tandas.js";
 import { abrirModal, cabeceraFicha, campo, enviarCon, fecha, h, icono, reemplazar, rejilla, seccion, toast } from "../ui.js";
 
 const PESTANAS = [
@@ -343,7 +342,6 @@ export default async function corrida({ parametros: [id] }) {
   return {
     titulo: c.codigo,
     migas: [["Lotes y proceso", "#/lotes"], ["Corridas", "#/lotes/corridas"], [c.codigo]],
-    secciones: seccionesLotes(),
     cabecera: null,
     contenido: h("section", { class: "panel inspector" }, cabecera, h("div", { class: "ins-tabs seg-scroll" }, barra), cuerpo),
   };

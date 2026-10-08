@@ -2,7 +2,7 @@
 // (DOP-…) y se ve a qué lotes llegó su cacao, con las tandas, las corridas y las tandas finales del camino.
 
 import { llamarApi } from "../api.js";
-import { estadoLote, nombreProductor, porcentaje, seccionesTrazabilidad } from "../exportacion.js";
+import { estadoLote, nombreProductor, porcentaje } from "../exportacion.js";
 import { PRODUCTO, kilos } from "../textos.js";
 import { cargando, conRetraso, errorDeCarga, fecha, h, icono, reemplazar, seccion, vacio } from "../ui.js";
 
@@ -160,7 +160,6 @@ export default async function trazabilidadOrigen() {
     antetitulo: "Trazabilidad",
     descripcion: "Desde un productor, una parcela o un DOP, a qué lotes de exportación llegó su cacao.",
     migas: [["Trazabilidad", "#/trazabilidad"], ["Rastreo por origen"]],
-    secciones: seccionesTrazabilidad(),
     contenido: h("section", { class: "panel inspector" }, caja, resultados, vista),
   };
 }

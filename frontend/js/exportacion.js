@@ -1,4 +1,4 @@
-// Piezas de la Parte 7 que comparten Exportación y Trazabilidad: secciones de los dos módulos, estados,
+// Piezas de la Parte 7 que comparten Exportación y Trazabilidad: estados,
 // indicadores del lote y la vista de genealogía con la composición del diseño de referencia (columnas
 // numeradas unidas por cintas proporcionales a los kilos), más la tabla por parcela y el mapa; tocar una
 // parcela en cualquiera de las tres vistas la resalta en las otras dos.
@@ -6,22 +6,6 @@
 import { capaGeojson, crearMapa, encuadrar, estilo } from "./mapa.js";
 import { kilos } from "./textos.js";
 import { avatar, h, icono } from "./ui.js";
-
-export function seccionesExportacion() {
-  return [
-    ["Órdenes", "#/exportacion/ordenes"],
-    ["Lotes", "#/exportacion/lotes"],
-    ["DEX", "#/exportacion/dex"],
-    ["Importadores", "#/exportacion/importadores"],
-  ];
-}
-
-export function seccionesTrazabilidad() {
-  return [
-    ["Genealogía por lote", "#/trazabilidad/lotes"],
-    ["Rastreo por origen", "#/trazabilidad/origen"],
-  ];
-}
 
 export const ESTADOS_ORDEN = {
   abierta: ["info", "Abierta"],

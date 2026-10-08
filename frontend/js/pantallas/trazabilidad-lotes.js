@@ -3,7 +3,7 @@
 // Se busca por el código del lote (LE-…) o de su orden (OC-…).
 
 import { llamarApi } from "../api.js";
-import { resumenLote, seccionesTrazabilidad, vistaGenealogia } from "../exportacion.js";
+import { resumenLote, vistaGenealogia } from "../exportacion.js";
 import { cargando, errorDeCarga, h, icono, reemplazar, vacio } from "../ui.js";
 
 let elegido = null;
@@ -65,7 +65,6 @@ export default async function trazabilidadLotes() {
     antetitulo: "Trazabilidad",
     descripcion: "De un lote de exportación hasta las parcelas de origen, con los kilos y la proporción de cada una. Se calcula al confirmar el lote; no se estima ni se edita.",
     migas: [["Trazabilidad", "#/trazabilidad"], ["Genealogía por lote"]],
-    secciones: seccionesTrazabilidad(),
     contenido: lotes.length
       ? [h("section", { class: "panel" }, formulario, resumen), genealogia]
       : h("section", { class: "panel" }, vacio({ titulo: "Sin lotes confirmados", texto: "La genealogía aparece cuando se confirma un lote de exportación." })),
