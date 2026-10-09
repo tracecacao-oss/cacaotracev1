@@ -10,6 +10,7 @@ embarque; recomprobación; informe de hallazgos completo; documentos de evidenci
 import io
 import math
 from datetime import datetime
+from functools import partial
 from typing import Any
 
 from app import textos, ubigeo
@@ -336,11 +337,8 @@ def _uso_suelo(pdf: Pdf, cobertura: list[dict[str, Any]]) -> None:
         return
     pdf.subtitulo(pdf.L("uso_suelo"))
     pdf.parrafo(pdf.L("uso_suelo_nota", pixeles=indicadores.get("pixeles", "—")), tamano=7.5)
-    clases = indicadores.get("clases") or {}
-    if pdf.idioma == "es":
-        pdf.uso_suelo(indicadores, pdf.L("clase"), lambda c: clases.get(c) or leyenda.nombre(int(c)))
-    else:
-        pdf.uso_suelo(indicadores, pdf.L("clase"), lambda c: leyenda.nombre(int(c), "en"))
+    nombre = partial(leyenda.nombre_sellado, indicadores.get("clases") or {}, idioma=pdf.idioma)
+    pdf.uso_suelo(indicadores, pdf.L("clase"), nombre)
 
 
 def _imagenes(pdf: Pdf, bloque: dict[str, Any], png: dict[str, bytes]) -> None:

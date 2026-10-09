@@ -7,6 +7,7 @@ cada página, el código y el número de página.
 
 import io
 from datetime import datetime
+from functools import partial
 from typing import Any
 
 from app import ubigeo
@@ -383,8 +384,8 @@ def documento(
             pdf.set_font("Jakarta", "B", 8.5)
             pdf.cell(0, 5, "Uso del suelo por año (ha)", new_x="LMARGIN", new_y="NEXT")
             pdf.parrafo(_NOTA_USO_SUELO.format(pixeles=indicadores.get("pixeles", "—")), tamano=7.5)
-            clases = indicadores.get("clases") or {}
-            pdf.uso_suelo(indicadores, "Clase", lambda c: clases.get(c) or leyenda.nombre(int(c)))
+            nombre = partial(leyenda.nombre_sellado, indicadores.get("clases") or {})
+            pdf.uso_suelo(indicadores, "Clase", nombre)
     conv = c["convergencia"]
     if conv.get("filas"):
         pdf.ln(1)

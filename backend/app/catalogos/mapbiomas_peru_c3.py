@@ -99,3 +99,11 @@ def nombre(codigo: int, idioma: str = "es") -> str:
     if codigo in CLASES:
         return CLASES[codigo][0]
     return f"Clase {codigo} (fuera de la leyenda de la Colección 3)"
+
+
+def nombre_sellado(clases: dict[str, str], codigo: str, idioma: str = "es") -> str:
+    """El nombre de una clase de un análisis ya sellado (`clases` de sus indicadores, con el código como
+    texto): en español, el que quedó guardado; en inglés, el de la leyenda bilingüe."""
+    if idioma == "es" and clases.get(codigo):
+        return clases[codigo]
+    return nombre(int(codigo), idioma)
