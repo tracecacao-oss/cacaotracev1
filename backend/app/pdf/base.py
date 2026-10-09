@@ -7,6 +7,7 @@ app/recursos/fuentes. Todo texto entra como texto, nunca como HTML.
 
 import logging
 import math
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -173,6 +174,24 @@ class Documento(FPDF):
                 for v in valores:
                     fila.cell("—" if v in (None, "") else str(v))
         self.ln(2)
+
+    def uso_suelo(self, indicadores: dict[str, Any], clase: str, nombre: Callable[[str], str]) -> bool:
+        """Historial de MapBiomas: hectáreas por clase, año por año, con las clases ordenadas por su área en
+        2020. `nombre` da el nombre de una clase a partir de su código. Devuelve False si no hay serie."""
+        anios = sorted(indicadores.get("anios") or {}, key=int)
+        if not anios:
+            return False
+        por_anio = indicadores["anios"]
+        en_2020 = por_anio.get("2020") or {}
+        codigos = sorted(indicadores.get("clases") or {}, key=lambda c: (-(en_2020.get(c) or 0), int(c)))
+        filas = [
+            [nombre(c), *(f"{por_anio[a][c]:.4f}" if por_anio[a].get(c) else "—" for a in anios)]
+            for c in codigos
+        ]
+        primera = 46
+        anchos = [primera, *[(self.ancho - primera) / len(anios)] * len(anios)]
+        self.tabla([clase, *anios], filas, anchos, tamano=6.5)
+        return True
 
     # ---------- Código QR y croquis ----------
 

@@ -416,7 +416,10 @@
     "seco": "Dry (beans delivered dry)",
     "segregado": "Segregated",
     "mezclado": "Mixed",
-    "tenencia_cubierta": "Not required: tenure is covered by {documento}"
+    "tenencia_cubierta": "Not required: tenure is covered by {documento}",
+    "uso_suelo": "Land use by year (ha), according to MapBiomas Peru",
+    "uso_suelo_nota": "Hectares of each class of the MapBiomas Peru legend (Collection 3) within the plot, year by year, with the class names of the official legend. 30 m pixels in the plot: {pixeles}. No legend class corresponds to cocoa alone.",
+    "clase": "Class"
   },
   "anexo": {
     "nota_general": "Help for the importer with the due diligence statement fields that come from this flow, in the order of Annex II to Regulation (EU) 2023/1115 (consolidated text of 18/09/2026). It is not a submission to TRACES and does not use its interface.",

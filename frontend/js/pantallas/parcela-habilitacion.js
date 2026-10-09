@@ -151,8 +151,8 @@ function indicadoresMapbiomas(ind) {
   ].map(([etiqueta, valor]) => h("div", {}, h("dt", {}, etiqueta), h("dd", {}, valor)));
 }
 
-/** Historial de uso del suelo: hectáreas por clase, año por año. */
-function historialMapbiomas(ind) {
+/** Historial de uso del suelo: hectáreas por clase, año por año. También lo muestra el DOP (dop.js). */
+export function historialMapbiomas(ind) {
   const anios = Object.keys(ind.anios ?? {}).sort();
   if (!anios.length) return null;
   const en2020 = ind.anios["2020"] ?? {};

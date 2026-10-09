@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any
 
 from app import textos, ubigeo
+from app.catalogos import mapbiomas_peru_c3 as leyenda
 from app.fechas import LIMA
 from app.pdf.base import AMBAR, ESMERALDA, FONDO, LINEA, TINTA, TINTA_3, Documento
 from app.services.hallazgos.catalogo import GRUPOS
@@ -327,6 +328,21 @@ def _genealogia(pdf: Pdf, c: dict[str, Any]) -> None:
 # ---------- Respaldo por parcela ----------
 
 
+def _uso_suelo(pdf: Pdf, cobertura: list[dict[str, Any]]) -> None:
+    """Historial de uso del suelo de MapBiomas (pedido del equipo del 2026-10-08), con los nombres de la
+    leyenda oficial en el idioma del documento."""
+    indicadores = next((f.get("indicadores") or {} for f in cobertura if f["fuente"] == "mapbiomas"), {})
+    if not indicadores.get("anios"):
+        return
+    pdf.subtitulo(pdf.L("uso_suelo"))
+    pdf.parrafo(pdf.L("uso_suelo_nota", pixeles=indicadores.get("pixeles", "—")), tamano=7.5)
+    clases = indicadores.get("clases") or {}
+    if pdf.idioma == "es":
+        pdf.uso_suelo(indicadores, pdf.L("clase"), lambda c: clases.get(c) or leyenda.nombre(int(c)))
+    else:
+        pdf.uso_suelo(indicadores, pdf.L("clase"), lambda c: leyenda.nombre(int(c), "en"))
+
+
 def _imagenes(pdf: Pdf, bloque: dict[str, Any], png: dict[str, bytes]) -> None:
     papeles = [p for p in ("anterior_al_corte", "reciente") if bloque.get(p)]
     ancho = (pdf.ancho - 6) / 2
@@ -445,6 +461,7 @@ def _respaldo(pdf: Pdf, c: dict[str, Any], png: dict[str, dict[str, bytes]]) -> 
                 ),
                 tamano=8,
             )
+        _uso_suelo(pdf, r["cobertura"])
         if r.get("imagenes"):
             _imagenes(pdf, r["imagenes"], png.get(r["parcela"], {}))
         pdf.subtitulo(pdf.L("casillas"))
