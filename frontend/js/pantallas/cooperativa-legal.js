@@ -134,12 +134,14 @@ export default async function cooperativaLegal({ recargar }) {
         contenido: [
           c.faltan_datos.length > 0 && h("p", { class: "alerta warn" }, `Falta: ${c.faltan_datos.join(", ")}.`),
           rejilla([
+            { grupo: "Cooperativa" },
             { etiqueta: "Razón social", valor: c.razon_social },
             { etiqueta: "RUC", valor: c.ruc, mono: true },
             { etiqueta: "Dirección postal", valor: c.direccion_postal },
             { etiqueta: "Correo de contacto", valor: c.correo },
-            { etiqueta: "Representante legal", valor: c.representante_nombre },
-            { etiqueta: "DNI del representante", valor: c.representante_dni, mono: true },
+            { grupo: "Representante legal" },
+            { etiqueta: "Nombre", valor: c.representante_nombre },
+            { etiqueta: "DNI", valor: c.representante_dni, mono: true },
           ]),
         ],
       }),

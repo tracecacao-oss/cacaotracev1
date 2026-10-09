@@ -1419,9 +1419,6 @@ a.kpi:hover {
   }
 }
 @media (max-width: 620px) {
-  .meta {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .tabla td:first-child {
     min-width: 150px;
   }
@@ -1545,35 +1542,66 @@ a.kpi:hover {
 .sect-t h3 {
   font-size: 13.5px;
 }
-.meta {
+/* Datos de una ficha (decisión del equipo del 2026-10-09): filas etiqueta–valor con línea punteada, como la
+   lista .kv del diseño, en vez de una rejilla de celdas. Sin grupos, las filas van en dos columnas si caben;
+   con grupos (rejilla con { grupo }), cada grupo es una columna con su título. */
+.datos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  overflow: hidden;
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+  column-gap: 40px;
 }
-.meta > div {
-  padding: 11px 14px;
+.datos-grupos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 8px 40px;
+}
+.datos-grupos .datos {
+  grid-template-columns: minmax(0, 1fr);
+}
+.datos-grupo > h4 {
+  margin: 0;
+  padding: 6px 0 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.dato {
+  display: grid;
+  grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
+  gap: 14px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
   min-width: 0;
-  /* Las sombras dibujan las líneas internas; el borde del contenedor recorta las externas. */
-  box-shadow: 1px 0 0 var(--line), 0 1px 0 var(--line);
 }
-.meta dt {
-  font-size: 12px;
+.dato dt {
+  font-size: 12.5px;
   color: var(--ink-3);
-  font-weight: 500;
 }
-.meta dd {
-  font-size: 14px;
+.dato dd {
+  min-width: 0;
+  font-size: 13.5px;
   font-weight: 600;
-  margin-top: 2px;
+  color: var(--ink);
   overflow-wrap: anywhere;
 }
-.meta dd.meta-extra {
-  margin-top: 6px;
-  font-size: 12.5px;
+.dato-valor + .badge {
+  margin-left: 8px;
+  vertical-align: 1px;
+}
+.dato-vacio {
+  color: var(--ink-4);
   font-weight: 500;
-  color: var(--ink-2);
+}
+.dato-nota {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
 }
 .kv {
   display: grid;
@@ -2545,7 +2573,7 @@ button.kpi[aria-pressed="true"] {
 .verificacion {
   width: min(560px, 100%);
 }
-.verificacion .meta {
+.verificacion .datos {
   margin-top: 12px;
 }
 @media (max-width: 620px) {

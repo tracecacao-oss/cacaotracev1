@@ -203,7 +203,7 @@ export default async function dop({ parametros: [id], recargar }) {
         { etiqueta: "Dirección postal", valor: p.direccion_postal.valor, extra: insigniaNivel(p.direccion_postal.nivel) },
         { etiqueta: "Correo", valor: p.correo.valor, extra: insigniaNivel(p.correo.nivel) },
         { etiqueta: "RUC", valor: p.ruc.valor, mono: true, extra: insigniaNivel(p.ruc.nivel) },
-        { etiqueta: "Registro en el PPA", valor: p.ppa.registrado ? p.ppa.codigo || "Registrado" : "No registrado", extra: insigniaNivel(p.ppa.nivel) },
+        { etiqueta: "Registro en el PPA", valor: p.ppa.registrado ? p.ppa.codigo || "Registrado" : "No registrado", extra: p.ppa.registrado && insigniaNivel(p.ppa.nivel) },
       ]),
     }),
     seccion({
