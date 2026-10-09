@@ -876,3 +876,33 @@ def test_correlativos_simultaneos_no_se_repiten(base_disponible):
             s.query(Correlativo).filter_by(cooperativa_id=coop_id).delete()
             s.query(Cooperativa).filter_by(id=coop_id).delete()
             s.commit()
+
+
+# Historial de MapBiomas como lo sella el DOP en los indicadores de la fuente (pedido del 2026-10-08).
+HISTORIAL_MAPBIOMAS = {
+    "clase_predominante_2020": "Mosaico agropecuario",
+    "pixeles": 3,
+    "anios": {"2019": {"21": 0.18, "24": 0.09}, "2020": {"21": 0.27}, "2021": {"21": 0.27}},
+    "clases": {"21": "Mosaico agropecuario", "24": "Infraestructura urbana"},
+    "clases_bosque": [],
+}
+
+
+def test_el_pdf_del_dop_lleva_el_uso_del_suelo_por_anio(api, sesion, cancha, operador, productor, parcela):
+    from app.pdf import dop as pdf_dop
+    from app.services.dops import url_verificacion
+
+    _, dop = _validada(api, sesion, operador, productor, parcela, cancha)
+    mapbiomas = {"fuente": "mapbiomas", "nombre": "MapBiomas Perú", "indicadores": HISTORIAL_MAPBIOMAS}
+    contenido = dop.contenido | {"cobertura": [*dop.contenido["cobertura"], mapbiomas]}
+    documento = pdf_dop.documento(contenido, dop.contenido_sha256, url_verificacion(dop.codigo))
+    documento.output()
+    escrito = "\n".join(documento.textos)
+    assert "Uso del suelo por año (ha)" in escrito and "Píxeles de 30 m en la parcela: 3" in escrito
+    # Las clases van de la de más área en 2020 a la de menos, con una columna por año.
+    assert escrito.index("Mosaico agropecuario") < escrito.index("Infraestructura urbana")
+    assert "0.2700" in escrito and "0.0900" in escrito and "2019" in escrito
+    # Sin la serie, no hay tabla.
+    sin_serie = pdf_dop.documento(dop.contenido, dop.contenido_sha256, url_verificacion(dop.codigo))
+    sin_serie.output()
+    assert "Uso del suelo por año (ha)" not in "\n".join(sin_serie.textos)

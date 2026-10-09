@@ -136,6 +136,15 @@ Se activa, además de los casos ya definidos, cuando:
 
 La regla 3 existe porque cacao entregado desde una parcela mapeada como bosque en 2020 necesita que una persona la mire. El caso típico sigue siendo el cacao bajo sombra.
 
+### 7.3 Historial de uso del suelo en el DOP y el DEX
+
+> **Pedido del equipo del 2026-10-08.**
+> - El DOP (pantalla y PDF) y el PDF del DEX muestran la tabla "Uso del suelo por año (ha)" de MapBiomas: hectáreas de cada clase de la leyenda dentro de la parcela, de 2015 al último año, con las clases ordenadas por su área en 2020.
+> - Los datos ya iban sellados en los indicadores de la fuente (`anios` y `clases`), así que los DOP anteriores la muestran en pantalla. Su PDF, guardado al emitirse, no cambia.
+> - La tabla lleva el número de píxeles de 30 m y aclara que ninguna clase de la leyenda corresponde solo al cacao.
+> - En inglés, las clases usan los nombres de la leyenda bilingüe oficial de la Colección 3 (`NOMBRES_EN` en `backend/app/catalogos/mapbiomas_peru_c3.py`).
+> - Desde agosto de 2026, MapBiomas Perú publica la Colección 4 (1985 a 2025). CacaoTrace sigue leyendo la Colección 3; cambiar de colección es una decisión del equipo.
+
 ## 8. Hallazgos nuevos para la Parte 9
 
 Se suman al catálogo cuando se construya la Parte 9.

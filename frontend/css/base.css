@@ -343,6 +343,10 @@ table {
   display: grid;
   gap: 14px;
 }
+/* Una tabla ancha dentro de un formulario o un bloque del DOP se desliza en vez de estirar la rejilla. */
+.form > * {
+  min-width: 0;
+}
 .field {
   display: grid;
   gap: 6px;
@@ -2612,9 +2616,10 @@ button.kpi[aria-pressed="true"] {
   font-weight: 600;
   color: var(--ink-2);
 }
-.fuente-detalle[open] {
-  display: grid;
-  gap: 10px;
+/* Bloque y no rejilla: Chrome envuelve el contenido de un <details> abierto (::details-content) y, en
+   una rejilla, esa caja se estiraba al ancho de la tabla y se salía de la tarjeta. */
+.fuente-detalle[open] > * + * {
+  margin-top: 10px;
 }
 .verif .linea {
   display: block;

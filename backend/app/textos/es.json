@@ -416,7 +416,10 @@
     "seco": "Seco (grano entregado seco)",
     "segregado": "Segregado",
     "mezclado": "Mezclado",
-    "tenencia_cubierta": "No requerida: la tenencia está cubierta por {documento}"
+    "tenencia_cubierta": "No requerida: la tenencia está cubierta por {documento}",
+    "uso_suelo": "Uso del suelo por año (ha), según MapBiomas Perú",
+    "uso_suelo_nota": "Hectáreas de cada clase de la leyenda de MapBiomas Perú (Colección 3) dentro de la parcela, año por año. Píxeles de 30 m en la parcela: {pixeles}. Ninguna clase de la leyenda corresponde solo al cacao.",
+    "clase": "Clase"
   },
   "anexo": {
     "nota_general": "Ayuda para el importador con los campos de la declaración de diligencia debida que salen de este flujo, en el orden del Anexo II del Reglamento (UE) 2023/1115 (texto consolidado del 18/09/2026). No es un envío a TRACES ni usa su interfaz.",

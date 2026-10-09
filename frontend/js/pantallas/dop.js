@@ -7,6 +7,7 @@ import { ALERTAS, ALERTAS_TANDA, ESTADOS_CASILLA, ESTADOS_HABILITACION, ESTADOS_
 import { codigoQr, descargarPdf, huella } from "../tandas.js";
 import { lugares } from "../ubigeo.js";
 import { abrirModal, cabeceraFicha, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
+import { historialMapbiomas } from "./parcela-habilitacion.js";
 
 /** Desde la versión 4 del DOP, la pérdida de bosque y la alteración de la vegetación van por separado. */
 function marcasCambio(fila) {
@@ -272,6 +273,15 @@ export default async function dop({ parametros: [id], recargar }) {
               { etiqueta: "Huella de la respuesta", valor: f.respuesta_sha256, mono: true },
               f.es_aproximacion && { etiqueta: "Geometría analizada", valor: "Círculo con el área declarada (la parcela es un punto)" },
             ]),
+            // Pedido del equipo del 2026-10-08: el historial de uso del suelo, que ya va en el contenido sellado.
+            f.fuente === "mapbiomas" &&
+              f.indicadores?.anios &&
+              h(
+                "div",
+                {},
+                h("p", { class: "panel-sub" }, `Hectáreas de cada clase de la leyenda de MapBiomas Perú (Colección 3) dentro de la parcela, año por año. Píxeles de 30 m en la parcela: ${f.indicadores.pixeles ?? "—"}. Ninguna clase de la leyenda corresponde solo al cacao.`),
+                historialMapbiomas(f.indicadores),
+              ),
           ),
         ),
         c.convergencia?.filas?.length > 0 &&

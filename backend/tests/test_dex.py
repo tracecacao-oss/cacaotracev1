@@ -1070,3 +1070,31 @@ def test_el_pdf_del_dex_de_demostracion_lleva_la_marca_en_su_idioma():
         real.add_page()
         real.output()
         assert marca not in real.textos
+
+
+def test_el_pdf_del_dex_lleva_el_uso_del_suelo_en_su_idioma(
+    api, sesion, admin, operador, basico, storage_falso
+):
+    """Pedido del 2026-10-08: el historial de MapBiomas, con los nombres de la leyenda oficial en cada
+    idioma."""
+    from app.catalogos import mapbiomas_peru_c3 as leyenda
+    from tests.test_recepcion import HISTORIAL_MAPBIOMAS
+
+    lote = _listo(api, sesion, basico, operador)
+    dex = sesion.get(Dex, uuid.UUID(_emitir(api, admin, lote).json()["id"]))
+    contenido = json.loads(json.dumps(dex.contenido))
+    # Cada parcela tiene un análisis vigente de MapBiomas: se le pone la serie por año.
+    mapbiomas = next(f for f in contenido["respaldo"][0]["cobertura"] if f["fuente"] == "mapbiomas")
+    mapbiomas["indicadores"] = HISTORIAL_MAPBIOMAS
+    esperado = {
+        "es": ("Uso del suelo por año (ha), según MapBiomas Perú", "Mosaico agropecuario"),
+        "en": ("Land use by year (ha), according to MapBiomas Peru", "Mosaic of agriculture and pasture"),
+    }
+    for idioma, (titulo, clase) in esperado.items():
+        pdf = pdf_dex.documento(contenido, dex.contenido_sha256, "https://ejemplo.test", idioma)
+        pdf.output()
+        escrito = "\n".join(pdf.textos)
+        assert titulo in escrito and clase in escrito and "0.2700" in escrito
+    # Cada clase de la leyenda tiene su nombre oficial en inglés.
+    assert set(leyenda.NOMBRES_EN) == set(leyenda.CLASES)
+    assert leyenda.nombre(33, "en") == "River, lake or ocean" and leyenda.nombre(0, "en") == "No data"

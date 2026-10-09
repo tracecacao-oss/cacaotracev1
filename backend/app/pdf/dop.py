@@ -7,9 +7,11 @@ cada página, el código y el número de página.
 
 import io
 from datetime import datetime
+from functools import partial
 from typing import Any
 
 from app import ubigeo
+from app.catalogos import mapbiomas_peru_c3 as leyenda
 from app.fechas import LIMA
 from app.pdf.base import AMBAR, TEXTO_DEMO, TINTA, TINTA_3, Documento
 
@@ -81,6 +83,12 @@ ALERTAS = {
     "tenencia_solo_posesion": "La tenencia se apoya solo en una constancia de posesión",
     "superposicion_con_excluida": "Se superpone con una parcela excluida",
 }
+
+
+_NOTA_USO_SUELO = (
+    "Hectáreas de cada clase de la leyenda de MapBiomas Perú (Colección 3) dentro de la parcela, año por "
+    "año. Píxeles de 30 m en la parcela: {pixeles}. Ninguna clase de la leyenda corresponde solo al cacao."
+)
 
 
 def _marca_cambio(fila: dict) -> str:
@@ -369,6 +377,15 @@ def documento(
         pdf.dato("Huella de la respuesta", fuente.get("respuesta_sha256"), mono=True)
         if fuente.get("es_aproximacion"):
             pdf.dato("Geometría analizada", "Círculo con el área declarada (la parcela es un punto)")
+        indicadores = fuente.get("indicadores") or {}
+        if fuente["fuente"] == "mapbiomas" and indicadores.get("anios"):
+            # Pedido del equipo del 2026-10-08: el historial de uso del suelo, ya sellado en el contenido.
+            pdf.ln(1)
+            pdf.set_font("Jakarta", "B", 8.5)
+            pdf.cell(0, 5, "Uso del suelo por año (ha)", new_x="LMARGIN", new_y="NEXT")
+            pdf.parrafo(_NOTA_USO_SUELO.format(pixeles=indicadores.get("pixeles", "—")), tamano=7.5)
+            nombre = partial(leyenda.nombre_sellado, indicadores.get("clases") or {})
+            pdf.uso_suelo(indicadores, "Clase", nombre)
     conv = c["convergencia"]
     if conv.get("filas"):
         pdf.ln(1)
