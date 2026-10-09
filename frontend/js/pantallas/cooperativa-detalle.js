@@ -196,6 +196,7 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
           h("button", { class: `btn btn-sm ${c.estado === "activa" ? "btn-danger" : ""}`, type: "button", onclick: cambiarEstado }, c.estado === "activa" ? "Suspender" : "Reactivar"),
         ],
         contenido: rejilla([
+          { grupo: "Identificación" },
           { etiqueta: "Razón social", valor: c.razon_social },
           { etiqueta: "Nombre comercial", valor: c.nombre_comercial },
           { etiqueta: "RUC", valor: c.ruc, mono: true },
@@ -206,6 +207,7 @@ export default async function cooperativaDetalle({ parametros, navegar, recargar
             extra: !c.codigo && "Falta: sin código la cooperativa no recibe tandas. Fíjalo en Editar datos.",
           },
           { etiqueta: "Tipo de organización", valor: TIPOS_ORGANIZACION.find(([v]) => v === c.tipo_organizacion)?.[1] ?? c.tipo_organizacion },
+          { grupo: "Ubicación y uso" },
           { etiqueta: "Ubicación", valor: lugares(c.distrito, c.provincia, c.departamento) },
           { etiqueta: "Usuarios del personal", valor: String(c.usuarios), mono: true },
           { etiqueta: "Productores afiliados", valor: String(c.productores), mono: true },

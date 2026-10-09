@@ -66,7 +66,7 @@ async function perfilProductor({ recargarUsuario, recargar }) {
           { etiqueta: "Nombres", valor: f.nombres },
           { etiqueta: "Apellidos", valor: f.apellidos },
           { etiqueta: "Dirección", valor: f.direccion_postal },
-          { etiqueta: "Registro en el PPA", valor: f.ppa_registrado ? f.ppa_codigo || "Registrado" : "No registrado", extra: insigniaNivel(f.nivel_ppa) },
+          { etiqueta: "Registro en el PPA", valor: f.ppa_registrado ? f.ppa_codigo || "Registrado" : "No registrado", extra: f.ppa_registrado && insigniaNivel(f.nivel_ppa) },
           { etiqueta: "Cooperativa", valor: nombreCooperativa() },
         ]),
         telefono,

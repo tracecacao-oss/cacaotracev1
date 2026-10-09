@@ -109,20 +109,16 @@ function pestanaDatos(p, { recargar, navegar }) {
         h("button", { class: "btn btn-sm btn-danger", type: "button", onclick: () => cerrarAfiliacion(p, navegar) }, "Cerrar afiliación"),
     ],
     contenido: rejilla([
+      { grupo: "Identidad" },
       { etiqueta: "DNI", valor: p.dni, mono: true, extra: nivel(p.dni, p.nivel_identidad) },
       { etiqueta: "Nombres", valor: p.nombres, extra: nivel(p.nombres, p.nivel_identidad) },
       { etiqueta: "Apellidos", valor: p.apellidos, extra: nivel(p.apellidos, p.nivel_identidad) },
       { etiqueta: "RUC", valor: p.ruc, mono: true, extra: nivel(p.ruc, "declarado") },
+      { grupo: "Contacto" },
       { etiqueta: "Dirección postal", valor: p.direccion_postal, extra: nivel(p.direccion_postal, "declarado") },
       { etiqueta: "Correo de contacto", valor: p.correo_contacto, extra: nivel(p.correo_contacto, "declarado") },
       { etiqueta: "Teléfono", valor: p.telefono, mono: true, extra: nivel(p.telefono, "declarado") },
-      {
-        etiqueta: "Registro en el PPA de MIDAGRI",
-        valor: p.ppa_registrado ? p.ppa_codigo || "Registrado" : "No registrado",
-        mono: Boolean(p.ppa_codigo),
-        extra: insigniaNivel(p.nivel_ppa),
-      },
-      { etiqueta: "Código en Agro Digital (app del MIDAGRI)", valor: p.codigo_agrodigital, mono: true, extra: nivel(p.codigo_agrodigital, "declarado") },
+      { grupo: "Cooperativa y MIDAGRI" },
       { etiqueta: "Código de socio", valor: p.codigo_socio, mono: true },
       { etiqueta: "Afiliado desde", valor: fecha(p.afiliado_desde) },
       {
@@ -131,6 +127,14 @@ function pestanaDatos(p, { recargar, navegar }) {
           ? `${fecha(p.consentimiento_datos_en)} · ${p.consentimiento_origen === "productor" ? "aceptado por el productor" : "firmado ante la cooperativa"}`
           : "Pendiente",
       },
+      {
+        etiqueta: "Registro en el PPA de MIDAGRI",
+        valor: p.ppa_registrado ? p.ppa_codigo || "Registrado" : "No registrado",
+        mono: Boolean(p.ppa_codigo),
+        // Sin registro, la insignia repetiría "No registrado".
+        extra: p.ppa_registrado && insigniaNivel(p.nivel_ppa),
+      },
+      { etiqueta: "Código en Agro Digital (app del MIDAGRI)", valor: p.codigo_agrodigital, mono: true, extra: nivel(p.codigo_agrodigital, "declarado") },
     ]),
   });
 }

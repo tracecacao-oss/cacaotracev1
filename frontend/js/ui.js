@@ -345,13 +345,34 @@ export function seccion({ titulo, sub, acciones, contenido, clase = "" }) {
 }
 
 /** Rejilla de datos con bordes del diseño. items: { etiqueta, valor, mono, extra }. */
+/**
+ * Datos de una ficha (decisión del equipo del 2026-10-09): filas etiqueta–valor, como la lista `.kv` del diseño,
+ * en vez de una rejilla de celdas. `extra` puede ser una insignia (va junto al valor) o una nota (texto, nodo o
+ * lista: va debajo). Un elemento `{ grupo: "Título" }` abre un grupo con su título; los grupos van en columnas.
+ */
 export function rejilla(items) {
+  const grupos = [];
+  for (const item of items.filter(Boolean)) {
+    if (item.grupo) grupos.push({ titulo: item.grupo, filas: [] });
+    else {
+      if (!grupos.length) grupos.push({ titulo: null, filas: [] });
+      grupos.at(-1).filas.push(item);
+    }
+  }
+  const esInsignia = (x) => x instanceof Element && x.classList.contains("badge");
+  const fila = ({ etiqueta, valor, mono = false, extra }) => {
+    const vacio = !valor;
+    const clase = ["dato-valor", mono && "mono", vacio && "dato-vacio"].filter(Boolean).join(" ");
+    const insignia = esInsignia(extra) ? extra : null;
+    const nota = extra && !insignia ? h("span", { class: "dato-nota" }, Array.isArray(extra) ? extra.map((x) => h("span", {}, x)) : extra) : null;
+    return h("div", { class: "dato" }, h("dt", {}, etiqueta), h("dd", {}, h("span", { class: clase }, vacio ? "—" : valor), insignia, nota));
+  };
+  const lista = (filas) => h("dl", { class: "datos" }, filas.map(fila));
+  if (grupos.length === 1 && !grupos[0].titulo) return lista(grupos[0].filas);
   return h(
-    "dl",
-    { class: "meta" },
-    items.filter(Boolean).map(({ etiqueta, valor, mono = false, extra }) =>
-      h("div", {}, h("dt", {}, etiqueta), h("dd", { class: mono ? "mono" : null }, valor || "—"), extra && h("dd", { class: "meta-extra" }, extra)),
-    ),
+    "div",
+    { class: "datos-grupos" },
+    grupos.map((g) => h("section", { class: "datos-grupo" }, g.titulo && h("h4", {}, g.titulo), lista(g.filas))),
   );
 }
 
