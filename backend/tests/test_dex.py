@@ -1083,8 +1083,9 @@ def test_el_pdf_del_dex_lleva_el_uso_del_suelo_en_su_idioma(
     lote = _listo(api, sesion, basico, operador)
     dex = sesion.get(Dex, uuid.UUID(_emitir(api, admin, lote).json()["id"]))
     contenido = json.loads(json.dumps(dex.contenido))
-    mapbiomas = {"fuente": "mapbiomas", "nombre": "MapBiomas Perú", "indicadores": HISTORIAL_MAPBIOMAS}
-    contenido["respaldo"][0]["cobertura"].append(mapbiomas)
+    # Cada parcela tiene un análisis vigente de MapBiomas: se le pone la serie por año.
+    mapbiomas = next(f for f in contenido["respaldo"][0]["cobertura"] if f["fuente"] == "mapbiomas")
+    mapbiomas["indicadores"] = HISTORIAL_MAPBIOMAS
     esperado = {
         "es": ("Uso del suelo por año (ha), según MapBiomas Perú", "Mosaico agropecuario"),
         "en": ("Land use by year (ha), according to MapBiomas Peru", "Mosaic of agriculture and pasture"),
