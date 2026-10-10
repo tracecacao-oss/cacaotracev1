@@ -1,4 +1,5 @@
-"""Compuerta de habilitación de la parcela (Parte 4).
+"""Compuerta de habilitación de la parcela (Parte 4; desde la adenda 4, su parte legal la calcula
+app/services/legalidad.py).
 
 Una parcela puede respaldar cacao solo después de habilitarse. Habilitarla o excluirla lo decide un
 administrador de la cooperativa, nunca el sistema: el sistema solo calcula los requisitos y, si una
@@ -38,6 +39,7 @@ from app.schemas.habilitacion import (
 )
 from app.services import analisis as servicio_analisis
 from app.services import expediente as servicio_expediente
+from app.services import legalidad as servicio_legalidad
 from app.services import revisiones_imagenes as servicio_revisiones
 from app.services import visitas as servicio_visitas
 from app.services.auditoria import registrar_auditoria
@@ -49,8 +51,8 @@ NOMBRE_FUENTE = {"whisp": "Whisp", "gfw": "GFW", "mapbiomas": "MapBiomas"}
 @dataclass
 class Evaluacion:
     requisitos: list[Requisito]
-    alertas: list[str]  # las de la Parte 4
-    expediente: servicio_expediente.Expediente
+    alertas: list[str]  # las de la Parte 4 y de la adenda 4
+    legalidad: servicio_legalidad.Legalidad
     analisis: list[AnalisisCobertura]
     visitas: list[VisitaCampo]  # solo para la procedencia: una visita ya no atiende un análisis
     procedencia: object
@@ -70,7 +72,7 @@ def _requisitos(
     abiertas: int,
     estado_analisis: dict,
     revision_imagenes: RevisionImagenes | None,
-    exp: servicio_expediente.Expediente,
+    leg: servicio_legalidad.Legalidad,
     dni_documentado: bool,
     consentimiento: bool,
 ) -> list[Requisito]:
@@ -147,19 +149,8 @@ def _requisitos(
                 f"{revision_imagenes.revisada_en:%d/%m/%Y}."
             )
         r.append(Requisito(codigo="revision_atendida", cumple=cumple, detalle=detalle))
-    faltan = [
-        "tenencia (título o constancia de posesión)" if c == "tenencia" else catalogo.POR_CODIGO[c].nombre
-        for c in exp.faltan
-    ]
-    r.append(
-        Requisito(
-            codigo="expediente_completo",
-            cumple=exp.completo,
-            detalle="El expediente legal está completo."
-            if exp.completo
-            else f"Falta en el expediente: {_lista(faltan)}.",
-        )
-    )
+    # Adenda 4, sección 8: expediente_completo se reemplaza por estos cuatro.
+    r.extend(leg.compuerta())
     falta_productor = [
         n
         for n, ok in (("copia del DNI", dni_documentado), ("consentimiento de datos", consentimiento))
@@ -217,7 +208,7 @@ def evaluar(
                 .group_by(Parcela.id)
             ).all()
         )
-    expedientes = servicio_expediente.expedientes(sesion, ids)
+    legalidades = servicio_legalidad.legalidades(sesion, parcelas)
     todos_analisis = servicio_analisis.de_parcelas(sesion, ids)
     todas_visitas = servicio_visitas.vigentes(sesion, ids)
     todas_revisiones = servicio_revisiones.de_parcelas(sesion, ids)
@@ -244,24 +235,24 @@ def evaluar(
         revision_vigente = servicio_revisiones.vigente(
             todas_revisiones[parcela.id], servicio_analisis.huella_parcela(parcela)
         )
-        exp = expedientes[parcela.id]
+        leg = legalidades[parcela.id]
         productor = productores[parcela.productor_id]
         requisitos = _requisitos(
             parcela,
             abiertas=abiertas.get(parcela.id, 0),
             estado_analisis=estado_analisis,
             revision_imagenes=revision_vigente,
-            exp=exp,
+            leg=leg,
             dni_documentado=productor.id in con_dni,
             consentimiento=productor.consentimiento_datos_en is not None,
         )
-        alertas = servicio_analisis.alertas(estado_analisis) + exp.alertas()
+        alertas = servicio_analisis.alertas(estado_analisis) + leg.alertas()
         if parcela.id in con_excluida:
             alertas.append("superposicion_con_excluida")
         evaluacion = Evaluacion(
             requisitos=requisitos,
             alertas=alertas,
-            expediente=exp,
+            legalidad=leg,
             analisis=todos_analisis[parcela.id],
             visitas=todas_visitas[parcela.id],
             procedencia=servicio_visitas.procedencia(parcela, todas_visitas[parcela.id]),
@@ -492,19 +483,20 @@ def resumen(contexto: Contexto) -> ResumenHabilitacion:
         )
     }
     por_vencer = []
-    for pid, casilla in servicio_expediente.documentos_por_vencer(contexto.sesion, list(activas)):
-        parcela = activas[pid]
+    for parcela, requisito, documento in servicio_legalidad.sustentos_por_vencer(
+        contexto.sesion, list(activas.values())
+    ):
         productor = productores[parcela.productor_id]
         por_vencer.append(
             PorVencerSalida(
-                parcela_id=pid,
+                parcela_id=parcela.id,
                 parcela_codigo=parcela.codigo,
                 parcela_nombre=parcela.nombre,
                 productor_nombre=f"{productor.nombres} {productor.apellidos}",
-                tipo=casilla.codigo,
-                tipo_nombre=catalogo.POR_CODIGO[casilla.codigo].nombre,
-                estado=casilla.estado,
-                vence_en=casilla.documento.fecha_vencimiento,
+                tipo=documento.tipo,
+                tipo_nombre=catalogo.POR_CODIGO[documento.tipo].nombre,
+                estado=requisito.estado,
+                vence_en=documento.fecha_vencimiento,
             )
         )
     return ResumenHabilitacion(por_estado=por_estado, por_vencer=por_vencer)

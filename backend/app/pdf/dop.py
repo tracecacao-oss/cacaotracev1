@@ -34,6 +34,11 @@ REQUISITO = {
     "analisis_vigente": "Análisis de cobertura vigente",
     "revision_atendida": "Revisión de imágenes atendida",
     "expediente_completo": "Expediente legal completo",
+    # Adenda 4, sección 8: reemplazan a expediente_completo desde la versión 5.
+    "perfil_legal_completo": "Perfil legal completo",
+    "tenencia_sustentada": "Tenencia con sustento",
+    "permisos_obligatorios": "Permisos obligatorios con sustento",
+    "sin_conflicto_de_tenencia": "Sin incidencias de tenencia abiertas",
     "productor_listo": "Productor con DNI y consentimiento",
 }
 OBSERVACION_2020 = {
@@ -82,7 +87,24 @@ ALERTAS = {
     "documento_vencido": "Un documento legal está vencido",
     "tenencia_solo_posesion": "La tenencia se apoya solo en una constancia de posesión",
     "superposicion_con_excluida": "Se superpone con una parcela excluida",
+    # Adenda 4, sección 8
+    "tenencia_sin_documento_formal": "La tenencia se sustenta solo con una declaración jurada",
+    "tierra_forestal_por_excepcion": "En tierra forestal, sustentada por la excepción de la Ley N.º 31973",
+    "zonificacion_forestal_desconocida": "La capa de zonificación forestal no clasifica su departamento",
+    "en_zona_de_amortiguamiento": "Está en la zona de amortiguamiento de un área protegida",
+    "requisito_sin_sustento": "Un requisito que no bloquea está sin sustento o vencido",
+    "incidencia_abierta": "Tiene una incidencia abierta",
 }
+ESTADO_REQUISITO = {
+    "sin_dato": "Falta el dato",
+    "no_aplica": "No aplica",
+    "sustentado": "Sustentado",
+    "por_vencer": "Por vencer",
+    "vencido": "Vencido",
+    "sin_sustento": "Sin sustento",
+}
+ORIGEN = {"cruce": "Cruce con la capa oficial", "declarado": "Declarado"}
+TIPO_INCIDENCIA = {"tenencia": "Tenencia", "ambiental": "Ambiental", "otra": "Otra"}
 
 
 _NOTA_USO_SUELO = (
@@ -253,6 +275,111 @@ def _imagenes(pdf: Documento, bloque: dict[str, Any], png: dict[str, bytes]) -> 
         )
 
 
+def _expediente(pdf: Documento, exp: dict[str, Any]) -> None:
+    """Las 7 casillas de los DOP anteriores a la versión 5."""
+    pdf.seccion(
+        "Expediente legal", f"Expediente {exp['estado']}. Las 7 casillas, con su documento o su exención."
+    )
+    filas = []
+    for casilla in exp["casillas"]:
+        doc = casilla.get("documento")
+        exencion = casilla.get("exencion")
+        if doc:
+            detalle = (
+                f"N.º {doc['numero']} · {doc['entidad_emisora']} · emitido {_fecha(doc['fecha_emision'])}"
+                + (f" · vence {_fecha(doc['fecha_vencimiento'])}" if doc.get("fecha_vencimiento") else "")
+            )
+        elif exencion:
+            detalle = f"No aplica: {exencion['motivo']}"
+        elif casilla.get("cubierta_por_nombre"):
+            detalle = f"La tenencia está cubierta por {casilla['cubierta_por_nombre']}"
+        else:
+            detalle = ""
+        filas.append(
+            [
+                casilla["nombre"],
+                ESTADO_CASILLA.get(casilla["estado"], casilla["estado"]),
+                NIVEL.get(casilla.get("nivel") or "", "—"),
+                detalle,
+            ]
+        )
+    pdf.tabla(
+        ["Casilla", "Estado", "Nivel", "Documento o exención"], filas, [52, 18, 26, pdf.ancho - 96], tamano=7
+    )
+
+
+def _legalidad(pdf: Documento, leg: dict[str, Any]) -> None:
+    """Versión 5 (adenda 4): el perfil con el origen de cada variable, las capas consultadas, los requisitos
+    con su estado, su sustento y su nivel, y las incidencias."""
+    pdf.seccion(
+        "Legalidad de la parcela",
+        f"Según el {leg['orientador']}. {leg['aviso_orientador']}",
+    )
+    pdf.tabla(
+        ["Dato del perfil", "Valor", "Origen"],
+        [
+            [
+                v["pregunta"],
+                (v["etiqueta"] or "Falta el dato") + (" (aproximación)" if v.get("aproximacion") else ""),
+                f"{ORIGEN[v['origen']]} · {_fecha(v['registrada_en'])}" if v["origen"] else "—",
+            ]
+            for v in leg["perfil"]
+        ],
+        [70, 46, pdf.ancho - 116],
+        tamano=7,
+    )
+    filas = []
+    for capa in leg["capas"]:
+        if capa["estado"] == "fallo":
+            resultado = "El servicio no respondió"
+        elif capa["estado"] != "hecho":
+            resultado = "Sin cruzar todavía"
+        elif capa.get("sin_zonificacion"):
+            resultado = "La capa no clasifica el departamento de la parcela"
+        else:
+            resultado = "; ".join(capa["encontrados"]) or "La parcela no figura en la capa"
+        filas.append([f"{capa['nombre']} ({capa['entidad']})", _fecha(capa.get("consultada_en")), resultado])
+    pdf.tabla(["Capa consultada", "Fecha", "Resultado"], filas, [70, 22, pdf.ancho - 92], tamano=7)
+    filas = []
+    for r in leg["requisitos"]:
+        doc = r.get("documento")
+        if doc:
+            sustento = (
+                f"{doc['nombre']} · {doc.get('numero') or 's/n'} · emitido {_fecha(doc['fecha_emision'])}"
+                + (f" · vence {_fecha(doc['fecha_vencimiento'])}" if doc.get("fecha_vencimiento") else "")
+                + (" · por la excepción de la Ley N.º 31973" if r.get("por_excepcion") else "")
+            )
+        else:
+            sustento = r.get("nota") or r["motivo"]
+        filas.append(
+            [
+                f"{r['nombre']} ({', '.join(r['referencias'])})",
+                ESTADO_REQUISITO.get(r["estado"], r["estado"]),
+                NIVEL.get(r.get("nivel") or "", "—"),
+                sustento,
+            ]
+        )
+    pdf.tabla(
+        ["Requisito", "Estado", "Nivel", "Sustento o motivo"], filas, [52, 20, 26, pdf.ancho - 98], tamano=7
+    )
+    if leg["incidencias"]:
+        pdf.tabla(
+            ["Incidencia", "Estado", "Registrada", "Qué se encontró"],
+            [
+                [
+                    TIPO_INCIDENCIA.get(i["tipo"], i["tipo"]),
+                    "Abierta" if i["estado"] == "abierta" else f"Cerrada el {_fecha(i['cerrada_en'])}",
+                    _fecha(i["registrada_en"]),
+                    f"{i['descripcion']} (fuente: {i['fuente']})"
+                    + (f" Cierre: {i['cierre_nota']}" if i.get("cierre_nota") else ""),
+                ]
+                for i in leg["incidencias"]
+            ],
+            [24, 28, 22, pdf.ancho - 74],
+            tamano=7,
+        )
+
+
 def documento(
     contenido: dict[str, Any], huella: str, url: str, imagenes: dict[str, bytes] | None = None
 ) -> Documento:
@@ -420,37 +547,10 @@ def documento(
     if c.get("imagenes"):
         _imagenes(pdf, c["imagenes"], imagenes or {})
 
-    # Expediente legal
-    exp = c["expediente"]
-    pdf.seccion(
-        "Expediente legal", f"Expediente {exp['estado']}. Las 7 casillas, con su documento o su exención."
-    )
-    filas = []
-    for casilla in exp["casillas"]:
-        doc = casilla.get("documento")
-        exencion = casilla.get("exencion")
-        if doc:
-            detalle = (
-                f"N.º {doc['numero']} · {doc['entidad_emisora']} · emitido {_fecha(doc['fecha_emision'])}"
-                + (f" · vence {_fecha(doc['fecha_vencimiento'])}" if doc.get("fecha_vencimiento") else "")
-            )
-        elif exencion:
-            detalle = f"No aplica: {exencion['motivo']}"
-        elif casilla.get("cubierta_por_nombre"):
-            detalle = f"La tenencia está cubierta por {casilla['cubierta_por_nombre']}"
-        else:
-            detalle = ""
-        filas.append(
-            [
-                casilla["nombre"],
-                ESTADO_CASILLA.get(casilla["estado"], casilla["estado"]),
-                NIVEL.get(casilla.get("nivel") or "", "—"),
-                detalle,
-            ]
-        )
-    pdf.tabla(
-        ["Casilla", "Estado", "Nivel", "Documento o exención"], filas, [52, 18, 26, pdf.ancho - 96], tamano=7
-    )
+    if c.get("legalidad"):
+        _legalidad(pdf, c["legalidad"])
+    else:
+        _expediente(pdf, c["expediente"])
 
     # Tanda
     t = c["tanda"]

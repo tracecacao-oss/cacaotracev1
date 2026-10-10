@@ -15,8 +15,8 @@ from tests.habilitacion_util import (
     PDF,
     analisis_completado,
     documento_legal,
-    expediente_completo,
     fuentes_configuradas,
+    legalidad_completa,
     productor_listo,
     visita,
 )
@@ -58,7 +58,7 @@ def _parcela(api, sesion, operador, productor, geometria=None, nombre="Parcela D
 
 def _lista(sesion, parcela, operador, productor, *, whisp="low"):
     """Todos los requisitos cumplidos salvo, si se pide, la revisión que exige Whisp."""
-    expediente_completo(sesion, parcela, operador)
+    legalidad_completa(sesion, parcela, operador)
     productor_listo(sesion, productor, operador)
     analisis_completado(sesion, parcela, "whisp", resultado=whisp)
     analisis_completado(sesion, parcela, "gfw")
@@ -106,14 +106,21 @@ def test_habilitar_con_requisitos_sin_cumplir(api, sesion, operador, admin, prod
     assert respuesta.status_code == 400
     error = respuesta.json()["error"]
     assert error["codigo"] == "requisitos_incompletos"
-    assert set(error["faltan"]) == {"analisis_vigente", "expediente_completo", "productor_listo"}
+    # Adenda 4: sin perfil legal no hay perfil completo, ni tenencia ni permisos con sustento.
+    assert set(error["faltan"]) == {
+        "analisis_vigente",
+        "perfil_legal_completo",
+        "tenencia_sustentada",
+        "permisos_obligatorios",
+        "productor_listo",
+    }
 
 
 def test_sin_fuentes_configuradas_no_hay_analisis_vigente(api, sesion, operador, admin, productor, fuentes):
     for f in fuentes.values():
         f._clave = None
     parcela = _parcela(api, sesion, operador, productor)
-    expediente_completo(sesion, parcela, operador)
+    legalidad_completa(sesion, parcela, operador)
     productor_listo(sesion, productor, operador)
     requisitos = _requisitos(api.como(admin), parcela)
     assert requisitos["analisis_vigente"] is False
@@ -145,7 +152,10 @@ def test_revision_de_whisp_exige_revision_de_imagenes_y_nota(api, sesion, operad
     # Guarda la copia de requisitos y alertas del momento.
     assert {r["codigo"] for r in decision.requisitos["requisitos"]} >= {
         "parcela_activa",
-        "expediente_completo",
+        "perfil_legal_completo",
+        "tenencia_sustentada",
+        "permisos_obligatorios",
+        "sin_conflicto_de_tenencia",
     }
     assert "analisis_requiere_revision" in decision.requisitos["alertas"]
     assert sesion.query(Auditoria).filter_by(accion="parcela.habilitar").count() == 1
@@ -163,7 +173,7 @@ def test_habilitada_cuyo_documento_vence_pasa_a_observada_y_vuelve(api, sesion, 
     assert api.get(f"/parcelas/{parcela.id}").json()["habilitacion_estado"] == "observada"
     observar = sesion.query(DecisionHabilitacion).filter_by(parcela_id=parcela.id, decision="observar").one()
     assert observar.decidida_por is None
-    assert "expediente" in observar.nota.lower()
+    assert "tenencia" in observar.nota.lower()
 
     # Se corrige el requisito y el administrador decide de nuevo.
     documento_legal(sesion, parcela, "titulo_sunarp", operador, vence=hoy_lima() + timedelta(days=365))
@@ -222,8 +232,13 @@ def test_excluir(api, sesion, operador, admin, productor):
         lambda: api.patch(f"/parcelas/{parcela.id}", json={"nombre": "Otro nombre"}),
         lambda: api.post(
             f"/parcelas/{parcela.id}/documentos",
-            data={"tipo": "sunat", "numero": "1", "entidad_emisora": "SUNAT", "fecha_emision": "2020-01-01"},
-            files={"archivo": ("ruc.pdf", PDF)},
+            data={
+                "tipo": "titulo_sunarp",
+                "numero": "1",
+                "entidad_emisora": "SUNARP",
+                "fecha_emision": "2020-01-01",
+            },
+            files={"archivo": ("titulo.pdf", PDF)},
         ),
         lambda: api.post(
             f"/parcelas/{parcela.id}/excluir", json={"descripcion": descripcion, "confirmacion": "EXCLUIR"}
@@ -270,18 +285,19 @@ def test_resumen_por_estado_y_por_vencer(api, sesion, operador, admin, productor
     _parcela(api, sesion, operador, productor, rectangulo(100, 100, norte_m=500), nombre="Parcela Dos")
     _lista(sesion, a, operador, productor)
     api.como(admin).post(f"/parcelas/{a.id}/habilitar", json={"nota": NOTA})
-    documento_legal(sesion, a, "sunat", operador, vence=hoy_lima() + timedelta(days=5))
+    documento_legal(sesion, a, "titulo_sunarp", operador, vence=hoy_lima() + timedelta(days=5))
     resumen = api.get("/habilitacion/resumen").json()
     assert resumen["por_estado"] == {"pendiente": 1, "habilitada": 1, "observada": 0, "excluida": 0}
-    assert [(p["tipo"], p["estado"]) for p in resumen["por_vencer"]] == []  # el sunat original sigue vigente
+    # El título original, sin vencimiento, sigue sustentando la tenencia.
+    assert [(p["tipo"], p["estado"]) for p in resumen["por_vencer"]] == []
 
-    sunat = sesion.query(Documento).filter_by(entidad_id=a.id, tipo="sunat").all()
-    for d in sunat:
+    titulos = sesion.query(Documento).filter_by(entidad_id=a.id, tipo="titulo_sunarp").all()
+    for d in titulos:
         d.fecha_vencimiento = hoy_lima() + timedelta(days=5)
     sesion.flush()
     resumen = api.get("/habilitacion/resumen").json()
     assert [(p["parcela_codigo"], p["tipo"], p["estado"]) for p in resumen["por_vencer"]] == [
-        (a.codigo, "sunat", "por_vencer")
+        (a.codigo, "titulo_sunarp", "por_vencer")
     ]
 
 

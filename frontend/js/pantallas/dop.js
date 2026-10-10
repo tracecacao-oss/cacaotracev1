@@ -3,7 +3,7 @@
 
 import { llamarApi } from "../api.js";
 import { rolEfectivo } from "../estado.js";
-import { ALERTAS, ALERTAS_TANDA, ESTADOS_CASILLA, ESTADOS_HABILITACION, ESTADOS_MIDAGRI, OBSERVACIONES_2020, OBSERVACIONES_CAMBIO, PRODUCTO, REQUISITOS, hectareas, insigniaDop, insigniaNivel, kilos } from "../textos.js";
+import { ALERTAS, ALERTAS_TANDA, ESTADOS_CASILLA, ESTADOS_HABILITACION, ESTADOS_REQUISITO, ESTADOS_MIDAGRI, OBSERVACIONES_2020, OBSERVACIONES_CAMBIO, PRODUCTO, REQUISITOS, hectareas, insigniaDop, insigniaNivel, kilos } from "../textos.js";
 import { codigoQr, descargarPdf, huella } from "../tandas.js";
 import { lugares } from "../ubigeo.js";
 import { abrirModal, cabeceraFicha, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
@@ -13,6 +13,140 @@ import { historialMapbiomas } from "./parcela-habilitacion.js";
 function marcasCambio(fila) {
   if (!("registra_perdida" in fila)) return fila.registra_cambio ? ["Registra cambios"] : [];
   return [fila.registra_perdida && "Registra pérdida de bosque", fila.registra_alteracion && "Registra alteración de la vegetación"].filter(Boolean);
+}
+
+/** Antes de la versión 5: las 7 casillas, con su documento o su exención. */
+function bloqueExpediente(expediente) {
+  return seccion({
+    titulo: "Expediente legal",
+    sub: "Las 7 casillas, con su documento o su exención.",
+    contenido: h(
+      "div",
+      { class: "tbl-box" },
+      h(
+        "table",
+        { class: "tabla tabla-compacta" },
+        h("thead", {}, h("tr", {}, h("th", {}, "Casilla"), h("th", {}, "Estado"), h("th", { class: "ocultar-sm" }, "Documento o exención"))),
+        h(
+          "tbody",
+          {},
+          expediente.casillas.map((cas) => {
+            const [clase, texto] = ESTADOS_CASILLA[cas.estado] ?? ["", cas.estado];
+            const doc = cas.documento;
+            return h(
+              "tr",
+              {},
+              h("td", {}, cas.nombre, cas.nivel && h("span", { class: "sec" }, insigniaNivel(cas.nivel))),
+              h("td", {}, insignia(clase, texto)),
+              h(
+                "td",
+                { class: "ocultar-sm" },
+                doc
+                  ? [`N.º ${doc.numero} · ${doc.entidad_emisora}`, h("span", { class: "sec" }, `Emitido ${fecha(doc.fecha_emision)}${doc.fecha_vencimiento ? ` · vence ${fecha(doc.fecha_vencimiento)}` : ""}`)]
+                  : cas.exencion
+                    ? `No aplica: ${cas.exencion.motivo}`
+                    : cas.cubierta_por_nombre
+                      ? `No requerida: la tenencia está cubierta por ${cas.cubierta_por_nombre}`
+                      : "—",
+              ),
+            );
+          }),
+        ),
+      ),
+    ),
+  });
+}
+
+const ORIGEN = { cruce: "Cruce con la capa oficial", declarado: "Declarado" };
+const NOMBRE_INCIDENCIA = { tenencia: "De tenencia", ambiental: "Ambiental", otra: "Otra" };
+
+/** Versión 5 (adenda 4): el perfil con el origen de cada variable, las capas consultadas, los requisitos con
+ * su estado, su sustento y su nivel, y las incidencias. */
+function bloqueLegalidad(leg) {
+  const tabla = (encabezados, filas) =>
+    h(
+      "div",
+      { class: "tbl-box" },
+      h("table", { class: "tabla tabla-compacta" }, h("thead", {}, h("tr", {}, encabezados.map((e) => h("th", {}, e)))), h("tbody", {}, filas)),
+    );
+  return seccion({
+    titulo: "Legalidad de la parcela",
+    sub: `Según el ${leg.orientador}. ${leg.aviso_orientador}`,
+    contenido: [
+      tabla(
+        ["Dato del perfil", "Valor", "Origen"],
+        leg.perfil.map((v) =>
+          h(
+            "tr",
+            {},
+            h("td", {}, v.pregunta),
+            h("td", {}, v.etiqueta ?? "Falta el dato", v.aproximacion && h("span", { class: "sec" }, "Aproximación: la parcela es un punto")),
+            h("td", {}, v.origen ? `${ORIGEN[v.origen]} · ${fecha(v.registrada_en)}` : "—", v.nivel && h("span", { class: "sec" }, insigniaNivel(v.nivel))),
+          ),
+        ),
+      ),
+      tabla(
+        ["Capa consultada", "Fecha", "Resultado"],
+        leg.capas.map((c) =>
+          h(
+            "tr",
+            {},
+            h("td", {}, c.nombre, h("span", { class: "sec" }, c.entidad)),
+            h("td", { class: "fecha" }, fecha(c.consultada_en)),
+            h(
+              "td",
+              {},
+              c.estado === "fallo"
+                ? "El servicio no respondió"
+                : c.estado !== "hecho"
+                  ? "Sin cruzar todavía"
+                  : c.sin_zonificacion
+                    ? "La capa no clasifica el departamento de la parcela"
+                    : c.encontrados.length
+                      ? c.encontrados.join("; ")
+                      : "La parcela no figura en la capa",
+            ),
+          ),
+        ),
+      ),
+      tabla(
+        ["Requisito", "Estado", "Sustento o motivo"],
+        leg.requisitos.map((r) => {
+          const [clase, texto] = ESTADOS_REQUISITO[r.estado] ?? ["", r.estado];
+          const doc = r.documento;
+          return h(
+            "tr",
+            {},
+            h("td", {}, r.nombre, h("span", { class: "sec" }, `Ref. ${r.referencias.join(" y ")}`)),
+            h("td", {}, insignia(clase, texto), r.nivel && h("span", { class: "sec" }, insigniaNivel(r.nivel))),
+            h(
+              "td",
+              {},
+              doc
+                ? [
+                    `${doc.nombre}${doc.numero ? ` · N.º ${doc.numero}` : ""}`,
+                    h("span", { class: "sec" }, `Emitido ${fecha(doc.fecha_emision)}${doc.fecha_vencimiento ? ` · vence ${fecha(doc.fecha_vencimiento)}` : ""}${r.por_excepcion ? " · por la excepción de la Ley N.º 31973" : ""}`),
+                  ]
+                : (r.nota ?? r.motivo),
+            ),
+          );
+        }),
+      ),
+      leg.incidencias.length > 0 &&
+        tabla(
+          ["Incidencia", "Estado", "Qué se encontró"],
+          leg.incidencias.map((i) =>
+            h(
+              "tr",
+              {},
+              h("td", {}, NOMBRE_INCIDENCIA[i.tipo], h("span", { class: "sec" }, fecha(i.registrada_en))),
+              h("td", {}, i.estado === "abierta" ? "Abierta" : `Cerrada el ${fecha(i.cerrada_en)}`),
+              h("td", {}, `${i.descripcion} (fuente: ${i.fuente})`, i.cierre_nota && h("span", { class: "sec" }, `Cierre: ${i.cierre_nota}`)),
+            ),
+          ),
+        ),
+    ],
+  });
 }
 
 function insignia(clase, texto) {
@@ -317,44 +451,7 @@ export default async function dop({ parametros: [id], recargar }) {
       ],
     }),
     c.imagenes && bloqueImagenes(c.imagenes),
-    seccion({
-      titulo: "Expediente legal",
-      sub: "Las 7 casillas, con su documento o su exención.",
-      contenido: h(
-        "div",
-        { class: "tbl-box" },
-        h(
-          "table",
-          { class: "tabla tabla-compacta" },
-          h("thead", {}, h("tr", {}, h("th", {}, "Casilla"), h("th", {}, "Estado"), h("th", { class: "ocultar-sm" }, "Documento o exención"))),
-          h(
-            "tbody",
-            {},
-            c.expediente.casillas.map((cas) => {
-              const [clase, texto] = ESTADOS_CASILLA[cas.estado] ?? ["", cas.estado];
-              const doc = cas.documento;
-              return h(
-                "tr",
-                {},
-                h("td", {}, cas.nombre, cas.nivel && h("span", { class: "sec" }, insigniaNivel(cas.nivel))),
-                h("td", {}, insignia(clase, texto)),
-                h(
-                  "td",
-                  { class: "ocultar-sm" },
-                  doc
-                    ? [`N.º ${doc.numero} · ${doc.entidad_emisora}`, h("span", { class: "sec" }, `Emitido ${fecha(doc.fecha_emision)}${doc.fecha_vencimiento ? ` · vence ${fecha(doc.fecha_vencimiento)}` : ""}`)]
-                    : cas.exencion
-                      ? `No aplica: ${cas.exencion.motivo}`
-                      : cas.cubierta_por_nombre
-                        ? `No requerida: la tenencia está cubierta por ${cas.cubierta_por_nombre}`
-                        : "—",
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    }),
+    c.legalidad ? bloqueLegalidad(c.legalidad) : bloqueExpediente(c.expediente),
     seccion({
       titulo: "Tanda",
       contenido: rejilla([

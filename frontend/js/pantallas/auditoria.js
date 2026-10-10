@@ -70,6 +70,12 @@ const TEXTO_ACCION = {
   "parcela.habilitar": "Habilitó una parcela",
   "parcela.observar": "Pasó una parcela a observada (sistema)",
   "parcela.excluir": "Excluyó una parcela",
+  // Adenda 4
+  "parcela.perfil_declarar": "Declaró un dato del perfil legal de una parcela",
+  "parcela.cruce_solicitar": "Pidió volver a cruzar una parcela con las capas oficiales",
+  "parcela.cruce": "Cruzó una parcela con las capas oficiales (sistema)",
+  "parcela.incidencia_registrar": "Registró una incidencia de una parcela",
+  "parcela.incidencia_cerrar": "Cerró una incidencia de una parcela",
   "superadmin.consultar_cooperativa": "Consultó la cooperativa (soporte)",
   "configuracion.cambiar": "Cambió la configuración de la recepción",
   "lugar.crear": "Creó un lugar",

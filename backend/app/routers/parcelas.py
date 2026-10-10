@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from fastapi.responses import JSONResponse
 
+from app.catalogos import documentos_legales
 from app.contexto import Contexto, requiere_rol
 from app.models import Parcela
 from app.routers.comun import leer_archivo
@@ -30,16 +31,9 @@ Registro = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa", "operad
 Analisis = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa", "operador", "productor"))]
 Storage = Annotated[ClienteStorage, Depends(obtener_storage)]
 Alerta = Literal["area_discrepante", "diez_hectareas_o_mas", "superposicion", "sin_sustento_midagri"]
-TipoDocumentoParcela = Literal[
-    "sustento_midagri",
-    "titulo_sunarp",
-    "constancia_posesion",
-    "cusaf",
-    "autorizacion_serfor",
-    "sunafil",
-    "sunat",
-    "zonificacion",
-]
+# Adenda 4, sección 6: los documentos legales de la parcela; los anteriores ya no se cargan.
+TipoDocumentoParcela = Literal[("sustento_midagri", *documentos_legales.CODIGOS)]
+ClaseTitulo = Literal[documentos_legales.CLASES_TITULO_NO_INSCRITO]
 
 
 def cargar_documento_de_parcela(
@@ -52,10 +46,13 @@ def cargar_documento_de_parcela(
     entidad_emisora,
     fecha_emision,
     fecha_vencimiento,
+    clase=None,
 ) -> DocumentoSalida:
     """La comparten el personal y el productor (sobre sus parcelas)."""
     no_excluida(parcela)
-    datos_legales = validar_datos_legales(tipo, numero, entidad_emisora, fecha_emision, fecha_vencimiento)
+    datos_legales = validar_datos_legales(
+        tipo, numero, entidad_emisora, fecha_emision, fecha_vencimiento, clase
+    )
     documento = documentos.cargar(
         contexto,
         storage,
@@ -134,9 +131,19 @@ def cargar_documento(
     entidad_emisora: Annotated[str | None, Form()] = None,
     fecha_emision: Annotated[date | None, Form()] = None,
     fecha_vencimiento: Annotated[date | None, Form()] = None,
+    clase: Annotated[ClaseTitulo | None, Form()] = None,
 ):
-    """Sustento de MIDAGRI o uno de los 7 documentos legales (Parte 4), con sus datos."""
+    """Sustento de MIDAGRI o un documento legal de la parcela (adenda 4, sección 6), con sus datos."""
     parcela = servicio.parcela_visible(contexto, parcela_id)
     return cargar_documento_de_parcela(
-        contexto, storage, parcela, tipo, archivo, numero, entidad_emisora, fecha_emision, fecha_vencimiento
+        contexto,
+        storage,
+        parcela,
+        tipo,
+        archivo,
+        numero,
+        entidad_emisora,
+        fecha_emision,
+        fecha_vencimiento,
+        clase,
     )

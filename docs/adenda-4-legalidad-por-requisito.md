@@ -205,6 +205,12 @@ El orientador recoge que los predios privados con título o constancia de posesi
 4. Con `en_tierra_forestal = sin_zonificacion` el requisito queda `no_aplica` y la parcela recibe la alerta `zonificacion_forestal_desconocida`.
 5. Antes de programar esta regla, Claude Code lee la disposición complementaria final de la Ley N.º 31973 en El Peruano y confirma la fecha y las condiciones. Si difieren de este texto, se detiene y pregunta.
 
+> **Lectura de la ley y decisiones del equipo del 9 de octubre de 2026.** La única disposición complementaria final de la Ley N.º 31973 (El Peruano, 11 de enero de 2024) difiere de este texto en tres puntos. El equipo decidió:
+> 1. **Fecha de corte.** La ley habla de títulos o constancias emitidos "con anterioridad a la vigencia de la presente ley". Se dio el 10 y se publicó el 11 de enero de 2024, así que rige desde el 12 de enero de 2024. Valen los documentos con `fecha_emision` anterior al **12 de enero de 2024**, no al 10.
+> 2. **Ley N.º 31145.** La ley también exceptúa a los predios "que se encuentren dentro de los alcances de la Ley 31145" (saneamiento físico-legal y formalización de predios rurales a cargo de los gobiernos regionales), sin fecha. Se agrega el documento `constancia_saneamiento_31145`: la constancia del gobierno regional de que el predio está en ese saneamiento. Sustenta la excepción igual que un título anterior a la fecha de corte.
+> 3. **Quién emite.** La ley pide títulos o constancias "emitidas por la autoridad competente". Sustentan la excepción el `titulo_sunarp`, la `constancia_posesion` y el `titulo_no_inscrito` cuando es un **título de formalización**. Una minuta o escritura privada no la sustenta: el `titulo_no_inscrito` guarda su clase (`titulo_formalizacion`, `escritura_publica` o `minuta`) y solo `titulo_formalizacion` cuenta.
+> 4. La ley exige además que el predio "no contenga masa boscosa" y "desarrolle actividad agropecuaria", y dice que la reserva de 30 %, si falta, "deberá ser compensada de manera progresiva". El sistema no lo comprueba: lo pregunta (`reserva_bosque_30`) y lo lleva al hallazgo `tierra_forestal_por_excepcion`.
+
 ### 5.3 Incidencias de la parcela
 
 El orientador pide consultar si hay conflictos, litigios o denuncias, y solo entonces profundizar. El sistema guarda lo que la organización encuentre.
@@ -241,6 +247,7 @@ El orientador pide consultar si hay conflictos, litigios o denuncias, y solo ent
 | `acuerdo_conservacion` | Acuerdo de conservación con la jefatura del área protegida | No |
 | `cusaf` | Contrato de cesión en uso para sistemas agroforestales. Se mantiene | Sí |
 | `autorizacion_cambio_uso` | Autorización de cambio de uso o de desbosque. Reemplaza a `autorizacion_serfor` | No |
+| `constancia_saneamiento_31145` | Constancia del gobierno regional de que el predio está en saneamiento por la Ley N.º 31145. Decisión del 9 de octubre de 2026, sección 5.2 | No |
 | `licencia_agua` | Licencia o permiso de uso de agua, o certificado de la organización de usuarios | No |
 | `ficha_tecnica_ambiental` | Ficha Técnica Ambiental | No |
 | `instrumento_ambiental` | DIA, EIA-sd, EIA-d o PAMA | No |
@@ -298,10 +305,15 @@ El cruce es parte de esta adenda, no una etapa posterior. Los seis servicios de 
 | --- | --- | --- | --- |
 | `en_anp` | Áreas naturales protegidas de administración nacional y zonas reservadas, de SERNANP | `https://geoservicios.sernanp.gob.pe/arcgis/rest/services/sernanp_visor/servicio_descarga/MapServer`, capas 1 y 2 | Si se superpone: `dentro`, con el nombre y la categoría del área |
 | `en_anp` | Zonas de amortiguamiento, de SERNANP | El mismo servicio, capa 8 | Si no está dentro y se superpone: `zona_de_amortiguamiento` |
-| `en_tierra_forestal` | Zonificación forestal, de SERFOR | `https://geo.serfor.gob.pe/geoservicios/rest/services/Servicios_OGC/Zonificacion_Forestal/MapServer`, capa 0 | Si se superpone: `si`, con categoría, subcategoría y resolución. Si no se superpone y su departamento tiene zonificación en la capa: `no`. Si su departamento no tiene: `sin_zonificacion` |
+| `en_tierra_forestal` | Zonificación forestal, de SERFOR | `https://geo.serfor.gob.pe/geoservicios/rest/services/Servicios_OGC/Zonificacion_Forestal/MapServer`, capa 0 | Si se superpone: `si`, con categoría, subcategoría y resolución. Si no se superpone y su departamento tiene zonificación en la capa: `no`. Si su departamento no tiene: `sin_zonificacion`. Ver la nota de abajo |
 | `en_tierra_comunal` | Comunidades nativas y campesinas, en el geoportal de la IDEP (IGN) | `https://www.idep.gob.pe/geoportal/rest/services/INSTITUCIONALES/COMUNIDADES_NATIVAS/MapServer`, capas 0 y 1 | Si se superpone: `si`, con el nombre y el tipo de comunidad |
 | `junto_a_cuerpo_de_agua` | Hidrografía de la carta nacional 1:100 000, del IGN | `https://www.idep.gob.pe/geoportal/rest/services/SERVICIOS_IGN/HIDROGRAFIA_100K/MapServer`, capas 0, 1 y 2 | Si el lindero está a `DISTANCIA_CUERPO_AGUA_M` metros o menos de un río o un lago: `si`, con la distancia y el nombre |
 | `en_patrimonio_cultural` | Monumentos arqueológicos prehispánicos delimitados, del SIGDA del Ministerio de Cultura | `https://sigda.cultura.gob.pe/sigda/rest/services/v_3/maps_delimitado/MapServer`, capa 0 | Si se superpone: `si`, con el nombre del monumento |
+
+> **Lectura de los metadatos y decisiones del equipo del 9 de octubre de 2026 sobre la zonificación forestal.**
+> 1. La capa clasifica todo el territorio de un departamento zonificado, también las chacras. Tiene cinco categorías (`CATZFO`) con sus subcategorías (`SCAZFO`), y sus significados están en el metadato de la capa (`types`). Las parcelas agrícolas de la simulación caen en la 605, "Área agropecuaria".
+> 2. Solo cuentan como tierra de aptitud forestal o de protección las categorías **601 a 604**: producción permanente, protección y conservación ecológica, recuperación y tratamiento especial. Quedan fuera la **605** (área agropecuaria) y la subcategoría **60402** (producción agroforestal y silvopastoril). Superponerse solo con esas da `en_tierra_forestal = no`, y la categoría se guarda en `detalle` y se muestra como dato.
+> 3. La regla vale para todo el país. Un departamento "tiene zonificación en la capa" si la capa le clasifica también las chacras: si tiene polígonos de la categoría 605. El sistema lo pregunta a la propia capa, sin una lista fija. El 9 de octubre eran San Martín (RM N.º 039-2020-MINAM) y Ucayali (RM N.º 0046-2024-MIDAGRI-DM). Amazonas, Huánuco, Junín, Loreto y Madre de Dios solo tenían polígonos de protección (602) o de reservas indígenas (60401): ahí una parcela sin superposición queda `sin_zonificacion`.
 
 ### Reglas del cruce
 
@@ -324,7 +336,7 @@ No deciden ninguna variable. Agregan información al perfil.
 | --- | --- | --- |
 | Áreas de conservación regional y privada, de SERNANP | El servicio de SERNANP, capas 3 y 4 | Se guarda en `detalle` y genera el hallazgo `en_area_de_conservacion`. No activa `area_protegida` |
 | Cesiones en uso y autorizaciones de cambio de uso, de SERFOR | `https://geo.serfor.gob.pe/geoservicios/rest/services/Servicios_OGC/Modalidad_Acceso/MapServer`, capas 1 y 3 | Si la parcela se superpone con un contrato registrado, se muestra su número junto al requisito `tierra_forestal`, para compararlo con el documento cargado. No reemplaza al documento |
-| Fajas marginales delimitadas, de la ANA | `https://geosnirh.ana.gob.pe/server/rest/services/Público/FajaMarginal/MapServer` | Este servicio no se pudo probar. Si responde desde el sistema, su resultado se guarda en `detalle` de `junto_a_cuerpo_de_agua` |
+| Fajas marginales delimitadas, de la ANA | `https://geosnirh.ana.gob.pe/server/rest/services/Público/FajaMarginal/MapServer` | Este servicio no se pudo probar. Si responde desde el sistema, su resultado se guarda en `detalle` de `junto_a_cuerpo_de_agua`. El 9 de octubre de 2026 respondió desde el entorno de Claude Code, con una sola capa, la 127 |
 
 De la capa de cesiones en uso no se guardan ni se muestran los nombres de los titulares.
 
@@ -459,6 +471,77 @@ Regla de grupo: un requisito sin sustento va a Requiere atención si su diligenc
 - [ ] Confirmar los 100 metros de `DISTANCIA_CUERPO_AGUA_M`.
 - [ ] Confirmar que las áreas de conservación regional y privada solo generen hallazgo y no bloqueen.
 - [ ] Volver a cargar el perfil de las parcelas de la simulación, que quedarán `observada` tras la migración.
+
+## 15. Construcción (9 de octubre de 2026)
+
+Registro de Claude Code. Rama `feat/adenda-4-legalidad`, migración 0016.
+
+### Confirmado antes de construir
+
+1. La disposición complementaria final de la Ley N.º 31973 se leyó en El Peruano. Difería en tres puntos y el equipo decidió (sección 5.2): corte el 12 de enero de 2024, la constancia de la Ley N.º 31145 y solo el título de formalización entre los no inscritos.
+2. Los seis servicios de la sección 10 se confirmaron con su metadato (`?f=pjson`) el 9 de octubre de 2026: existen con esos números de capa, aceptan consultas espaciales y por distancia, entregan GeoJSON y traen los campos que se guardan. No se encontraron condiciones de uso publicadas. El servidor de SERFOR a veces responde vacío: cada consulta se reintenta tres veces. La ANA respondió con una sola capa, la 127.
+3. "Registro consultable": queda `sí` solo en `titulo_sunarp` (SUNARP) y `cusaf` (GeoSERFOR publica las cesiones en uso). La capa de cambio de uso de GeoSERFOR tenía solo 2 registros, la capa "Acuerdo" de SERNANP estaba vacía y la ANA no publica un buscador de licencias.
+
+### Decisiones de construcción por confirmar
+
+La adenda no las dice.
+
+1. **Cola del cruce.** Vive en dos columnas de `parcelas` (`cruce_solicitado_en` y `cruce_estado`), no en una tabla propia. Si una capa falla, el cruce se repite a los 5 minutos y a la hora. Después lo retoma la tarea diaria.
+2. **Cambio de geometría.** Los cruces de la geometría anterior dejan de valer: `vigente = false`, y la parcela vuelve a la cola. Lo mismo pasa al cambiar el área declarada de un punto. Cambiar el departamento solo vuelve a cruzar.
+3. **Una fila vigente por origen.** La regla "solo una fila vigente por parcela y variable" se aplica por parcela, variable y origen, porque el cruce y la declaración se guardan y se muestran juntos (sección 4, regla 4).
+4. **Declaraciones frente al cruce.**
+   - Declarar un valor menos exigente que el cruce vigente responde 422.
+   - Declarar un valor distinto del cruce exige una nota.
+   - Con una declaración de igual valor, manda el cruce.
+5. **Notas de faja marginal y patrimonio cultural.** Se guardan como una declaración del mismo valor vigente, con la nota en su `detalle` (`POST /parcelas/{id}/requisitos/{codigo}/nota`). Exigen 10 caracteres como mínimo.
+6. **`reserva_bosque_30`.** Solo se puede declarar mientras la tierra forestal se sustenta por la excepción.
+7. **Sustentos que cuentan.**
+   - Si hay varios sustentos, cuenta el de mejor nivel, y entre esos el de mejor estado y vencimiento más lejano.
+   - Un mismo documento puede sustentar dos requisitos. Por ejemplo, un CCUSAF de un `titulo_habilitante` sustenta la tenencia y la tierra forestal.
+   - Para el miembro de la comunidad, la declaración jurada sustenta también el acuerdo comunal.
+8. **Instrumento ambiental.**
+   - De 10 a 50 ha vale también el instrumento mayor.
+   - Sobre 50 ha solo vale el instrumento mayor.
+   - El área total es la calculada en un polígono y la declarada en un punto.
+9. **Patrimonio cultural.** "Sin CCUSAF vigente" (sección 5) se lee así: con un CCUSAF vigente, el requisito queda "no aplica" y lo dice en su motivo.
+10. **Declaración jurada.**
+    - Su `fecha_vencimiento` se calcula al cargarla: la firma más `DECLARACION_VIGENCIA_MESES`.
+    - La declaración jurada, la constancia comunal y el acta comunal no piden número ni entidad emisora.
+    - El título no inscrito exige su clase. Los tipos anteriores no se cargan y responden 422.
+11. **Exenciones.** `POST /parcelas/{id}/exenciones` responde 422 (`exenciones_sin_efecto`), y retirar una exención ya no tiene ruta. Las exenciones anteriores se ven como historial en la pestaña Legalidad.
+12. **Rutas de la legalidad.**
+    - `GET /parcelas/{id}/expediente` se reemplaza por `GET /parcelas/{id}/legalidad`. El productor lo ve en `/mi/parcelas/{id}/legalidad`.
+    - Las plantillas se descargan en `/parcelas/{id}/plantillas/{nombre}` y en `/mi/parcelas/{id}/plantillas/{nombre}`. Responden 400 si no aplican.
+13. **Plantillas.** El texto de los Anexos A y B va tal cual, en `app/textos/plantillas_legales.json`.
+    - El sistema llena solo lo que va entre llaves. El nombre de la comunidad del Anexo A queda en blanco, porque en el anexo es una línea.
+    - El Anexo B marca "es miembro" o "no es miembro" según `tenencia_tipo`.
+    - El texto usa "conforme a" en su sentido legal ("conforme a sus estatutos", "conforme a la legislación peruana"). Por eso la prueba de palabras prohibidas no lo lee: lo revisa el asesor legal.
+14. **Alertas.**
+    - `expediente_incompleto` deja de calcularse; su insignia queda para las decisiones ya registradas.
+    - `documento_por_vencer` y `documento_vencido` siguen, ahora por requisito.
+    - `requisito_sin_sustento` junta los requisitos que no bloquean y están sin sustento o vencidos.
+15. **Hallazgos.**
+    - `tenencia_solo_posesion`, `documento_por_vencer`, `documento_sin_registro_consultable` y `documento_sin_cotejar` ahora miran los sustentos que cuentan. La declaración jurada tiene su propio hallazgo.
+    - `exencion_declarada` y `diez_hectareas_o_mas` siguen en el catálogo para los DEX ya emitidos, pero no se generan.
+    - `perfil_declarado_sin_cruce` también salta cuando el cruce todavía no corrió: la variable quedó declarada.
+    - `comunidad_no_inscrita` salta también cuando nadie respondió si la comunidad está inscrita.
+16. **Temas en la interfaz.** El informe y el PDF del DEX dicen "Tema" en lugar de "Criterio". El cuadro del DEX titula "Los 14 criterios del artículo 10, apartado 2, agrupados en 11 temas".
+17. **Mapa de la pestaña Legalidad.** Dibuja cada capa con la operación `export` de su servicio. Solo le envía el recuadro visible del mapa. Se encienden las capas en las que la parcela figura. Al lado, en texto, lista lo que encontró el cruce, con sus nombres.
+18. **Zonificación forestal.**
+    - Solo se pide la geometría de los polígonos forestales (601 a 604, salvo 60402), para medir el área común.
+    - De los demás basta saber que tocan la parcela, porque la 605 abarca departamentos enteros.
+    - El departamento se toma del de la parcela, por su código del INEI, y de los polígonos que toca.
+19. **Escenario de demostración y simulación.**
+    - El escenario de la cooperativa Prueba carga solo el título y declara el perfil. PA-00008 queda con el perfil incompleto, y lo que se anula al final es el título de PA-00007.
+    - La simulación carga solo el título y su guion pide declarar el perfil.
+    - Las variables de mapa se declaran "no" solo si el cruce no respondió.
+
+### Para el equipo
+
+1. Correr `backend/scripts/check_capas_legales.py` en local y en el servidor de producción.
+2. Aplicar la migración 0016 en producción. Pone en la cola del cruce las parcelas activas no excluidas; ninguna recibe un perfil por defecto.
+3. Al aplicarla, las parcelas habilitadas pasan a observada hasta completar su perfil (sección 8, regla 4). Eso incluye las de la simulación.
+4. Los pendientes de la sección 14.
 
 ## Anexo A — Declaración jurada de tenencia y conducción de parcela
 

@@ -2,9 +2,9 @@
 
 Sigue el guion paso a paso, con el rol que corresponde en cada pantalla: el superadministrador crea la
 cooperativa; el administrador carga sus datos y su expediente, crea al operador, configura, habilita,
-declara lo que no aplica, valida las tandas y emite el DEX; el operador registra productores, parcelas,
-tandas, corridas, la orden, el lote y el embarque. Llama a las mismas funciones que los endpoints, con los
-mismos esquemas de entrada; no inserta filas ni fuerza estados.
+valida las tandas y emite el DEX; el operador registra productores, parcelas con su título y su perfil
+legal (adenda 4), tandas, corridas, la orden, el lote y el embarque. Llama a las mismas funciones que los
+endpoints, con los mismos esquemas de entrada; no inserta filas ni fuerza estados.
 
 Como el escenario es el camino feliz, cualquier alerta que pida una nota detiene la carga con
 EscenarioDetenido: la prueba la corre con Whisp y GFW simulados sin alertas.
@@ -15,12 +15,14 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
+from app.catalogos import perfil_legal
 from app.demo.escenario import EscenarioDetenido, _contexto, _paso
 from app.demo.simulacion import CALIDAD, HUMEDAD, Cooperativa, Documento, Simulacion, geojson
 from app.fechas import ahora
 from app.models import Perfil
 from app.schemas.cooperativa import CooperativaCambios
 from app.schemas.exportacion import Confirmacion, ImportadorNuevo, OrdenNueva
+from app.schemas.legalidad import DeclaracionNueva
 from app.schemas.plataforma import CooperativaNueva
 from app.schemas.proceso import (
     CalidadNueva,
@@ -43,6 +45,7 @@ from app.services import (
     embarque,
     expediente,
     habilitacion,
+    legalidad,
     lotes,
     lugares,
     ordenes,
@@ -264,11 +267,16 @@ class _Carga:
                         archivo=self._archivo(d),
                         datos_legales=legales,
                     )
-            for tipo, nombre, motivo in p.exenciones:
-                with self._paso(f"{p.codigo}: «{nombre}» no aplica"):
-                    expediente.declarar_exencion(
-                        self.admin, parcelas.parcela_visible(self.admin, detalle.id), tipo, motivo
-                    )
+            with self._paso(f"{p.codigo}: declarar el perfil legal"):
+                parcela = parcelas.parcela_visible(self.operador, detalle.id)
+                actual = legalidad.legalidad(self.sesion, parcela)
+                # Lo que no respondió el cruce con las capas oficiales (en la prueba no corre) va como "no".
+                respuestas = dict(p.perfil) | {
+                    c: "no" for c in perfil_legal.CRUZABLES if actual.valor(c) is None
+                }
+                for variable, valor in respuestas.items():
+                    datos = DeclaracionNueva(variable=variable, valor=valor)
+                    legalidad.declarar(self.operador, parcela, datos.variable, datos.valor)
 
     def _habilitacion(self) -> None:
         limite = ahora() + ESPERA_ANALISIS
@@ -348,8 +356,13 @@ class _Carga:
                     if "calidad_id" in datos:
                         datos["calidad_id"] = str(self.calidad_id)
                     entrada = EtapaRegistro(
-                        lugar_id=self.lugares[e.lugar], inicio=e.inicio, fin=e.fin, metodo=e.metodo,
-                        responsable=self.responsable, distancia_m=e.distancia, datos=datos,
+                        lugar_id=self.lugares[e.lugar],
+                        inicio=e.inicio,
+                        fin=e.fin,
+                        metodo=e.metodo,
+                        responsable=self.responsable,
+                        distancia_m=e.distancia,
+                        datos=datos,
                     )
                 corridas.registrar_etapa(self.operador, creada.id, e.numero, entrada)
         with self._paso(f"{corrida.nombre}: consolidar"):

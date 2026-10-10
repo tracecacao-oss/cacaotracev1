@@ -19,23 +19,15 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.catalogos import documentos_embarque, documentos_legales
 from app.models import Base, ConFechas
 
-# Los 7 documentos del expediente legal de la parcela (Parte 4); su catálogo vive en
-# app/catalogos/documentos_legales.py.
-TIPOS_LEGALES = (
-    "titulo_sunarp",
-    "constancia_posesion",
-    "cusaf",
-    "autorizacion_serfor",
-    "sunafil",
-    "sunat",
-    "zonificacion",
-)
+# Los documentos legales de la parcela (adenda 4, sección 6, más los anteriores que se conservan); su
+# catálogo vive en app/catalogos/documentos_legales.py.
+TIPOS_LEGALES = documentos_legales.TODOS
 TIPOS_DOCUMENTO = (
     "dni",
     "constancia_ppa",
@@ -109,6 +101,11 @@ class Documento(Base):
             "fecha_vencimiento IS NULL OR fecha_emision IS NULL OR fecha_vencimiento > fecha_emision",
             name="vencimiento_despues_de_emision",
         ),
+        CheckConstraint(
+            f"clase IS NULL OR (tipo = 'titulo_no_inscrito' AND clase IN "
+            f"({_en(documentos_legales.CLASES_TITULO_NO_INSCRITO)}))",
+            name="clase_valida",
+        ),
         Index("ix_documentos_entidad", "entidad", "entidad_id"),
         # El mismo contenido no se carga dos veces para el mismo registro y tipo.
         Index(
@@ -147,6 +144,8 @@ class Documento(Base):
     cotejado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cotejado_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))
     cotejo_nota: Mapped[str | None] = mapped_column(Text)
+    # Adenda 4: la clase del título no inscrito (solo el de formalización sustenta la excepción forestal).
+    clase: Mapped[str | None] = mapped_column(Text)
 
 
 class Parcela(ConFechas, Base):
@@ -216,6 +215,10 @@ class Parcela(ConFechas, Base):
     geometria_actualizada_en: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Adenda 4: cola del cruce con las capas oficiales. Con fecha, el trabajador cruza la parcela; el
+    # resultado de cada capa (hecho, sin resultado o falló) queda en cruce_estado.
+    cruce_solicitado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cruce_estado: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class Superposicion(ConFechas, Base):

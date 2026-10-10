@@ -101,6 +101,8 @@ class DocumentoSalida(Salida):
     fecha_vencimiento: date | None = None
     cotejado_en: datetime | None = None
     cotejo_nota: str | None = None
+    # Adenda 4: la clase del título no inscrito.
+    clase: str | None = None
 
 
 class ProductorDeParcela(BaseModel):

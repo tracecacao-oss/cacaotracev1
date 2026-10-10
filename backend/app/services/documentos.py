@@ -95,6 +95,7 @@ NOMBRES_TIPO = {
     "dex_leeme": "LEEME del DEX",
     "dex_paquete": "paquete del DEX",
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
+    **{t.codigo: t.nombre for t in documentos_legales.TIPOS_ANTERIORES},
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS_COOPERATIVA},
     **{t.codigo: t.nombre for t in documentos_embarque.TIPOS},
 }

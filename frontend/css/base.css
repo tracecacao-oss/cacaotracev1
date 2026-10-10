@@ -2220,6 +2220,65 @@ textarea.input.texto-libre {
   background: var(--surface-2);
   font-size: 12.5px;
 }
+/* Adenda 4: pestaña Legalidad (perfil, requisitos e incidencias). */
+.legalidad-resumen {
+  display: grid;
+  gap: 10px;
+}
+.subtitulo-bloque {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.legalidad-mapa {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 14px;
+  margin-bottom: 4px;
+}
+.mapa-legalidad {
+  height: 320px;
+}
+.legalidad-hallado {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .legalidad-mapa {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.requisito-motivo {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.que-pide summary,
+.no-aplican > summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.que-pide p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.no-aplican {
+  margin-top: 12px;
+}
+.no-aplican > summary {
+  padding: 4px 0 8px;
+}
+.casilla-doc .lista-simple {
+  flex-basis: 100%;
+  margin: 0;
+  padding-left: 18px;
+}
 .requisitos li {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

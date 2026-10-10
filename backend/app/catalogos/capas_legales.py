@@ -74,7 +74,7 @@ CAPAS: tuple[Capa, ...] = (
         "sigda_monumentos",
         "en_patrimonio_cultural",
         "Monumentos arqueológicos prehispánicos delimitados",
-        "Ministerio de Cultura (SIGDA)",
+        "Ministerio de Cultura, SIGDA",
         SIGDA,
         (0,),
     ),

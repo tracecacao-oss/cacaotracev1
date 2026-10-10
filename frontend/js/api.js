@@ -146,3 +146,26 @@ export async function llamarApi(ruta, opciones = {}) {
     }
   }
 }
+
+/**
+ * Adenda 4: descarga un archivo que la API genera al pedirlo (las plantillas para firmar en PDF). Lleva el
+ * token como cualquier llamada; si la API responde un error, lo lanza con su mensaje.
+ */
+export async function descargarArchivo(ruta, nombre) {
+  const cabeceras = {};
+  const token = await tokenActual();
+  if (token) cabeceras.Authorization = `Bearer ${token}`;
+  if (enConsulta()) cabeceras["X-Cooperativa-Id"] = estado.consulta.id;
+  let respuesta;
+  try {
+    respuesta = await intentar(armarUrl(ruta), { headers: cabeceras }, LIMITE_TOTAL_MS);
+  } catch {
+    throw new ErrorApi(0, "servidor_no_disponible", "No se pudo conectar con el servidor. Intenta de nuevo en unos minutos.");
+  }
+  if (!respuesta.ok) await leerRespuesta(respuesta);
+  const enlace = Object.assign(document.createElement("a"), { href: URL.createObjectURL(await respuesta.blob()), download: nombre });
+  document.body.append(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(enlace.href), 10000);
+}

@@ -191,27 +191,32 @@ def test_flujo_completo_de_la_cooperativa_prueba(api, sesion, auth_falso, storag
         )
     )
     assert gfw_del_punto.es_aproximacion and gfw_del_punto.estado == "completado"
-    titulo = next(
-        c
-        for c in _ok(api.get(f"/parcelas/{esc.parcelas['PA-00001']}/expediente"))["casillas"]
-        if c["codigo"] == "titulo_sunarp"
+
+    # Adenda 4: legalidad por requisito.
+    def legalidad(codigo):
+        return _ok(api.get(f"/parcelas/{esc.parcelas[codigo]}/legalidad"))
+
+    def requisito(leg, codigo):
+        return next(r for r in leg["requisitos"] if r["codigo"] == codigo)
+
+    tenencia = requisito(legalidad("PA-00001"), "tenencia")
+    assert (tenencia["sustento"]["tipo"], tenencia["sustento_nivel"]) == (
+        "titulo_sunarp",
+        "verificado_en_fuente",
     )
-    assert titulo["nivel"] == "verificado_en_fuente"
-    pa3 = _ok(api.get(f"/parcelas/{esc.parcelas['PA-00003']}/expediente"))
-    assert pa3["tenencia_solo_posesion"] is True
-    pa6 = _ok(api.get(f"/parcelas/{esc.parcelas['PA-00006']}/expediente"))
-    pa6 = {c["codigo"]: c for c in pa6["casillas"]}
-    assert pa6["autorizacion_serfor"]["estado"] == "no_aplica" and pa6["autorizacion_serfor"]["exencion"]
+    assert "tenencia_solo_posesion" in legalidad("PA-00003")["alertas"]
+    pa6 = legalidad("PA-00006")
+    assert pa6["perfil_completo"] and requisito(pa6, "tierra_forestal")["estado"] == "no_aplica"
     aceptadas = _ok(api.get("/superposiciones", params={"estado": "aceptada"}))
     assert [{p["codigo"] for p in s["parcelas"]} for s in aceptadas] == [{"PA-00006", "PA-00007"}]
     assert aceptadas[0]["nota"]
     pa7 = _ok(api.get(f"/parcelas/{esc.parcelas['PA-00007']}/habilitacion"))
-    assert [r["codigo"] for r in pa7["requisitos"] if not r["cumple"]] == ["expediente_completo"]
+    assert [r["codigo"] for r in pa7["requisitos"] if not r["cumple"]] == ["tenencia_sustentada"]
     assert pa7["decisiones"][0]["decision"] == "observar"
     anulado = sesion.get(Documento, esc.documento_anulado_id)
-    assert (anulado.tipo, anulado.anulado_en is not None) == ("sunafil", True)
-    pa8 = _ok(api.get(f"/parcelas/{esc.parcelas['PA-00008']}/expediente"))
-    assert pa8["estado"] == "incompleto"
+    assert (anulado.tipo, anulado.anulado_en is not None) == ("titulo_sunarp", True)
+    pa8 = legalidad("PA-00008")
+    assert pa8["perfil_completo"] is False
     assert _ok(api.get("/tandas", params={"parcela_id": str(esc.parcelas["PA-00009"])})) == []
     pa9 = _ok(api.get(f"/parcelas/{esc.parcelas['PA-00009']}/habilitacion"))
     assert pa9["decisiones"][0]["decision"] == "excluir"

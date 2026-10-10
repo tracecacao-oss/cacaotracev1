@@ -36,8 +36,8 @@ from tests.factorias import crear_parcela, punto, rectangulo
 from tests.habilitacion_util import (
     PDF,
     analisis_completado,
-    expediente_completo,
     fuentes_configuradas,
+    legalidad_completa,
     productor_listo,
     visita,
 )
@@ -463,7 +463,7 @@ def test_un_analisis_posterior_no_vence_la_revision(api, sesion, admin, parcela)
 
 
 def test_habilitar_con_cambio_visible_exige_nota(api, sesion, operador, admin, productor, parcela):
-    expediente_completo(sesion, parcela, operador)
+    legalidad_completa(sesion, parcela, operador)
     productor_listo(sesion, productor, operador)
     revision(sesion, parcela, admin, observacion_2020="bosque", observacion_cambio="cambio_visible")
     api.como(admin)
@@ -565,7 +565,7 @@ def test_el_dop_lleva_las_imagenes_y_la_revision(
     api, sesion, coop, operador, admin, productor, parcela, storage_falso
 ):
     _generar(sesion, parcela, storage_falso)
-    expediente_completo(sesion, parcela, operador)
+    legalidad_completa(sesion, parcela, operador)
     productor_listo(sesion, productor, operador)
     api.como(admin)
     assert _nueva_revision(api, parcela).status_code == 201

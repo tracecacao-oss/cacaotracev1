@@ -43,11 +43,11 @@ export function mensajeFinal(bloques) {
 }
 
 function tarjeta(hz, idioma, informe, irAPestana) {
-  const criterio = informe.criterios[String(hz.criterio)]?.[idioma] ?? `Criterio ${hz.criterio}`;
+  const criterio = informe.criterios[String(hz.criterio)]?.[idioma] ?? `Tema ${hz.criterio}`;
   return h(
     "article",
     { class: "hz-f" },
-    h("div", { class: "hz-f-h" }, h("b", {}, hz.hecho[idioma]), h("span", { class: "crit", title: criterio }, `Criterio ${hz.criterio}`)),
+    h("div", { class: "hz-f-h" }, h("b", {}, hz.hecho[idioma]), h("span", { class: "crit", title: criterio }, `Tema ${hz.criterio}`)),
     hz.explicacion && h("p", {}, h("span", { class: "sec" }, idioma === "es" ? "Explicación: " : "Explanation (original text in Spanish): "), hz.explicacion),
     h(
       "div",
@@ -153,13 +153,13 @@ export function vistaInforme(informe, { codigoDex = null, irAPestana = null } = 
         "div",
         { class: "hz-tiles" },
         grupos.map((g) => h("div", { class: "hz-tile" }, h("b", {}, String(informe.grupos[g].cantidad)), h("span", {}, informe.grupos[g].nombre[idioma]))),
-        h("div", { class: "hz-tile" }, h("b", {}, String(alimentados), h("small", {}, ` de ${Object.keys(informe.criterios).length}`)), h("span", {}, "criterios del art. 10 alimentados desde el flujo")),
+        h("div", { class: "hz-tile" }, h("b", {}, String(alimentados), h("small", {}, ` de ${Object.keys(informe.criterios).length}`)), h("span", {}, "temas del art. 10 alimentados desde el flujo")),
       ),
       h("section", { class: "hz-sec" }, h("h3", {}, t.mensaje), mensajeFinal(informe.mensaje[idioma].slice(1))),
       h(
         "section",
         { class: "hz-sec" },
-        h("h3", {}, t.hallazgos, h("small", {}, "qué se observó, dónde, con qué dato y a qué criterio corresponde")),
+        h("h3", {}, t.hallazgos, h("small", {}, "qué se observó, dónde, con qué dato y a qué tema corresponde")),
         h(
           "div",
           { class: "hz-filtros" },
@@ -167,7 +167,7 @@ export function vistaInforme(informe, { codigoDex = null, irAPestana = null } = 
             filtros.etapa = v;
             dibujarHallazgos();
           }),
-          selector("Criterio", [["", "Todos los criterios"], ...Object.keys(informe.criterios).map((n) => [n, `Criterio ${n}`])], (v) => {
+          selector("Tema", [["", "Todos los temas"], ...Object.keys(informe.criterios).map((n) => [n, `Tema ${n}`])], (v) => {
             filtros.criterio = v;
             dibujarHallazgos();
           }),
@@ -185,14 +185,14 @@ export function vistaInforme(informe, { codigoDex = null, irAPestana = null } = 
       h(
         "section",
         { class: "hz-sec" },
-        h("h3", {}, "Criterios del artículo 10", h("small", {}, `${alimentados} se alimentan desde el flujo; los otros se nombran para que el operador sepa qué le queda por cubrir`)),
+        h("h3", {}, Object.keys(informe.criterios).length === 11 ? "Los 14 criterios del artículo 10, apartado 2, agrupados en 11 temas" : "Criterios del artículo 10", h("small", {}, `${alimentados} se alimentan desde el flujo; los otros se nombran para que el operador sepa qué le queda por cubrir`)),
         h(
           "div",
           { class: "tbl-box" },
           h(
             "table",
             { class: "hz-t" },
-            h("thead", {}, h("tr", {}, h("th", {}, "N.º"), h("th", {}, "Criterio"), h("th", {}, "En este lote"))),
+            h("thead", {}, h("tr", {}, h("th", {}, "N.º"), h("th", {}, "Tema"), h("th", {}, "En este lote"))),
             h(
               "tbody",
               {},

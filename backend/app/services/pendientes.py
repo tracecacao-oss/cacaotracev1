@@ -14,7 +14,7 @@ from app.fechas import LIMA, hoy_lima
 from app.models import Lote, OrdenCompra, Parcela, Tanda
 from app.schemas.cooperativa import GrupoPendientes, Pendiente, PendientesSalida
 from app.services import cooperativa as servicio_cooperativa
-from app.services import expediente as servicio_expediente
+from app.services import legalidad as servicio_legalidad
 from app.services import recomprobacion
 
 DIAS_ANTES_DE_LA_ENTREGA = 15
@@ -41,14 +41,13 @@ def pendientes(contexto: Contexto) -> PendientesSalida:
 
     # Documentos de las parcelas, vencidos y por vencer.
     docs_parcelas = {"vencido": [], "por_vencer": []}
-    for pid, casilla in servicio_expediente.documentos_por_vencer(sesion, list(parcelas)):
-        p = parcelas[pid]
-        vence = casilla.documento.fecha_vencimiento
-        docs_parcelas[casilla.estado].append(
+    for p, requisito, documento in servicio_legalidad.sustentos_por_vencer(sesion, list(parcelas.values())):
+        vence = documento.fecha_vencimiento
+        docs_parcelas[requisito.estado].append(
             Pendiente(
-                titulo=f"{p.codigo} · {documentos_legales.POR_CODIGO[casilla.codigo].nombre}",
-                detalle=f"{'Venció' if casilla.estado == 'vencido' else 'Vence'} el {_fecha(vence)}",
-                enlace=f"#/parcelas/{pid}",
+                titulo=f"{p.codigo} · {documentos_legales.POR_CODIGO[documento.tipo].nombre}",
+                detalle=f"{'Venció' if requisito.estado == 'vencido' else 'Vence'} el {_fecha(vence)}",
+                enlace=f"#/parcelas/{p.id}",
                 fecha=vence,
             )
         )

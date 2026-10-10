@@ -1,0 +1,48 @@
+{
+  "declaracion_jurada_tenencia": {
+    "version": 1,
+    "anexo": "Anexo A",
+    "nota": "Versión 1, redactada para revisión de un asesor legal. Adenda 4 de CacaoTrace, Anexo A.",
+    "bloques": [
+      {"tipo": "titulo", "texto": "DECLARACIÓN JURADA DE TENENCIA Y CONDUCCIÓN DE PARCELA AGRÍCOLA"},
+      {"tipo": "parrafo", "texto": "Yo, {productor}, identificado(a) con DNI N.º {dni}, con domicilio en ______________________, distrito de __________, provincia de __________, departamento de __________, en pleno uso de mis facultades y de manera libre y voluntaria, **DECLARO BAJO JURAMENTO** lo siguiente:"},
+      {"tipo": "parrafo", "texto": "**PRIMERO. De la parcela.** Conduzco de manera directa la parcela agrícola denominada \"{parcela}\", registrada con el código {codigo}, ubicada en {centro_poblado}, distrito de {distrito}, provincia de {provincia}, departamento de {departamento}, con un área aproximada de {area} hectáreas. Su ubicación es la que consta en el plano o en las coordenadas registradas con ese código."},
+      {"tipo": "parrafo", "texto": "Colindantes: por el norte, __________; por el sur, __________; por el este, __________; por el oeste, __________."},
+      {"tipo": "parrafo", "texto": "**SEGUNDO. De la forma de tenencia.** Ejerzo sobre la parcela el siguiente derecho (se marca una sola opción):"},
+      {"tipo": "opcion", "clave": "propietario", "texto": "**Propiedad**, sin título inscrito en los Registros Públicos. La adquirí por __________ (compraventa, herencia, adjudicación u otro) en el año ______."},
+      {"tipo": "opcion", "clave": "poseedor", "texto": "**Posesión** directa, continua, pacífica y pública, como propietario, desde el año ______, sin contar a la fecha con constancia de posesión."},
+      {"tipo": "opcion", "clave": "uso_por_acuerdo", "texto": "**Uso por acuerdo** con su propietario o poseedor, don/doña ______________________, con DNI N.º __________, en calidad de __________ (arrendamiento, préstamo, cesión en uso o acuerdo familiar), desde el año ______, sin contrato escrito."},
+      {"tipo": "opcion", "clave": "comunal_miembro", "texto": "**Uso de tierras de la comunidad** ______________________, de la que soy miembro, conforme a sus estatutos y a los acuerdos de su asamblea."},
+      {"tipo": "parrafo", "texto": "**TERCERO. De la actividad.** En la parcela cultivo cacao desde el año ______ y la trabajo de manera personal, con mi familia o con las personas que contrato."},
+      {"tipo": "parrafo", "texto": "**CUARTO. De la ausencia de conflictos.** A la fecha no existe, que yo conozca, proceso judicial, procedimiento administrativo, denuncia ni reclamo de terceros, de comunidades campesinas o nativas, ni de entidad pública alguna, que cuestione mi derecho sobre la parcela o sus linderos. Si lo hubiera en adelante, me obligo a comunicarlo a {organizacion} dentro de los quince (15) días calendario de haberlo conocido."},
+      {"tipo": "parrafo", "texto": "**QUINTO. De los documentos.** No cuento a la fecha con un documento formal que acredite el derecho declarado, o este se encuentra en trámite ante ______________________. Me comprometo a entregar copia del documento cuando lo obtenga."},
+      {"tipo": "parrafo", "texto": "**SEXTO. De la finalidad.** Formulo esta declaración para que {organizacion}, con RUC N.º {ruc}, sustente el origen legal del cacao que le entrego. Autorizo que la conserve y la ponga a disposición de sus compradores y de las autoridades competentes, para los fines de la diligencia debida que exige el Reglamento (UE) 2023/1115."},
+      {"tipo": "parrafo", "texto": "**SÉPTIMO. De la veracidad.** Lo declarado responde a la verdad. Conozco que, de comprobarse su falsedad, asumo las responsabilidades civiles y penales que correspondan conforme a la legislación peruana, y que la organización podrá dejar de recibir el cacao de esta parcela."},
+      {"tipo": "parrafo", "texto": "Esta declaración no constituye título de propiedad ni constancia de posesión, y no reemplaza los procedimientos de formalización ante la autoridad competente."},
+      {"tipo": "parrafo", "texto": "__________, ____ de __________ de 20____."},
+      {"tipo": "firma", "texto": "Firma: ______________________   Huella dactilar: [        ]\n{productor} · DNI N.º {dni}"},
+      {"tipo": "firma", "texto": "**Da fe de que el declarante conduce la parcela descrita** (opcional: autoridad local o colindante)\nNombre: ______________________   Cargo: ______________   DNI N.º __________   Firma: __________"},
+      {"tipo": "firma", "texto": "**Propietario o poseedor que cede el uso** (solo en la tercera opción)\nNombre: ______________________   DNI N.º __________   Firma: __________"},
+      {"tipo": "firma", "texto": "**Recibido por la organización**\nNombre: ______________________   Cargo: ______________   Fecha: ____/____/______   Firma: __________"},
+      {"tipo": "referencias", "texto": "Referencias: Código Civil, artículos 896 (posesión), 1352 (los contratos se perfeccionan por el consentimiento) y 1666 (arrendamiento). Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco del EUDR, requisitos 1.1 a 1.4. Versión 1."}
+    ]
+  },
+  "constancia_comunal": {
+    "version": 1,
+    "anexo": "Anexo B",
+    "nota": "Versión 1, redactada para revisión de un asesor legal. Adenda 4 de CacaoTrace, Anexo B. La firma la autoridad de la comunidad.",
+    "bloques": [
+      {"tipo": "titulo", "texto": "CONSTANCIA DE USO DE TIERRA COMUNAL"},
+      {"tipo": "parrafo", "texto": "La Junta Directiva de la Comunidad ( ) Campesina ( ) Nativa ______________________, ( ) inscrita en la Partida N.º __________ del Registro de Personas Jurídicas de __________ ( ) en proceso de inscripción, representada por su presidente(a) o jefe(a), don/doña ______________________, con DNI N.º __________, **DEJA CONSTANCIA** de lo siguiente:"},
+      {"tipo": "parrafo", "texto": "**PRIMERO.** {productor}, con DNI N.º {dni} (se marca una sola opción):"},
+      {"tipo": "opcion", "clave": "comunal_miembro", "texto": "es miembro de la comunidad;"},
+      {"tipo": "opcion", "clave": "comunal_tercero", "texto": "no es miembro de la comunidad y usa la tierra en virtud del acuerdo de asamblea de fecha ____/____/______, que consta en el folio ______ del libro de actas."},
+      {"tipo": "parrafo", "texto": "**SEGUNDO.** Usa la parcela denominada \"{parcela}\", de aproximadamente {area} hectáreas, en el sector __________, dentro del territorio de la comunidad, para el cultivo de cacao, desde el año ______."},
+      {"tipo": "parrafo", "texto": "**TERCERO.** Ese uso es conforme a los estatutos y a los acuerdos de la comunidad, y a la fecha no existe reclamo pendiente sobre la parcela."},
+      {"tipo": "parrafo", "texto": "Se expide a solicitud del interesado, para que {organizacion} sustente el origen legal del cacao que recibe de esta parcela."},
+      {"tipo": "parrafo", "texto": "__________, ____ de __________ de 20____."},
+      {"tipo": "firma", "texto": "Firma y sello: ______________________\nNombre: ______________________   Cargo: ______________   DNI N.º __________"},
+      {"tipo": "referencias", "texto": "Referencias: Ley N.º 24656, Ley General de Comunidades Campesinas; Decreto Ley N.º 22175, Ley de Comunidades Nativas y de Desarrollo Agrario de la Selva y Ceja de Selva; Documento orientador, requisitos 1.3 y 1.4. Versión 1."}
+    ]
+  }
+}

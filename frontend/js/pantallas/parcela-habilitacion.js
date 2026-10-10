@@ -1,14 +1,11 @@
-// Parte 4 en el detalle de la parcela: pestañas Cobertura forestal, Expediente y Habilitación (la de
-// Imágenes, de la adenda 2, está en parcela-imagenes.js). El operador y el productor arman el expediente;
-// el administrador decide.
+// Parte 4 en el detalle de la parcela: pestañas Cobertura forestal y Habilitación (la de Imágenes, de la
+// adenda 2, está en parcela-imagenes.js; la de Legalidad, de la adenda 4, en parcela-legalidad.js). El
+// administrador decide.
 // Principio: exponer, no concluir. Cada tarjeta dice quién afirma qué y cuándo.
 
 import { llamarApi } from "../api.js";
-import { verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
-import { hoyLima as hoy } from "../fechas.js";
 import {
-  ESTADOS_CASILLA,
   FUENTES,
   OBSERVACIONES_CAMBIO,
   REQUISITOS,
@@ -16,7 +13,6 @@ import {
   hectareas,
   insigniaAlerta,
   insigniaHabilitacion,
-  insigniaNivel,
 } from "../textos.js";
 import { abrirModal, campo, cargando, enviarCon, errorDeCarga, fecha, h, icono, reemplazar, seccion, toast } from "../ui.js";
 
@@ -640,154 +636,6 @@ export async function pestanaCobertura(ctx) {
             ),
           ),
         ),
-    ],
-  });
-}
-
-// ---------- Expediente legal ----------
-
-function abrirCargaLegal(casilla, ctx) {
-  const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-legal" }, "Cargar documento");
-  const archivo = h("input", { class: "input", type: "file", name: "archivo", accept: "image/jpeg,image/png,application/pdf", required: true });
-  const formulario = h(
-    "form",
-    { class: "form", id: "form-legal" },
-    h(
-      "div",
-      { class: "grid2" },
-      campo({ etiqueta: "Número (partida, constancia o contrato)", name: "numero", required: true, maxlength: 200 }),
-      campo({ etiqueta: "Entidad emisora", name: "entidad_emisora", required: true, maxlength: 200 }),
-    ),
-    h(
-      "div",
-      { class: "grid2" },
-      campo({ etiqueta: "Fecha de emisión", name: "fecha_emision", type: "date", max: hoy(), required: true }),
-      campo({ etiqueta: "Fecha de vencimiento (si tiene)", name: "fecha_vencimiento", type: "date" }),
-    ),
-    h("label", { class: "field" }, "Archivo (foto o PDF, hasta 10 MB)", archivo),
-  );
-  const { cerrar } = abrirModal({ titulo: `Cargar: ${casilla.nombre}`, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
-  enviarCon(formulario, boton, async (datos) => {
-    const cuerpo = new FormData();
-    cuerpo.append("tipo", casilla.codigo);
-    for (const clave of ["numero", "entidad_emisora", "fecha_emision", "fecha_vencimiento"]) if (datos[clave]) cuerpo.append(clave, datos[clave]);
-    cuerpo.append("archivo", archivo.files[0]);
-    await llamarApi(`${ctx.base}/documentos`, { metodo: "POST", formulario: cuerpo });
-    cerrar();
-    toast("Documento cargado.");
-    ctx.recargar();
-  });
-}
-
-function abrirCotejo(documento, casilla, ctx) {
-  const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-cotejo" }, "Registrar cotejo");
-  const formulario = h(
-    "form",
-    { class: "form", id: "form-cotejo" },
-    h("p", {}, `Cotejar es comprobar el documento en el registro público de quien lo emitió. Queda constancia de quién lo hizo y cuándo.`),
-    h("label", { class: "field" }, "Qué consultaste y qué encontraste", h("textarea", { class: "input texto-libre", name: "nota", required: true, minlength: 10, maxlength: 4000, rows: 3 })),
-  );
-  const { cerrar } = abrirModal({ titulo: `Cotejar: ${casilla.nombre}`, subtitulo: `N.º ${documento.numero ?? "—"} · ${documento.entidad_emisora ?? ""}`, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
-  enviarCon(formulario, boton, async ({ nota }) => {
-    await llamarApi(`/documentos/${documento.id}/cotejo`, { metodo: "POST", cuerpo: { nota } });
-    cerrar();
-    toast("Cotejo registrado.");
-    ctx.recargar();
-  });
-}
-
-function abrirExencion(casilla, ctx) {
-  const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-exencion" }, "Declarar que no aplica");
-  const formulario = h(
-    "form",
-    { class: "form", id: "form-exencion" },
-    h("p", {}, "La exención declara que este documento no aplica a la parcela. Aparecerá, con su motivo, en el informe de hallazgos."),
-    h("label", { class: "field" }, "Por qué no aplica (mínimo 30 caracteres)", h("textarea", { class: "input texto-libre", name: "motivo", required: true, minlength: 30, maxlength: 4000, rows: 3 })),
-  );
-  const { cerrar } = abrirModal({ titulo: `No aplica: ${casilla.nombre}`, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
-  enviarCon(formulario, boton, async ({ motivo }) => {
-    await llamarApi(`/parcelas/${ctx.p.id}/exenciones`, { metodo: "POST", cuerpo: { tipo: casilla.codigo, motivo } });
-    cerrar();
-    toast("Exención declarada.");
-    ctx.recargar();
-  });
-}
-
-function filaCasilla(c, ctx, puedo) {
-  // La tenencia se cumple con el título o con la constancia: la otra llega como no_requerida.
-  const [clase, texto] = ESTADOS_CASILLA[c.estado] ?? ["", c.estado];
-  const vigentes = c.documentos.filter((d) => d.vigente);
-  const exencion = c.exencion && !c.exencion.retirada_en ? c.exencion : null;
-  return h(
-    "li",
-    { class: "casilla" },
-    h(
-      "div",
-      { class: "casilla-h" },
-      h("div", {}, h("b", {}, c.nombre), h("span", { class: "sec" }, `${c.grupo}${c.registro_consultable ? " · con registro público" : " · sin registro público consultable"}`)),
-      h("span", { class: "fila-acciones" }, insignia(clase, texto), c.nivel && insigniaNivel(c.nivel), c.vence_en && h("span", { class: "badge" }, `vence ${fecha(c.vence_en)}`)),
-    ),
-    c.estado === "no_requerida" && c.cubierta_por_nombre && h("div", { class: "casilla-doc" }, h("span", {}, `No requerida: la tenencia está cubierta por ${c.cubierta_por_nombre}.`)),
-    vigentes.map((d) =>
-      h(
-        "div",
-        { class: "casilla-doc" },
-        h("span", {}, `N.º ${d.numero ?? "—"} · ${d.entidad_emisora ?? "—"} · emitido ${fecha(d.fecha_emision)}${d.fecha_vencimiento ? ` · vence ${fecha(d.fecha_vencimiento)}` : ""}`),
-        d.cotejado_en && h("span", { class: "sec" }, `Cotejado el ${fecha(d.cotejado_en)}: ${d.cotejo_nota}`),
-        h(
-          "span",
-          { class: "fila-acciones" },
-          h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => verDocumento(d) }, icono("eye"), "Ver"),
-          puedo.registro && c.registro_consultable && !d.cotejado_en && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => abrirCotejo(d, c, ctx) }, "Cotejar en fuente"),
-        ),
-      ),
-    ),
-    exencion &&
-      h(
-        "div",
-        { class: "casilla-doc" },
-        h("span", {}, `No aplica: ${exencion.motivo}`),
-        h("span", { class: "sec" }, `Declarada el ${fecha(exencion.declarada_en)}${exencion.declarada_por_nombre ? ` por ${exencion.declarada_por_nombre}` : ""}`),
-        puedo.admin &&
-          h(
-            "button",
-            {
-              class: "btn btn-sm btn-ghost",
-              type: "button",
-              onclick: async () => {
-                try {
-                  await llamarApi(`/exenciones/${exencion.id}/retirar`, { metodo: "POST" });
-                  toast("Exención retirada.");
-                  ctx.recargar();
-                } catch (error) {
-                  toast(error.message, "bad");
-                }
-              },
-            },
-            "Retirar exención",
-          ),
-      ),
-    h(
-      "div",
-      { class: "fila-acciones" },
-      puedo.cargaDocumentos && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirCargaLegal(c, ctx) }, icono("upload"), vigentes.length ? "Cargar otro" : "Cargar documento"),
-      puedo.admin && c.admite_exencion && !exencion && !vigentes.length && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => abrirExencion(c, ctx) }, "Declarar que no aplica"),
-    ),
-  );
-}
-
-export async function pestanaExpediente(ctx) {
-  const exp = await llamarApi(`${ctx.base}/expediente`);
-  const puedo = permisos(ctx);
-  const nombres = Object.fromEntries(exp.casillas.map((c) => [c.codigo, c.nombre]));
-  return seccion({
-    titulo: "Expediente legal",
-    sub: "La tenencia exige el título o la constancia de posesión. Las otras cinco casillas se cubren con un documento o con una exención motivada.",
-    acciones: insignia(exp.estado === "completo" ? "ok" : "warn", exp.estado === "completo" ? "Completo" : "Incompleto"),
-    contenido: [
-      exp.faltan.length > 0 && h("p", { class: "alerta warn" }, `Falta: ${exp.faltan.map((c) => (c === "tenencia" ? "tenencia (título o constancia de posesión)" : nombres[c])).join(", ")}.`),
-      exp.tenencia_solo_posesion && h("p", { class: "alerta info" }, "La tenencia se apoya solo en una constancia de posesión, que no tiene registro público contra el cual cotejarse."),
-      h("ul", { class: "casillas" }, exp.casillas.map((c) => filaCasilla(c, ctx, puedo))),
     ],
   });
 }
