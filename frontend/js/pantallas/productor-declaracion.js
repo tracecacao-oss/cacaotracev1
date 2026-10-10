@@ -20,7 +20,7 @@ import {
 } from "../declaracion.js";
 import { formularioCarga, listaDocumentos } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
-import { hoyLima } from "../fechas.js";
+import { hoyLima, momentoLima } from "../fechas.js";
 import { insigniaNivel } from "../textos.js";
 import { abrirModal, campo, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 
@@ -136,7 +136,9 @@ function botonHoja(p, declaracion, texto) {
 function abrirHojaFirmada(p, declaracion, alGuardar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-hoja" }, "Cargar hoja firmada");
   const archivo = h("input", { class: "input", type: "file", name: "archivo", accept: "image/jpeg,image/png,application/pdf", required: true });
-  const registrada = declaracion.registrada_en.slice(0, 10);
+  // El día en Lima en que se registraron las respuestas: la API compara con ese día (después de las 19:00 de
+  // Lima, el día UTC ya es el siguiente y no dejaba elegir ninguna fecha).
+  const registrada = momentoLima(declaracion.registrada_en).slice(0, 10);
   const formulario = h(
     "form",
     { class: "form", id: "form-hoja" },
