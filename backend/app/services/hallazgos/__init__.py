@@ -1,9 +1,9 @@
 """Informe de hallazgos del lote (Parte 9).
 
-Recorre las tres etapas hacia atrás desde el lote. Cada regla es una función propia (parcela.py, acopio.py
-y lote.py) y genera un hallazgo por sujeto; el informe los agrupa (informe.py). Se puede consultar en
-cualquier momento para un lote armado, bloqueado o listo (preliminar), y al emitir el DEX se calcula una
-última vez y queda sellado.
+Recorre las tres etapas hacia atrás desde el lote. Cada regla es una función propia (parcela.py, productor.py,
+acopio.py, lote.py y, desde la adenda 6, organizacion.py) y genera un hallazgo por sujeto; el informe los
+agrupa (informe.py). Se puede consultar en cualquier momento para un lote armado, bloqueado o listo
+(preliminar), y al emitir el DEX se calcula una última vez y queda sellado.
 """
 
 from typing import Any
@@ -14,12 +14,12 @@ from app.contexto import Contexto
 from app.errores import error_api
 from app.models import Lote
 from app.services import imagenes, recomprobacion, revisiones_imagenes
-from app.services.hallazgos import acopio, lote, parcela, productor
+from app.services.hallazgos import acopio, lote, organizacion, parcela, productor
 from app.services.hallazgos.catalogo import CATALOGO, GRUPOS, Hallazgo
 from app.services.hallazgos.datos import DatosLote, cargar
 from app.services.hallazgos.informe import armar
 
-REGLAS = (*parcela.REGLAS, *productor.REGLAS, *acopio.REGLAS, *lote.REGLAS)
+REGLAS = (*parcela.REGLAS, *productor.REGLAS, *acopio.REGLAS, *lote.REGLAS, *organizacion.REGLAS)
 CON_INFORME = ("armado", "bloqueado", "listo")
 
 __all__ = ["CATALOGO", "GRUPOS", "REGLAS", "DatosLote", "Hallazgo", "calcular", "preliminar", "reunir"]

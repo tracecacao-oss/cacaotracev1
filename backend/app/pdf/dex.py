@@ -4,8 +4,8 @@ Los dos tienen la misma estructura y las mismas cifras. Los textos fijos salen d
 escribieron las personas (notas, motivos, explicaciones) no se traduce: en el PDF en inglés aparece en
 español, bajo "Original text in Spanish". Orden de las secciones: leyenda y mensaje final; identificación,
 exportador, importador y orden, y producto; genealogía con el croquis; respaldo por parcela; declaraciones
-de los productores (adenda 5); proceso y embarque; recomprobación; informe de hallazgos completo; documentos
-de evidencia.
+de los productores (adenda 5); la organización y su diligencia (adenda 6); proceso y embarque;
+recomprobación; informe de hallazgos completo; documentos de evidencia.
 """
 
 import io
@@ -678,6 +678,91 @@ def _declaraciones(pdf: Pdf, c: dict[str, Any]) -> None:
     )
 
 
+# ---------- Adenda 6: la organización y su diligencia ----------
+
+
+def _organizacion(pdf: Pdf, c: dict[str, Any]) -> None:
+    """Después de las declaraciones de los productores (sección 11): los requisitos de la organización, los
+    cinco temas de su política, el cuadro de señales y sus actuaciones vigentes. De cada actuación, fecha,
+    tipo, temas, descripción, resultado y nivel; ni su evidencia ni los productores que alcanzó."""
+    o = c.get("organizacion")
+    if o is None:  # DEX anteriores a la adenda 6
+        return
+    t = lambda ruta: textos.obtener(pdf.idioma, f"organizacion.{ruta}")  # noqa: E731
+    pdf.seccion(pdf.L("organizacion"), pdf.L("organizacion_sub"))
+
+    def falta(codigo: str, codigos: list[str]) -> str:
+        if codigo == "integridad":
+            return ", ".join(t(f"temas_politica.{x}") for x in codigos)
+        if codigo == "actuaciones":
+            return ", ".join(t(f"temas.{x}") for x in codigos)
+        return ", ".join(pdf.documento(x) for x in codigos)
+
+    pdf.subtitulo(pdf.L("requisitos_organizacion"))
+    pdf.tabla(
+        [pdf.L("requisito_organizacion"), pdf.L("estado"), pdf.L("falta")],
+        [
+            [t(f"requisitos.{r['codigo']}"), pdf.estado(r["estado"]), falta(r["codigo"], r["falta"]) or "—"]
+            for r in o["requisitos"]
+        ],
+        [70, 26, pdf.ancho - 96],
+        tamano=7,
+    )
+    pdf.subtitulo(pdf.L("politica"))
+    pdf.tabla(
+        [pdf.L("tema"), pdf.L("estado"), pdf.L("adoptada")],
+        [
+            [t(f"temas_politica.{x['tema']}"), pdf.estado(x["estado"]), pdf.fecha(x.get("adoptada_en"))]
+            for x in o["politica"]
+        ],
+        [70, 30, pdf.ancho - 100],
+        tamano=7,
+    )
+    pdf.dato(pdf.L("canal"), t("canal_si") if o["canal_denuncias"] else t("canal_no"))
+    pdf.subtitulo(pdf.L("senales"))
+    pdf.tabla(
+        [pdf.L("tema"), pdf.L("senal"), pdf.L("actuaciones_n"), pdf.L("estado")],
+        [
+            [
+                t(f"temas.{s['tema']}"),
+                textos.en_idioma(pdf.idioma, s["texto"]),
+                s["actuaciones_vigentes"],
+                t(f"estados_senal.{s['estado']}"),
+            ]
+            for s in o["senales"]
+        ],
+        [36, 82, 20, pdf.ancho - 138],
+        tamano=7,
+    )
+    pdf.subtitulo(pdf.L("actuaciones_vigentes"))
+    if not o["actuaciones"]:
+        pdf.parrafo(pdf.L("sin_actuaciones"), tamano=8)
+        return
+    pdf.tabla(
+        [
+            pdf.L("fecha"),
+            pdf.L("tipo"),
+            pdf.L("temas"),
+            pdf.L("descripcion"),
+            pdf.L("resultado"),
+            pdf.L("nivel"),
+        ],
+        [
+            [
+                pdf.fecha(a["fecha"]),
+                t(f"tipos.{a['tipo']}"),
+                ", ".join(t(f"temas.{x}") for x in a["temas"]),
+                pdf.original(a["descripcion"]),
+                pdf.original(a["resultado"]),
+                pdf.nivel(a["nivel"]),
+            ]
+            for a in o["actuaciones"]
+        ],
+        [20, 26, 26, 48, 40, pdf.ancho - 160],
+        tamano=6.3,
+    )
+
+
 # ---------- Proceso, embarque y recomprobación ----------
 
 
@@ -785,6 +870,12 @@ def _informe(pdf: Pdf, informe: dict[str, Any]) -> None:
             hecho = h["hecho"][idioma]
             if h.get("explicacion"):
                 hecho += f"\n{pdf.L('explicacion')}: {pdf.original(h['explicacion'])}"
+            alcanzaron = (h.get("datos") or {}).get("actuaciones")
+            if alcanzaron:
+                lista = "; ".join(
+                    f"{pdf.fecha(a['fecha'])}, {textos.en_idioma(idioma, a['tipo'])}" for a in alcanzaron
+                )
+                hecho += f"\n{pdf.L('actuaciones_alcanzaron')}: {lista}"
             filas.append(
                 [
                     h["sujeto"].get("codigo") or "—",
@@ -848,6 +939,7 @@ def documento(
     _genealogia(pdf, c)
     _respaldo(pdf, c, imagenes or {})
     _declaraciones(pdf, c)
+    _organizacion(pdf, c)
     _proceso_y_embarque(pdf, c)
     _recomprobacion(pdf, c)
     _informe(pdf, c["informe"])

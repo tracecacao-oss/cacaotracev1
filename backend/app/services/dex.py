@@ -36,11 +36,12 @@ from app.models import (
     Perfil,
     Recomprobacion,
 )
-from app.schemas.dex import ArchivoDex, DescargaDex, DexDetalle, DexPublico, DexSalida
+from app.schemas.dex import AgregadoDespues, ArchivoDex, DescargaDex, DexDetalle, DexPublico, DexSalida
 from app.services import cooperativa as servicio_cooperativa
 from app.services import (
     correlativos,
     declaracion_productor,
+    diligencia,
     documentos,
     dops,
     geometria,
@@ -57,7 +58,9 @@ from app.storage import ClienteStorage, ErrorStorage
 
 # 2: adenda 4, el respaldo de cada parcela trae su legalidad por requisito en lugar de las siete casillas.
 # 3: adenda 5, el bloque "productores": lo que cada productor declaró, con el estado del día de la emisión.
-VERSION_CONTENIDO = 3
+# 4: adenda 6, el bloque "organizacion" (expediente por tipo de organización, requisitos, política, señales y
+# actuaciones vigentes); el exportador lista solo los documentos que aplican a su tipo.
+VERSION_CONTENIDO = 4
 REFERENCIA_ANEXO = (
     "Reglamento (UE) 2023/1115, anexo II; texto consolidado del 18/09/2026 (CELEX 02023R1115-20260918)"
 )
@@ -133,6 +136,7 @@ def _bloque_exportador(d: hallazgos.DatosLote) -> dict[str, Any]:
                 "documento": _documento(casillas[t.codigo].documento),
             }
             for t in documentos_legales.TIPOS_COOPERATIVA
+            if t.codigo in casillas
         ],
     }
 
@@ -413,6 +417,7 @@ def construir_contenido(
         "genealogia": _bloque_genealogia(d),
         "respaldo": _bloque_respaldo(contexto, d),
         "productores": _bloque_productores(d),
+        "organizacion": diligencia.bloque(sesion, d.cooperativa),
         "proceso": _bloque_proceso(d),
         "embarque": embarque,
         "recomprobacion": {
@@ -804,6 +809,40 @@ def de_lote(sesion, lote_id: uuid.UUID) -> Dex | None:
     )
 
 
+def agregados(sesion, dex: Dex) -> list[AgregadoDespues]:
+    """Adenda 6, sección 7, regla 7: la declaración aduanera cargada en el lote después de emitir el DEX. El
+    DEX no cambia: se muestra aparte, con su número, su fecha de numeración, la fecha en que se cargó y si
+    tiene cotejo. Es la que no quedó sellada en el embarque del DEX (se compara por su huella). De un DEX
+    anulado, solo la que se cargó mientras estuvo vigente: la de después es del DEX siguiente."""
+    sellados = {x.get("sha256") for x in (dex.contenido or {}).get("embarque", [])}
+    consulta = (
+        select(Documento)
+        .where(
+            Documento.entidad == "lote",
+            Documento.entidad_id == dex.lote_id,
+            Documento.tipo.in_(documentos_embarque.DESPUES_DEL_DEX),
+            Documento.anulado_en.is_(None),
+        )
+        .order_by(Documento.creado_en)
+    )
+    if dex.anulado_en is not None:
+        consulta = consulta.where(Documento.creado_en <= dex.anulado_en)
+    filas = sesion.scalars(consulta)
+    return [
+        AgregadoDespues(
+            tipo=doc.tipo,
+            nombre=documentos_embarque.POR_CODIGO[doc.tipo].nombre,
+            numero=doc.numero,
+            fecha_numeracion=doc.fecha_emision,
+            cargado_en=doc.creado_en,
+            cotejado=doc.cotejado_en is not None,
+            cotejado_en=doc.cotejado_en,
+        )
+        for doc in filas
+        if doc.sha256 not in sellados
+    ]
+
+
 def obtener(contexto: Contexto, dex_id: uuid.UUID) -> DexDetalle:
     sesion = contexto.sesion
     dex = dex_visible(contexto, dex_id)
@@ -834,6 +873,7 @@ def obtener(contexto: Contexto, dex_id: uuid.UUID) -> DexDetalle:
         anulado_en=dex.anulado_en,
         anulado_por_nombre=_nombre(sesion, dex.anulado_por),
         motivo_anulacion=dex.motivo_anulacion,
+        agregado=agregados(sesion, dex),
     )
 
 
@@ -909,6 +949,7 @@ def publico(sesion, codigo: str) -> DexPublico:
         contenido_sha256=dex.contenido_sha256,
         cooperativa=razon_social,
         es_demo=bool(es_demo),
+        agregado=agregados(sesion, dex),
     )
 
 

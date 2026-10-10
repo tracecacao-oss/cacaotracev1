@@ -4,6 +4,9 @@ lo que respalda el lote.
 No es una evaluación de riesgo: solo confirma que cada requisito que ya se cumplió sigue en pie. Si las
 nueve comprobaciones pasan, el lote queda listo; si alguna falla, bloqueado. Ninguna persona marca un lote
 como listo. Una parcela excluida bloquea para siempre todo stock que contenga su cacao.
+
+Adenda 6, sección 8: de la organización solo frena su identidad (ficha RUC, partida registral y vigencia de
+poderes), y del embarque solo los cuatro documentos obligatorios; la declaración aduanera no frena.
 """
 
 import uuid
@@ -53,7 +56,8 @@ COMPROBACIONES = (
     ("dops_vigentes", "DOP vigentes", "Cada DOP de la genealogía"),
     ("dpps_vigentes", "DPP vigentes", "Cada DPP de las tandas finales del lote"),
     ("genealogia_cuadra", "La genealogía cuadra", "El lote"),
-    ("expediente_cooperativa_completo", "Expediente legal de la cooperativa", "La cooperativa"),
+    # El código no cambia; desde la adenda 6 mira solo la identidad de la organización.
+    ("expediente_cooperativa_completo", "Identidad de la organización", "La organización"),
     ("datos_cooperativa_completos", "Datos de la cooperativa", "La cooperativa"),
     ("importador_completo", "Datos del importador", "El importador de la orden"),
     ("documentos_embarque_completos", "Documentos de embarque", "El lote"),
@@ -205,7 +209,7 @@ def comprobar(sesion: Session, lote: Lote) -> list[dict[str, Any]]:
                     tipo="expediente_cooperativa",
                     codigo=c,
                 )
-                for c in servicio_cooperativa.faltan_casillas(casillas)
+                for c in servicio_cooperativa.faltan_identidad(casillas)
             ],
         ),
         _comprobacion(
@@ -233,7 +237,7 @@ def comprobar(sesion: Session, lote: Lote) -> list[dict[str, Any]]:
             [
                 Caso(texto=f"Falta: {t.nombre}", tipo="embarque", id=str(lote.id), codigo=t.codigo)
                 for t in documentos_embarque.TIPOS
-                if t.codigo not in embarque
+                if t.obligatorio and t.codigo not in embarque
             ],
         ),
     ]

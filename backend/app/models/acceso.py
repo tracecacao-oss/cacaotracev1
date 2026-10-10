@@ -52,6 +52,10 @@ class Cooperativa(ConFechas, Base):
             "representante_dni IS NULL OR representante_dni ~ '^[0-9]{8}$'",
             name="representante_dni_8_digitos",
         ),
+        CheckConstraint(
+            "canal_denuncias_contacto IS NULL OR char_length(canal_denuncias_contacto) BETWEEN 3 AND 200",
+            name="canal_denuncias_contacto_valido",
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -75,6 +79,8 @@ class Cooperativa(ConFechas, Base):
     correo: Mapped[str | None] = mapped_column(Text)
     representante_nombre: Mapped[str | None] = mapped_column(Text)
     representante_dni: Mapped[str | None] = mapped_column(String(8))
+    # Adenda 6, sección 5, regla 2: cómo se presenta una queja o una denuncia (teléfono, correo o buzón).
+    canal_denuncias_contacto: Mapped[str | None] = mapped_column(Text)
 
 
 class Productor(ConFechas, Base):

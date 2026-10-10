@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.contexto import Contexto, requiere_rol
 from app.errores import error_api
+from app.models import Cooperativa
 from app.routers.comun import leer_archivo
 from app.routers.legalidad import Plantilla, pdf
 from app.routers.parcelas import ClaseTitulo, TipoDocumentoParcela, cargar_documento_de_parcela
@@ -43,7 +44,12 @@ Storage = Annotated[ClienteStorage, Depends(obtener_storage)]
 
 @router.get("/productor", response_model=ProductorDetalle)
 def mi_ficha(contexto: Productor):
-    return servicio.obtener(contexto, contexto.productor_id)
+    ficha = servicio.obtener(contexto, contexto.productor_id)
+    # Adenda 6, sección 5: el contacto del canal de quejas y denuncias de su organización. El sistema no
+    # recibe denuncias: solo muestra a dónde llevarlas.
+    cooperativa = contexto.cooperativa_id and contexto.sesion.get(Cooperativa, contexto.cooperativa_id)
+    contacto = cooperativa.canal_denuncias_contacto if cooperativa else None
+    return ficha.model_copy(update={"canal_denuncias_contacto": contacto})
 
 
 @router.patch("/productor", response_model=ProductorDetalle)

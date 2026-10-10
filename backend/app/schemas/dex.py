@@ -44,6 +44,19 @@ class DexSalida(BaseModel):
     contenido_sha256: str
 
 
+class AgregadoDespues(BaseModel):
+    """Adenda 6, sección 7, regla 7: lo que se cargó en el lote después de emitir el DEX (la declaración
+    aduanera). No forma parte del DEX: su contenido y su huella no cambian."""
+
+    tipo: str
+    nombre: str
+    numero: str | None
+    fecha_numeracion: date | None
+    cargado_en: datetime
+    cotejado: bool
+    cotejado_en: datetime | None
+
+
 class DexDetalle(DexSalida):
     contenido: dict[str, Any]
     url_verificacion: str
@@ -53,6 +66,7 @@ class DexDetalle(DexSalida):
     anulado_en: datetime | None
     anulado_por_nombre: str | None
     motivo_anulacion: str | None
+    agregado: list[AgregadoDespues] = []
 
 
 class DexPublico(BaseModel):
@@ -65,6 +79,7 @@ class DexPublico(BaseModel):
     cooperativa: str
     # Parte 10: la página pública avisa que es un documento de demostración.
     es_demo: bool = False
+    agregado: list[AgregadoDespues] = []
 
 
 # ---------- Certificaciones ----------

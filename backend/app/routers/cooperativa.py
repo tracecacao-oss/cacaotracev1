@@ -1,6 +1,7 @@
 """Parte 8: datos y expediente legal de la cooperativa, documentos de embarque del lote, recomprobación y
 pendientes. Los documentos de la cooperativa los carga solo un administrador; los de embarque, el
-administrador o el operador."""
+administrador o el operador. Desde la adenda 6, la declaración aduanera también se carga con el lote cerrado.
+"""
 
 import uuid
 from datetime import date
@@ -9,7 +10,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.catalogos import documentos_embarque, documentos_legales
-from app.contexto import Contexto, cooperativa_del_contexto, requiere_rol
+from app.contexto import Contexto, requiere_rol
 from app.routers.comun import leer_archivo
 from app.schemas.cooperativa import (
     CooperativaCambios,
@@ -20,8 +21,7 @@ from app.schemas.cooperativa import (
     RecomprobacionSalida,
 )
 from app.schemas.parcelas import DocumentoSalida
-from app.services import cooperativa, documentos, embarque, pendientes, recomprobacion
-from app.services.expediente import validar_datos_legales
+from app.services import cooperativa, embarque, pendientes, recomprobacion
 from app.services.productores import documento_salida
 from app.storage import ClienteStorage, obtener_storage
 
@@ -30,7 +30,8 @@ Lectura = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa", "operado
 Registro = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa", "operador"))]
 Administrador = Annotated[Contexto, Depends(requiere_rol("admin_cooperativa"))]
 Storage = Annotated[ClienteStorage, Depends(obtener_storage)]
-TipoLegalCooperativa = Literal[documentos_legales.CODIGOS_COOPERATIVA]
+# Los anteriores también se admiten aquí para responder con su motivo (adenda 6, sección 4, regla 4).
+TipoLegalCooperativa = Literal[documentos_legales.TODOS_COOPERATIVA]
 TipoEmbarque = Literal[documentos_embarque.CODIGOS]
 
 # ---------- Cooperativa ----------
@@ -62,16 +63,16 @@ def cargar_documento_de_la_cooperativa(
     fecha_emision: Annotated[date | None, Form()] = None,
     fecha_vencimiento: Annotated[date | None, Form()] = None,
 ):
-    """Uno de los 6 documentos legales de la cooperativa, con número, entidad emisora y fechas."""
-    datos_legales = validar_datos_legales(tipo, numero, entidad_emisora, fecha_emision, fecha_vencimiento)
-    documento = documentos.cargar(
+    """Un documento legal de la organización que aplica a su tipo, con número, entidad emisora y fechas."""
+    documento = cooperativa.cargar_documento(
         contexto,
         storage,
-        entidad="cooperativa",
-        entidad_id=cooperativa_del_contexto(contexto),
-        tipo=tipo,
-        archivo=leer_archivo(archivo),
-        datos_legales=datos_legales,
+        tipo,
+        leer_archivo(archivo),
+        numero=numero,
+        entidad_emisora=entidad_emisora,
+        fecha_emision=fecha_emision,
+        fecha_vencimiento=fecha_vencimiento,
     )
     return documento_salida(documento, None)
 

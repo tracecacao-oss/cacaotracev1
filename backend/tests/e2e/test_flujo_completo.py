@@ -172,7 +172,8 @@ def test_flujo_completo_de_la_cooperativa_prueba(api, sesion, auth_falso, storag
     plantilla = _ok(api.get("/proceso/plantilla"))
     assert len(plantilla) == 23 and all(f["lugar_id"] and f["metodo"] for f in plantilla)
     expediente_coop = _ok(api.get("/cooperativa/expediente"))
-    assert expediente_coop["estado"] == "completo" and len(expediente_coop["casillas"]) == 6
+    # Adenda 6: una cooperativa agraria ve cinco documentos; la identidad, completa.
+    assert expediente_coop["estado"] == "completo" and len(expediente_coop["casillas"]) == 5
     assert _ok(api.get("/cooperativa"))["faltan_datos"] == []
     assert [i["razon_social"] for i in _ok(api.get("/importadores"))] == ["Importador Demo B.V."]
 
@@ -286,7 +287,15 @@ def test_flujo_completo_de_la_cooperativa_prueba(api, sesion, auth_falso, storag
     assert parcelas_dex == [f"PA-0000{n}" for n in range(1, 7)]
     assert Decimal(contenido["producto"]["masa_neta_kg"]) == Decimal("600")
     assert contenido["recomprobacion"]["resultado"] == "sin_observaciones"
-    assert len(contenido["embarque"]) == 4
+    # Los cuatro documentos obligatorios y, desde la adenda 6, la declaración aduanera.
+    assert [x["tipo"] for x in contenido["embarque"]] == [
+        "factura_comercial",
+        "packing_list",
+        "certificado_origen",
+        "certificado_fitosanitario",
+        "dam",
+    ]
+    assert "organizacion" in contenido
     archivos = {
         d.tipo: d
         for d in sesion.scalars(

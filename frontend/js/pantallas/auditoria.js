@@ -29,6 +29,8 @@ const ACCIONES = [
   ["lote.", "Lotes de exportación"],
   ["dex.", "DEX"],
   ["certificacion.", "Certificaciones"],
+  ["politica.", "Política de la organización"],
+  ["actuacion.", "Actuaciones de diligencia"],
   ["superadmin.", "Consultas de soporte"],
 ];
 
@@ -55,6 +57,11 @@ const TEXTO_ACCION = {
   "declaracion_productor.hoja_firmada": "Cargó la hoja firmada de una declaración anual",
   "declaracion_productor.revisar_producto": "Revisó en SENASA un producto declarado",
   "declaracion_productor.seguimiento": "Escribió una nota de seguimiento",
+  // Adenda 6: la política de la organización y sus actuaciones de diligencia.
+  "politica.cargar": "Cargó una política de la organización",
+  "politica.anular": "Anuló una política de la organización",
+  "actuacion.registrar": "Registró una actuación de diligencia",
+  "actuacion.anular": "Anuló una actuación de diligencia",
   "documento.cargar": "Cargó un documento",
   "documento.anular": "Anuló un documento",
   "parcela.crear": "Registró una parcela",

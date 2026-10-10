@@ -44,8 +44,9 @@ TIPOS_DOCUMENTO = (
     # Adenda 2 de la Parte 4
     "imagen_satelital",
     "imagen_externa",
-    # Parte 8: expediente legal de la cooperativa y documentos de embarque del lote
-    *documentos_legales.CODIGOS_COOPERATIVA,
+    # Parte 8: expediente legal de la cooperativa (con los anteriores a la adenda 6) y documentos de embarque
+    # del lote (la adenda 6 suma la declaración aduanera)
+    *documentos_legales.TODOS_COOPERATIVA,
     *documentos_embarque.CODIGOS,
     # Parte 9: certificaciones de la cooperativa y archivos que genera el DEX
     "certificacion",
@@ -60,6 +61,9 @@ TIPOS_DOCUMENTO = (
     "hoja_declaracion_productor",
     "relacion_trabajadores",
     "declaracion_renta",
+    # Adenda 6: la política de la organización y la evidencia de una actuación de diligencia
+    "politica_organizacion",
+    "evidencia_actuacion",
 )
 ENTIDADES_DOCUMENTO = (
     "productor",
@@ -76,6 +80,8 @@ ENTIDADES_DOCUMENTO = (
     "dex",
     # Adenda 5
     "declaracion_productor",
+    # Adenda 6
+    "actuacion",
 )
 ESTADOS_HABILITACION = ("pendiente", "habilitada", "observada", "excluida")
 ESTADOS_MIDAGRI = ("no_registrada", "sin_observacion", "en_revision", "validado")

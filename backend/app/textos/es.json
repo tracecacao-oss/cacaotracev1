@@ -117,7 +117,12 @@
     "envases_por_atender": "{productor} declara que {destino} los envases vacíos de los productos que usa. Orientador, requisito {referencias}.",
     "agroquimicos_sin_revisar": "{productor} declara usar productos que la organización no buscó en el registro de SENASA: {productos}. Orientador, requisito {referencias}.",
     "permanentes_sin_relacion": "{productor} declara tener trabajadores todo el año y no se cargó la relación de trabajadores permanentes. Orientador, requisito {referencias}.",
-    "tributos_sin_sustento": "{productor} {falta}. Orientador, requisito {referencias}."
+    "tributos_sin_sustento": "{productor} {falta}. Orientador, requisito {referencias}.",
+    "tributos_organizacion_sin_sustento": "{organizacion} no tiene una declaración jurada anual del impuesto a la renta vigente en su expediente ({estado}). Orientador, requisito 7.1.",
+    "registro_cooperativas_sin_sustento": "{organizacion}, cooperativa agraria, no tiene vigente en su expediente la constancia de inscripción en el Registro Nacional de Cooperativas Agrarias ({estado}). Orientador, requisito 7.1; Ley N.º 31335.",
+    "politica_incompleta": "Temas de la política de {organizacion} sin sustento: {temas}. Orientador, requisitos 7.3 y 5.5.",
+    "sin_actuaciones_de_diligencia": "{organizacion} no registró una actuación de diligencia vigente en estos temas, en los que se espera una: {temas}.",
+    "lote_sin_dam": "El lote {lote} no tiene cargada la Declaración Aduanera de Mercancías. Orientador, requisito 7.2."
   },
   "mensaje": {
     "analisis_requiere_revision": "El análisis de cobertura forestal de {sujetos}, que {aporta} {peso} % del lote, devolvió {citas}.",
@@ -177,7 +182,12 @@
     "envases_por_atender": "Productores que declaran quemar, enterrar, botar o volver a usar los envases vacíos: {sujetos}, que {aporta} {peso} % del lote.",
     "agroquimicos_sin_revisar": "Productores con productos declarados sin buscar en el registro de SENASA: {sujetos}, que {aporta} {peso} % del lote.",
     "permanentes_sin_relacion": "Productores con trabajadores todo el año sin la relación de trabajadores cargada: {sujetos}, que {aporta} {peso} % del lote.",
-    "tributos_sin_sustento": "Productores con el requisito tributario sin sustento: {sujetos}, que {aporta} {peso} % del lote."
+    "tributos_sin_sustento": "Productores con el requisito tributario sin sustento: {sujetos}, que {aporta} {peso} % del lote.",
+    "tributos_organizacion_sin_sustento": "La organización no tiene una declaración anual del impuesto a la renta vigente.",
+    "registro_cooperativas_sin_sustento": "La cooperativa agraria no tiene vigente su constancia de inscripción en el Registro Nacional de Cooperativas Agrarias.",
+    "politica_incompleta": "Temas de la política de la organización sin sustento: {temas}.",
+    "sin_actuaciones_de_diligencia": "Temas en los que se espera una actuación de diligencia y no hay una vigente: {temas}.",
+    "lote_sin_dam": "El lote no tiene cargada la Declaración Aduanera de Mercancías."
   },
   "comun": {
     "aporta_uno": "aporta",
@@ -300,7 +310,7 @@
     "dops_vigentes": "DOP vigentes",
     "dpps_vigentes": "DPP vigentes",
     "genealogia_cuadra": "La genealogía cuadra",
-    "expediente_cooperativa_completo": "Expediente legal de la cooperativa",
+    "expediente_cooperativa_completo": "Identidad de la organización",
     "datos_cooperativa_completos": "Datos de la cooperativa",
     "importador_completo": "Datos del importador",
     "documentos_embarque_completos": "Documentos de embarque"
@@ -331,8 +341,8 @@
     "sunafil": "Sustento laboral ante SUNAFIL",
     "sunat": "Ficha RUC u otro sustento de SUNAT",
     "zonificacion": "Sustento de la zonificación forestal de la parcela",
-    "rnca": "Registro Nacional de Cooperativas Agrarias (MIDAGRI)",
-    "partida_sunarp": "Partida registral de la cooperativa en SUNARP",
+    "rnca": "Constancia de inscripción en el Registro Nacional de Cooperativas Agrarias (MIDAGRI)",
+    "partida_sunarp": "Partida registral de la organización en SUNARP",
     "ficha_ruc": "Ficha RUC de SUNAT",
     "vigencia_poderes": "Vigencia de poderes del representante legal (SUNARP)",
     "ruc_comercio_exterior": "Sustento del RUC habilitado para comercio exterior",
@@ -355,7 +365,10 @@
     "constancia_saneamiento_31145": "Constancia de saneamiento del predio por la Ley N.º 31145",
     "licencia_agua": "Licencia o permiso de uso de agua",
     "ficha_tecnica_ambiental": "Ficha Técnica Ambiental",
-    "instrumento_ambiental": "Instrumento ambiental: DIA, EIA-sd, EIA-d o PAMA"
+    "instrumento_ambiental": "Instrumento ambiental: DIA, EIA-sd, EIA-d o PAMA",
+    "renta_anual": "Declaración jurada anual del impuesto a la renta, o constancia de haberla presentado",
+    "dam": "Declaración Aduanera de Mercancías",
+    "politica_organizacion": "Política de la organización"
   },
   "datos_lote": {
     "orden": "Orden",
@@ -537,7 +550,23 @@
     "requisitos_productor": "Requisitos por atender o sin sustento",
     "seguimiento": "Nota de seguimiento",
     "declarada_el": "Declarada el {fecha} ({origen}); vale hasta el {hasta}",
-    "nada_por_atender": "Ninguno"
+    "nada_por_atender": "Ninguno",
+    "organizacion": "La organización y su diligencia",
+    "organizacion_sub": "Con el estado del día de la emisión. Lo que escribió la organización va con sus palabras; la evidencia de cada actuación no sale del sistema.",
+    "requisitos_organizacion": "Requisitos de la organización",
+    "politica": "Política de la organización",
+    "tema": "Tema",
+    "adoptada": "Adoptada el",
+    "canal": "Contacto del canal de quejas y denuncias",
+    "senales": "Cuadro de señales",
+    "senal": "Señal",
+    "actuaciones_vigentes": "Actuaciones vigentes",
+    "actuaciones_n": "Actuaciones",
+    "sin_actuaciones": "La organización no tiene actuaciones vigentes.",
+    "temas": "Temas",
+    "falta": "Falta",
+    "actuaciones_alcanzaron": "Actuaciones de la organización que lo alcanzaron",
+    "requisito_organizacion": "Requisito"
   },
   "anexo": {
     "nota_general": "Ayuda para el importador con los campos de la declaración de diligencia debida que salen de este flujo, en el orden del Anexo II del Reglamento (UE) 2023/1115 (texto consolidado del 18/09/2026). No es un envío a TRACES ni usa su interfaz.",
@@ -741,5 +770,64 @@
       "productor": "desde su cuenta",
       "personal": "con hoja firmada"
     }
+  },
+  "organizacion": {
+    "requisitos": {
+      "identidad": "Identidad de la organización",
+      "tributos": "Tributos de su régimen",
+      "registro_cooperativas": "Inscripción en el Registro Nacional de Cooperativas Agrarias",
+      "integridad": "Política de integridad, trabajo digno y canal de denuncias",
+      "actuaciones": "Actuaciones de diligencia",
+      "aduanas": "Formalidades aduaneras del lote"
+    },
+    "temas_politica": {
+      "integridad": "Integridad",
+      "no_fraude": "No fraude",
+      "canal_denuncias": "Canal de quejas y denuncias",
+      "trabajo_digno": "Trabajo digno",
+      "revision_de_documentos": "Revisión de documentos"
+    },
+    "temas": {
+      "integridad": "Integridad",
+      "tierra_forestal": "Tierra forestal",
+      "agroquimicos_y_envases": "Agroquímicos y envases",
+      "trabajo": "Trabajo",
+      "tenencia": "Tenencia",
+      "areas_protegidas": "Áreas protegidas",
+      "agua": "Agua",
+      "derechos_humanos": "Derechos humanos"
+    },
+    "tipos": {
+      "revision_de_fuente_publica": "Revisión de una fuente pública",
+      "consulta_a_partes_interesadas": "Consulta a partes interesadas",
+      "capacitacion": "Capacitación o campaña",
+      "verificacion_en_campo": "Verificación en campo",
+      "apoyo_a_productores": "Apoyo a productores"
+    },
+    "senales": {
+      "integridad": "Se espera siempre",
+      "tierra_forestal_uno": "{n} parcela en tierra forestal",
+      "tierra_forestal_varios": "{n} parcelas en tierra forestal",
+      "agroquimicos_y_envases_uno": "{n} productor declara usar agroquímicos",
+      "agroquimicos_y_envases_varios": "{n} productores declaran usar agroquímicos",
+      "trabajo_uno": "{n} productor declara que contrata trabajadores",
+      "trabajo_varios": "{n} productores declaran que contratan trabajadores",
+      "tenencia_uno": "{n} incidencia de tenencia registrada en los últimos 12 meses",
+      "tenencia_varios": "{n} incidencias de tenencia registradas en los últimos 12 meses",
+      "areas_protegidas_uno": "{n} parcela dentro de un área protegida o en su zona de amortiguamiento",
+      "areas_protegidas_varios": "{n} parcelas dentro de un área protegida o en su zona de amortiguamiento",
+      "agua_uno": "{n} parcela que riega sin licencia de agua o que colinda con un cuerpo de agua",
+      "agua_varios": "{n} parcelas que riegan sin licencia de agua o que colindan con un cuerpo de agua",
+      "derechos_humanos_uno": "{n} productor declara menores de 18 años o trabajo no libre",
+      "derechos_humanos_varios": "{n} productores declaran menores de 18 años o trabajo no libre"
+    },
+    "estados_senal": {
+      "sustentado": "Con actuación vigente",
+      "sin_sustento": "Sin actuación vigente",
+      "no_se_espera": "No se espera"
+    },
+    "falta_contacto": "falta el contacto del canal",
+    "canal_si": "Registrado en los datos de la organización",
+    "canal_no": "Sin registrar"
   }
 }

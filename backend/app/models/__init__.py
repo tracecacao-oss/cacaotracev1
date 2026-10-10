@@ -49,6 +49,11 @@ from app.models.dex import (  # noqa: E402
     ConfiguracionPlataforma,
     Dex,
 )
+from app.models.diligencia import (  # noqa: E402
+    ActuacionDiligencia,
+    ActuacionProductor,
+    PoliticaOrganizacion,
+)
 from app.models.exportacion import (  # noqa: E402
     Importador,
     Lote,
@@ -101,6 +106,9 @@ from app.models.recepcion import (  # noqa: E402
 )
 
 __all__ = [
+    "ActuacionDiligencia",
+    "ActuacionProductor",
+    "PoliticaOrganizacion",
     "DeclaracionProducto",
     "DeclaracionProductor",
     "Certificacion",

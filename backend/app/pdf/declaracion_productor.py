@@ -4,7 +4,8 @@ El texto vive en app/textos/plantillas_legales.json (clave `declaracion_producto
 que el PDF imprime al pie, junto a la versión del cuestionario. La hoja para firmar trae los datos del
 productor y de la organización, cada pregunta mostrada con su respuesta y el texto del Anexo A; la firmada se
 carga como `hoja_declaracion_productor`. De una declaración ya declarada, la misma hoja sale como copia: dice
-quién la declaró y cuándo, sin las líneas para firmar.
+quién la declaró y cuándo, sin las líneas para firmar. Desde la adenda 6, antes de la firma va el contacto del
+canal de quejas y denuncias de la organización, si lo registró.
 """
 
 from typing import Any
@@ -63,6 +64,11 @@ def documento(
             _escribir(pdf, texto)
             pdf.ln(1)
         elif tipo in ("fecha", "firma"):
+            # Adenda 6, sección 5: el contacto del canal de quejas y denuncias va antes de la firma, si la
+            # organización lo registró. No es parte del texto declarado.
+            if tipo == "fecha" and datos.get("canal") and plantilla.get("canal"):
+                pdf.ln(2)
+                pdf.recuadro(llenar(plantilla["canal"], datos).replace("**", ""))
             # La copia de una declaración ya hecha no lleva líneas para firmar.
             if copia:
                 continue

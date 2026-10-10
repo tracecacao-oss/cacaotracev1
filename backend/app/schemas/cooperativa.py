@@ -12,6 +12,8 @@ from app.schemas.habilitacion import CasillaSalida
 from app.schemas.parcelas import DocumentoSalida
 
 Direccion = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=400)]
+# Adenda 6, sección 5, regla 2: un teléfono, un correo o la ubicación de un buzón.
+ContactoCanal = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
 
 # ---------- Cooperativa ----------
 
@@ -30,6 +32,8 @@ class CooperativaPropia(BaseModel):
     correo: str | None
     representante_nombre: str | None
     representante_dni: str | None
+    # Adenda 6: el contacto del canal de quejas y denuncias.
+    canal_denuncias_contacto: str | None = None
     # Los cuatro datos que el DEX necesita y que faltan; vacío si están completos.
     faltan_datos: list[str]
 
@@ -39,27 +43,76 @@ class CooperativaCambios(Entrada):
     correo: Correo | None = None
     representante_nombre: Texto | None = None
     representante_dni: Dni | None = None
+    canal_denuncias_contacto: ContactoCanal | None = None
+
+
+class CasillaOrganizacion(CasillaSalida):
+    """Adenda 6, sección 4: el documento dice si es de identidad (frena un lote si falta) y, si ya no se
+    carga, que es un documento anterior."""
+
+    identidad: bool = False
+    frena_lote: bool = False
+    anterior: bool = False
+    # renta_anual vence sola a los RENTA_VIGENCIA_MESES de su presentación.
+    vence_solo: bool = False
+
+
+class RequisitoOrganizacionSalida(BaseModel):
+    """Adenda 6, sección 3: un requisito de la organización con su estado."""
+
+    codigo: str
+    nombre: str
+    referencias: list[str]
+    nivel: str | None
+    diligencia: str | None
+    bloquea: bool
+    que_pide: str
+    estado: Literal["no_aplica", "sustentado", "por_vencer", "vencido", "sin_sustento"]
+    motivo: str
+    # Lo que falta para sustentarlo: documentos, temas de la política o temas sin actuación, con su nombre y
+    # con su código.
+    falta: list[str] = []
+    falta_codigos: list[str] = []
 
 
 class ExpedienteCooperativa(BaseModel):
+    # Desde la adenda 6: completo cuando los tres documentos de identidad están vigentes o por vencer.
     estado: Literal["completo", "incompleto"]
-    # Casillas que no están vigentes ni por vencer.
+    # Documentos de identidad que no están vigentes ni por vencer.
     faltan: list[str]
-    casillas: list[CasillaSalida]
+    tipo_organizacion: str | None = None
+    # Los documentos que aplican al tipo de organización.
+    casillas: list[CasillaOrganizacion]
+    requisitos: list[RequisitoOrganizacionSalida] = []
+    # Adenda 6, sección 4, reglas 4 y 5: los que ya no se cargan y los que no aplican, con lo que se cargó.
+    anteriores: list[CasillaOrganizacion] = []
+    consulta_ruc: str | None = None
 
 
 # ---------- Documentos de embarque ----------
+
+
+class ConsultaPublica(BaseModel):
+    url: str
+    nombre: str
 
 
 class DocumentoEmbarque(BaseModel):
     codigo: str
     nombre: str
     emisor_habitual: str
+    # Adenda 6, sección 7: solo los obligatorios cuentan para documentos_embarque_completos.
+    obligatorio: bool = True
+    registro_consultable: bool = False
+    # Se puede cargar y anular en el estado de hoy del lote (la dam también con el lote cerrado).
+    editable: bool = False
+    consultas: list[ConsultaPublica] = []
     cargado: bool
     documentos: list[DocumentoSalida]
 
 
 class EmbarqueSalida(BaseModel):
+    # Los obligatorios.
     completo: bool
     faltan: list[str]
     # Se cargan y se anulan en un lote armado, bloqueado o listo.

@@ -8,6 +8,8 @@ import { rolEfectivo } from "./estado.js";
 function cooperativa() {
   const comunes = [
     ["Datos y expediente legal", "#/cooperativa/legal"],
+    // Adenda 6: el cuadro de señales y las actuaciones de diligencia.
+    ["Diligencia", "#/cooperativa/diligencia"],
     ["Certificaciones", "#/cooperativa/certificaciones"],
     ["Configuración", "#/cooperativa/configuracion"],
     ["Lugares", "#/cooperativa/lugares"],

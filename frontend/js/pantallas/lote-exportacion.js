@@ -6,13 +6,13 @@
 // y marcar la casilla de entendimiento.
 
 import { llamarApi } from "../api.js";
-import { anularDocumento, verDocumento } from "../documentos.js";
+import { abrirCotejo, anularDocumento, verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
 import { estadoLote, insignia, insigniaFifo, tarjetasIndicadores, vistaGenealogia } from "../exportacion.js";
 import { hoyLima as hoy } from "../fechas.js";
 import { mensajeFinal, vistaInforme } from "../informe.js";
 import { codigoQr, huella } from "../tandas.js";
-import { kilos } from "../textos.js";
+import { insigniaNivel, kilos } from "../textos.js";
 import { abrirModal, cabeceraFicha, campo, cargando, claseTono, enviarCon, errorDeCarga, fecha, h, icono, leyendaTonos, ordenarPorTono, reemplazar, rejilla, seccion, toast } from "../ui.js";
 
 const PESTANAS = [
@@ -130,25 +130,76 @@ function pestanaIndicadores(l) {
 function abrirCargaEmbarque(l, tipo, alCargar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-embarque" }, "Cargar documento");
   const archivo = h("input", { class: "input", type: "file", name: "archivo", accept: "image/jpeg,image/png,application/pdf", required: true });
+  // Adenda 6, sección 7: la declaración aduanera pide número y fecha de numeración; la emite SUNAT.
+  const dam = tipo.codigo === "dam";
   const formulario = h(
     "form",
     { class: "form", id: "form-embarque" },
-    h("div", { class: "grid2" }, campo({ etiqueta: "Número", name: "numero", required: true, maxlength: 200 }), campo({ etiqueta: "Entidad emisora", name: "entidad_emisora", required: true, maxlength: 200, ayuda: `Habitualmente: ${tipo.emisor_habitual}.` })),
-    campo({ etiqueta: "Fecha de emisión", name: "fecha_emision", type: "date", max: hoy(), required: true }),
+    dam
+      ? h(
+          "div",
+          { class: "grid2" },
+          campo({ etiqueta: "Número de la declaración", name: "numero", required: true, minlength: 5, maxlength: 30, class: "input mono", ayuda: "Como lo da SUNAT: aduana, año, régimen y número." }),
+          campo({ etiqueta: "Fecha de numeración", name: "fecha_emision", type: "date", max: hoy(), required: true }),
+        )
+      : [
+          h("div", { class: "grid2" }, campo({ etiqueta: "Número", name: "numero", required: true, maxlength: 200 }), campo({ etiqueta: "Entidad emisora", name: "entidad_emisora", required: true, maxlength: 200, ayuda: `Habitualmente: ${tipo.emisor_habitual}.` })),
+          campo({ etiqueta: "Fecha de emisión", name: "fecha_emision", type: "date", max: hoy(), required: true }),
+        ],
     h("label", { class: "field" }, "Archivo (foto o PDF, hasta 10 MB)", archivo),
-    h("p", { class: "panel-sub" }, "El sistema no lee el documento ni compara sus cifras con las del lote: eso lo revisa una persona."),
+    h("p", { class: "panel-sub" }, dam && l.estado === "cerrado" ? "El DEX emitido no cambia: la declaración aduanera se muestra aparte, en la pestaña DEX y en su página pública." : "El sistema no lee el documento ni compara sus cifras con las del lote: eso lo revisa una persona."),
   );
   const { cerrar } = abrirModal({ titulo: `Cargar: ${tipo.nombre}`, subtitulo: l.codigo, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
   enviarCon(formulario, boton, async (datos) => {
     const cuerpo = new FormData();
     cuerpo.append("tipo", tipo.codigo);
-    for (const clave of ["numero", "entidad_emisora", "fecha_emision"]) cuerpo.append(clave, datos[clave]);
+    for (const clave of ["numero", "entidad_emisora", "fecha_emision"]) if (datos[clave]) cuerpo.append(clave, datos[clave]);
     cuerpo.append("archivo", archivo.files[0]);
     await llamarApi(`/lotes/${l.id}/documentos`, { metodo: "POST", formulario: cuerpo });
     cerrar();
-    toast("Documento cargado. Recomprueba el lote para que lo tome en cuenta.");
+    toast(dam ? "Declaración aduanera cargada." : "Documento cargado. Recomprueba el lote para que lo tome en cuenta.");
     alCargar();
   });
+}
+
+/** Los obligatorios: rojo mientras falta (el lote no queda listo), verde cargado. La declaración aduanera no
+ * frena: sin color mientras falta, verde cargada; va después de los obligatorios (adenda 6, sección 10). */
+function tonoEmbarque(t) {
+  if (t.cargado) return "listo";
+  return t.obligatorio ? "bloquea" : "opcional";
+}
+
+function filaEmbarque(l, t, opera, recargar) {
+  const vigentes = t.documentos.filter((d) => d.vigente);
+  const cerrado = l.estado === "cerrado";
+  const consultas = t.consultas.map((c) => [c.url, c.nombre]);
+  return h(
+    "li",
+    { class: claseTono(tonoEmbarque(t)) },
+    h(
+      "div",
+      { class: "casilla-h" },
+      h("div", {}, h("b", {}, t.nombre), h("span", { class: "sec" }, `Emisor habitual: ${t.emisor_habitual}`)),
+      h("span", { class: "fila-acciones" }, insignia(t.cargado ? ["ok", "Cargado"] : t.obligatorio ? ["bad", "Falta"] : ["", "No frena el lote"]), vigentes.some((d) => d.cotejado_en) && insigniaNivel("verificado_en_fuente")),
+    ),
+    !t.obligatorio && consultas.length > 0 && h("p", { class: "panel-sub fila-acciones" }, "Consulta pública: ", consultas.map(([url, nombre]) => h("a", { href: url, target: "_blank", rel: "noopener" }, nombre))),
+    vigentes.map((d) =>
+      h(
+        "div",
+        { class: "casilla-doc" },
+        h("span", {}, `N.º ${d.numero ?? "—"} · ${d.entidad_emisora ?? "—"} · ${t.codigo === "dam" ? "numerada" : "emitido"} ${fecha(d.fecha_emision)}`),
+        d.cotejado_en && h("span", { class: "sec" }, `Cotejada el ${fecha(d.cotejado_en)}: ${d.cotejo_nota}`),
+        h(
+          "span",
+          { class: "fila-acciones" },
+          h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => verDocumento(d) }, icono("eye"), "Ver"),
+          opera && t.registro_consultable && !d.cotejado_en && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => abrirCotejo(d, { titulo: t.nombre, consultas, ayuda: "Anota qué consulta usaste y si el número, la fecha y el exportador coinciden." }, recargar) }, "Cotejar en fuente"),
+          opera && t.editable && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => anularDocumento(d, recargar) }, "Anular"),
+        ),
+      ),
+    ),
+    opera && t.editable && h("div", { class: "fila-acciones" }, h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirCargaEmbarque(l, t, recargar) }, icono("upload"), cerrado && !vigentes.length ? "Agregar la declaración aduanera" : vigentes.length ? "Cargar otro" : "Cargar documento")),
+  );
 }
 
 function pestanaEmbarque(l, opera, recargar) {
@@ -158,45 +209,21 @@ function pestanaEmbarque(l, opera, recargar) {
       reemplazar(
         caja,
         e.faltan.length > 0 && h("p", { class: "alerta bad" }, `Falta: ${e.faltan.join(", ")}.`),
-        // Los cuatro impiden que el lote quede listo: rojo mientras falta, verde cargado.
-        leyendaTonos({ bloquea: "falta: el lote no queda listo", falta: null, listo: "cargado" }),
+        leyendaTonos({ bloquea: "falta: el lote no queda listo", falta: null, listo: "cargado", opcional: "no frena el lote" }),
         h(
           "ul",
           { class: "casillas" },
-          ordenarPorTono(e.tipos, (t) => (t.cargado ? "listo" : "bloquea")).map((t) => {
-            const vigentes = t.documentos.filter((d) => d.vigente);
-            return h(
-              "li",
-              { class: claseTono(t.cargado ? "listo" : "bloquea") },
-              h(
-                "div",
-                { class: "casilla-h" },
-                h("div", {}, h("b", {}, t.nombre), h("span", { class: "sec" }, `Emisor habitual: ${t.emisor_habitual}`)),
-                insignia(t.cargado ? ["ok", "Cargado"] : ["bad", "Falta"]),
-              ),
-              vigentes.map((d) =>
-                h(
-                  "div",
-                  { class: "casilla-doc" },
-                  h("span", {}, `N.º ${d.numero ?? "—"} · ${d.entidad_emisora ?? "—"} · emitido ${fecha(d.fecha_emision)}`),
-                  h(
-                    "span",
-                    { class: "fila-acciones" },
-                    h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => verDocumento(d) }, icono("eye"), "Ver"),
-                    opera && e.editable && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => anularDocumento(d, recargar) }, "Anular"),
-                  ),
-                ),
-              ),
-              opera && e.editable && h("div", { class: "fila-acciones" }, h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirCargaEmbarque(l, t, recargar) }, icono("upload"), vigentes.length ? "Cargar otro" : "Cargar documento")),
-            );
-          }),
+          [...ordenarPorTono(e.tipos.filter((t) => t.obligatorio), tonoEmbarque), ...e.tipos.filter((t) => !t.obligatorio)].map((t) => filaEmbarque(l, t, opera, recargar)),
         ),
       ),
     )
     .catch((error) => reemplazar(caja, errorDeCarga(error)));
   return seccion({
     titulo: "Documentos de embarque",
-    sub: l.estado === "cerrado" ? "El lote tiene DEX: sus documentos de embarque ya no cambian." : "Los cuatro deben estar cargados antes de emitir el DEX. Si falta uno, el lote deja de estar listo.",
+    sub:
+      l.estado === "cerrado"
+        ? "El lote tiene DEX: sus documentos de embarque ya no cambian. Solo se puede agregar la declaración aduanera, que se muestra aparte sin cambiar el DEX."
+        : "Los cuatro obligatorios deben estar cargados antes de emitir el DEX. Si falta uno, el lote deja de estar listo. La declaración aduanera no frena el lote y se puede agregar también después del DEX.",
     contenido: caja,
   });
 }
@@ -385,6 +412,21 @@ function abrirAnulacionDex(dex, alAnular) {
   });
 }
 
+/** Adenda 6, sección 7, regla 7: lo que se cargó en el lote después de emitir el DEX. El DEX no cambia. */
+export function bloqueAgregado(agregado) {
+  return [
+    h("h4", { class: "dex-sub" }, "Agregado después de la emisión"),
+    h("p", { class: "panel-sub" }, "No forma parte del DEX: su contenido y su huella no cambian."),
+    rejilla(
+      agregado.flatMap((a) => [
+        { etiqueta: a.nombre, valor: a.numero, mono: true, extra: a.cotejado ? insigniaNivel("verificado_en_fuente") : "Sin cotejo en fuente" },
+        { etiqueta: "Fecha de numeración", valor: fecha(a.fecha_numeracion) },
+        { etiqueta: "Cargada", valor: fecha(a.cargado_en, { hora: true }) },
+      ]),
+    ),
+  ];
+}
+
 function fichaDex(dex, alAnular) {
   const rol = rolEfectivo();
   const descarga = ["admin_cooperativa", "operador"].includes(rol);
@@ -422,6 +464,7 @@ function fichaDex(dex, alAnular) {
       ]),
       h("figure", { class: "dex-qr" }, codigoQr(dex.qr, `Código QR de verificación del ${dex.codigo}`), h("figcaption", {}, "Lleva a la página pública de verificación")),
     ),
+    dex.agregado?.length > 0 && bloqueAgregado(dex.agregado),
     h("h4", { class: "dex-sub" }, "Archivos"),
     h("p", { class: "panel-sub" }, descarga ? "Cada descarga queda en la auditoría. Las direcciones vencen a los 5 minutos. Los PDF en español y en inglés tienen las mismas secciones y las mismas cifras." : "Descargan el administrador y el operador."),
     h(
@@ -469,7 +512,7 @@ function pestanaDex(l, alCambiar, irAPestana) {
         "div",
         { class: "verif" },
         icono("rotate"),
-        h("div", {}, h("b", {}, "El DEX se emite sobre un lote listo"), h("span", {}, "Carga los cuatro documentos de embarque y recomprueba el lote: si las nueve comprobaciones salen sin observaciones, queda listo.")),
+        h("div", {}, h("b", {}, "El DEX se emite sobre un lote listo"), h("span", {}, "Carga los cuatro documentos de embarque obligatorios y recomprueba el lote: si las nueve comprobaciones salen sin observaciones, queda listo.")),
         h("button", { class: "btn btn-sm", type: "button", onclick: () => irAPestana("recomprobacion") }, "Ir a Recomprobación"),
       ),
     );

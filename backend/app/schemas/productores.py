@@ -53,6 +53,8 @@ class ProductorSalida(Salida):
 
 class ProductorDetalle(ProductorSalida):
     documentos: list[DocumentoSalida]
+    # Adenda 6, sección 5: en "Mi perfil", a dónde llevar una queja o una denuncia ante su organización.
+    canal_denuncias_contacto: str | None = None
 
 
 class FichaProductor(Entrada):

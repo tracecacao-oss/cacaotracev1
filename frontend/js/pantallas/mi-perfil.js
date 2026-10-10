@@ -83,6 +83,14 @@ async function perfilProductor({ recargarUsuario, recargar }) {
         telefono,
       ],
     }),
+    // Adenda 6, sección 5: a dónde llevar una queja o una denuncia. El sistema no las recibe.
+    seccion({
+      titulo: "Quejas y denuncias",
+      sub: "Si tienes una queja o una denuncia sobre el trabajo, el trato o el acopio, puedes presentarla ante tu organización, con tu nombre o sin él.",
+      contenido: f.canal_denuncias_contacto
+        ? rejilla([{ etiqueta: "Dónde presentarla", valor: f.canal_denuncias_contacto }])
+        : h("p", { class: "panel-sub" }, "Tu organización todavía no registró a dónde llevarlas. Pregúntale a su personal."),
+    }),
     seccion({
       titulo: "Mi DNI",
       sub: "Toma una foto clara del DNI o sube un PDF.",

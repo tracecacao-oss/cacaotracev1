@@ -92,6 +92,13 @@ CATALOGO: dict[str, Entrada] = {
     "etapas_desde_plantilla": Entrada("no_verificado", 2, 3),
     # Etapa 3, lote
     "comprobacion_fallida": Entrada("impide_cierre", 3, None),
+    # Adenda 6, sección 11: la organización (y el lote, sin declaración aduanera). Son documentos o registros
+    # que faltan: todos a No verificado.
+    "tributos_organizacion_sin_sustento": Entrada("no_verificado", 3, 11),
+    "registro_cooperativas_sin_sustento": Entrada("no_verificado", 3, 11),
+    "politica_incompleta": Entrada("no_verificado", 3, 5),
+    "sin_actuaciones_de_diligencia": Entrada("no_verificado", 3, 11),
+    "lote_sin_dam": Entrada("no_verificado", 3, 11),
     "parcela_cambio_de_estado": Entrada("requiere_atencion", 3, None),
     "desviacion_fifo": Entrada("requiere_atencion", 3, 3),
     # Siempre presentes

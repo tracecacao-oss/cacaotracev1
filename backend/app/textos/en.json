@@ -117,7 +117,12 @@
     "envases_por_atender": "{productor} declares that they {destino} the empty containers of the products they use. Guidance document, requirement {referencias}.",
     "agroquimicos_sin_revisar": "{productor} declares using products that the organisation has not looked up in the SENASA register: {productos}. Guidance document, requirement {referencias}.",
     "permanentes_sin_relacion": "{productor} declares having year-round workers and the list of permanent workers has not been uploaded. Guidance document, requirement {referencias}.",
-    "tributos_sin_sustento": "{productor} {falta}. Guidance document, requirement {referencias}."
+    "tributos_sin_sustento": "{productor} {falta}. Guidance document, requirement {referencias}.",
+    "tributos_organizacion_sin_sustento": "{organizacion} has no current annual income tax return in its file ({estado}). Guidance document, requirement 7.1.",
+    "registro_cooperativas_sin_sustento": "{organizacion}, an agrarian cooperative, has no current certificate of registration in the National Registry of Agrarian Cooperatives in its file ({estado}). Guidance document, requirement 7.1; Law No. 31335.",
+    "politica_incompleta": "Topics of the policy of {organizacion} without support: {temas}. Guidance document, requirements 7.3 and 5.5.",
+    "sin_actuaciones_de_diligencia": "{organizacion} did not record a current due diligence action on these topics, where one is expected: {temas}.",
+    "lote_sin_dam": "Lot {lote} has no Customs Goods Declaration (DAM) uploaded. Guidance document, requirement 7.2."
   },
   "mensaje": {
     "analisis_requiere_revision": "The forest cover analysis of {sujetos}, which {aporta} {peso} % of the lot, returned {citas}.",
@@ -177,7 +182,12 @@
     "envases_por_atender": "Producers who declare burning, burying, throwing away or reusing empty containers: {sujetos}, which {aporta} {peso} % of the lot.",
     "agroquimicos_sin_revisar": "Producers with declared products not looked up in the SENASA register: {sujetos}, which {aporta} {peso} % of the lot.",
     "permanentes_sin_relacion": "Producers with year-round workers without the list of workers uploaded: {sujetos}, which {aporta} {peso} % of the lot.",
-    "tributos_sin_sustento": "Producers with the tax requirement without support: {sujetos}, which {aporta} {peso} % of the lot."
+    "tributos_sin_sustento": "Producers with the tax requirement without support: {sujetos}, which {aporta} {peso} % of the lot.",
+    "tributos_organizacion_sin_sustento": "The organisation has no current annual income tax return.",
+    "registro_cooperativas_sin_sustento": "The agrarian cooperative has no current certificate of registration in the National Registry of Agrarian Cooperatives.",
+    "politica_incompleta": "Topics of the policy of the organisation without support: {temas}.",
+    "sin_actuaciones_de_diligencia": "Topics where a due diligence action is expected and there is no current one: {temas}.",
+    "lote_sin_dam": "The lot has no Customs Goods Declaration (DAM) uploaded."
   },
   "comun": {
     "aporta_uno": "contributes",
@@ -300,7 +310,7 @@
     "dops_vigentes": "Current DOPs",
     "dpps_vigentes": "Current DPPs",
     "genealogia_cuadra": "The genealogy adds up",
-    "expediente_cooperativa_completo": "Legal file of the cooperative",
+    "expediente_cooperativa_completo": "Identity of the organisation",
     "datos_cooperativa_completos": "Cooperative data",
     "importador_completo": "Importer data",
     "documentos_embarque_completos": "Shipping documents"
@@ -331,8 +341,8 @@
     "sunafil": "Labour record with SUNAFIL",
     "sunat": "RUC record or other SUNAT record",
     "zonificacion": "Forest zoning record for the plot",
-    "rnca": "National Registry of Agrarian Cooperatives (MIDAGRI)",
-    "partida_sunarp": "Registry entry of the cooperative with SUNARP",
+    "rnca": "Certificate of registration in the National Registry of Agrarian Cooperatives (MIDAGRI)",
+    "partida_sunarp": "Registry entry of the organisation at SUNARP",
     "ficha_ruc": "SUNAT RUC record",
     "vigencia_poderes": "Validity of the legal representative's powers (SUNARP)",
     "ruc_comercio_exterior": "Record of the RUC enabled for foreign trade",
@@ -355,7 +365,10 @@
     "constancia_saneamiento_31145": "Record of land titling clean-up under Law No. 31145",
     "licencia_agua": "Water use licence or permit",
     "ficha_tecnica_ambiental": "Environmental Technical Sheet (Ficha Técnica Ambiental)",
-    "instrumento_ambiental": "Environmental instrument: DIA, EIA-sd, EIA-d or PAMA"
+    "instrumento_ambiental": "Environmental instrument: DIA, EIA-sd, EIA-d or PAMA",
+    "renta_anual": "Annual income tax return, or proof of having filed it",
+    "dam": "Customs Goods Declaration (DAM)",
+    "politica_organizacion": "Policy of the organisation"
   },
   "datos_lote": {
     "orden": "Order",
@@ -537,7 +550,23 @@
     "requisitos_productor": "Requirements to be addressed or without support",
     "seguimiento": "Follow-up note",
     "declarada_el": "Declared on {fecha} ({origen}); valid until {hasta}",
-    "nada_por_atender": "None"
+    "nada_por_atender": "None",
+    "organizacion": "The organisation and its due diligence",
+    "organizacion_sub": "With the status on the day of issue. What the organisation wrote is in its own words; the evidence of each action does not leave the system.",
+    "requisitos_organizacion": "Requirements of the organisation",
+    "politica": "Policy of the organisation",
+    "tema": "Topic",
+    "adoptada": "Adopted on",
+    "canal": "Contact of the complaints and grievance channel",
+    "senales": "Signals",
+    "senal": "Signal",
+    "actuaciones_vigentes": "Current actions",
+    "actuaciones_n": "Actions",
+    "sin_actuaciones": "The organisation has no current actions.",
+    "temas": "Topics",
+    "falta": "Missing",
+    "actuaciones_alcanzaron": "Actions of the organisation that reached them",
+    "requisito_organizacion": "Requirement"
   },
   "anexo": {
     "nota_general": "Help for the importer with the due diligence statement fields that come from this flow, in the order of Annex II to Regulation (EU) 2023/1115 (consolidated text of 18/09/2026). It is not a submission to TRACES and does not use its interface.",
@@ -741,5 +770,64 @@
       "productor": "from their account",
       "personal": "with signed sheet"
     }
+  },
+  "organizacion": {
+    "requisitos": {
+      "identidad": "Identity of the organisation",
+      "tributos": "Taxes of its regime",
+      "registro_cooperativas": "Registration in the National Registry of Agrarian Cooperatives",
+      "integridad": "Policy on integrity, decent work and grievance channel",
+      "actuaciones": "Due diligence actions",
+      "aduanas": "Customs formalities of the lot"
+    },
+    "temas_politica": {
+      "integridad": "Integrity",
+      "no_fraude": "No fraud",
+      "canal_denuncias": "Complaints and grievance channel",
+      "trabajo_digno": "Decent work",
+      "revision_de_documentos": "Document review"
+    },
+    "temas": {
+      "integridad": "Integrity",
+      "tierra_forestal": "Forest land",
+      "agroquimicos_y_envases": "Agrochemicals and containers",
+      "trabajo": "Labour",
+      "tenencia": "Land tenure",
+      "areas_protegidas": "Protected areas",
+      "agua": "Water",
+      "derechos_humanos": "Human rights"
+    },
+    "tipos": {
+      "revision_de_fuente_publica": "Review of a public source",
+      "consulta_a_partes_interesadas": "Consultation with stakeholders",
+      "capacitacion": "Training or campaign",
+      "verificacion_en_campo": "Field check",
+      "apoyo_a_productores": "Support to producers"
+    },
+    "senales": {
+      "integridad": "Always expected",
+      "tierra_forestal_uno": "{n} plot on forest land",
+      "tierra_forestal_varios": "{n} plots on forest land",
+      "agroquimicos_y_envases_uno": "{n} producer declares using agrochemicals",
+      "agroquimicos_y_envases_varios": "{n} producers declare using agrochemicals",
+      "trabajo_uno": "{n} producer declares hiring workers",
+      "trabajo_varios": "{n} producers declare hiring workers",
+      "tenencia_uno": "{n} land tenure incident recorded in the last 12 months",
+      "tenencia_varios": "{n} land tenure incidents recorded in the last 12 months",
+      "areas_protegidas_uno": "{n} plot inside a protected area or its buffer zone",
+      "areas_protegidas_varios": "{n} plots inside a protected area or its buffer zone",
+      "agua_uno": "{n} plot irrigated without a water licence or bordering a body of water",
+      "agua_varios": "{n} plots irrigated without a water licence or bordering a body of water",
+      "derechos_humanos_uno": "{n} producer declares minors under 18 or work that is not free",
+      "derechos_humanos_varios": "{n} producers declare minors under 18 or work that is not free"
+    },
+    "estados_senal": {
+      "sustentado": "With a current action",
+      "sin_sustento": "Without a current action",
+      "no_se_espera": "Not expected"
+    },
+    "falta_contacto": "the contact of the channel is missing",
+    "canal_si": "Recorded in the data of the organisation",
+    "canal_no": "Not recorded"
   }
 }
