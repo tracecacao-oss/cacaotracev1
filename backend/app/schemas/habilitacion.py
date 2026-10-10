@@ -173,6 +173,16 @@ class DecisionSalida(Salida):
     evidencia_revision_id: uuid.UUID | None = None
 
 
+class DetalleAlerta(BaseModel):
+    """Qué hay detrás de una alerta, en concreto, y dónde se atiende (pedido del equipo del 2026-10-10)."""
+
+    codigo: str
+    lineas: list[str]
+    # Dónde se atiende: una pestaña de la misma parcela o, si es fuera de ella, un enlace.
+    pestana: Literal["general", "cobertura", "imagenes", "legalidad"] | None = None
+    enlace: str | None = None
+
+
 class HabilitacionSalida(BaseModel):
     parcela_id: uuid.UUID
     estado: Literal["pendiente", "habilitada", "observada", "excluida"]
@@ -181,6 +191,7 @@ class HabilitacionSalida(BaseModel):
     alertas: list[str]
     nota_obligatoria: bool
     decisiones: list[DecisionSalida]
+    detalle_alertas: list[DetalleAlerta] = []
 
 
 class HabilitarEntrada(Entrada):

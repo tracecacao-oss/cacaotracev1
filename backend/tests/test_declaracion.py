@@ -364,6 +364,10 @@ def test_menores_de_la_familia_no_bloquean(api, sesion, operador, admin, product
     assert _estado(sesion, productor, coop).requisitos["menores_de_edad"].estado == "por_atender"
     habilitacion = api.como(operador).get(f"/parcelas/{parcela.id}/habilitacion").json()
     assert "productor_por_atender" in habilitacion["alertas"]
+    # Pedido del equipo del 2026-10-10: la alerta dice qué hay detrás y dónde se atiende.
+    [detalle] = [d for d in habilitacion["detalle_alertas"] if d["codigo"] == "productor_por_atender"]
+    assert detalle["enlace"] == f"#/productores/{productor.id}/declaracion"
+    assert any("menor de 18" in x and "? 14" in x for x in detalle["lineas"]), detalle["lineas"]
     assert _habilitar(api, admin, parcela, nota="Corta").status_code == 422
     assert _habilitar(api, admin, parcela).status_code == 200
 

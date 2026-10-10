@@ -159,6 +159,28 @@ def test_alerta_area_discrepante(api, operador, productor):
     assert "area_discrepante" in respuesta.json()["alertas"]
 
 
+def test_detalle_de_las_alertas_en_la_habilitacion(api, operador, productor):
+    """Pedido del equipo del 2026-10-10: cada alerta dice qué hay detrás y en qué pestaña se atiende."""
+    lado = math.sqrt(12000)  # 1.2 ha
+    api.como(operador)
+    parcela = crear_parcela(
+        api,
+        productor.id,
+        rectangulo(lado, lado),
+        area_declarada_ha="2",
+        area_cultivada_ha="1",
+        midagri_estado="validado",
+    ).json()
+    habilitacion = api.get(f"/parcelas/{parcela['id']}/habilitacion").json()
+    detalle = {d["codigo"]: d for d in habilitacion["detalle_alertas"]}
+    assert detalle["area_discrepante"]["pestana"] == "general"
+    [linea] = detalle["area_discrepante"]["lineas"]
+    assert linea.startswith("Área declarada 2,00 ha y calculada del polígono 1,20 ha: difieren 67 %"), linea
+    assert detalle["sin_sustento_midagri"]["lineas"] == [
+        "En MIDAGRI figura como «Validado», y falta cargar el documento «Sustento de MIDAGRI» en Documentos."
+    ]
+
+
 def test_alerta_diez_hectareas(api, operador, productor):
     lado = math.sqrt(120000)  # 12 ha
     respuesta = crear_parcela(api.como(operador), productor.id, rectangulo(lado, lado), area_cultivada_ha="5")

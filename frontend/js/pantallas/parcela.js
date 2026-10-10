@@ -321,6 +321,7 @@ export default async function parcela({ hash, parametros, recargar }) {
     contenedor: cuerpo,
     pestanaActual: () => recordada.clave,
     recargarPestana: () => mostrarPestana(recordada.clave),
+    irA: (clave) => mostrarPestana(clave),
   };
 
   function mostrarPestana(clave) {
