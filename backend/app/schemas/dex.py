@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.schemas.cooperativa import ComparacionAduanera
+
 EstadoDex = Literal["vigente", "anulado"]
 ClasificacionPais = Literal["bajo", "estandar", "alto"]
 
@@ -45,16 +47,29 @@ class DexSalida(BaseModel):
 
 
 class AgregadoDespues(BaseModel):
-    """Adenda 6, sección 7, regla 7: lo que se cargó en el lote después de emitir el DEX (la declaración
-    aduanera). No forma parte del DEX: su contenido y su huella no cambian."""
+    """Adenda 6, sección 7, regla 7, y adenda 7, sección 4.4: la declaración aduanera cargada en el lote
+    después de emitir el DEX. No forma parte del DEX: su contenido y su huella no cambian. La pestaña DEX
+    muestra sus cuatro datos, la comparación con el lote, cuándo se cargó y si tiene cotejo."""
 
     tipo: str
     nombre: str
     numero: str | None
     fecha_numeracion: date | None
+    peso_neto_kg: Decimal | None = None
+    subpartida: str | None = None
+    comparacion: ComparacionAduanera | None = None
     cargado_en: datetime
     cotejado: bool
     cotejado_en: datetime | None
+
+
+class AgregadoPublico(BaseModel):
+    """Adenda 7, sección 4.4, regla 4: en la verificación pública, solo tres datos. Sin pesos ni archivo."""
+
+    nombre: str
+    numero: str | None
+    fecha_numeracion: date | None
+    agregado_en: datetime
 
 
 class DexDetalle(DexSalida):
@@ -79,7 +94,7 @@ class DexPublico(BaseModel):
     cooperativa: str
     # Parte 10: la página pública avisa que es un documento de demostración.
     es_demo: bool = False
-    agregado: list[AgregadoDespues] = []
+    agregado: list[AgregadoPublico] = []
 
 
 # ---------- Certificaciones ----------

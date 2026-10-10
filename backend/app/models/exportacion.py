@@ -1,5 +1,5 @@
 """Tablas de la Parte 7: importadores, órdenes de compra, lotes de exportación con su selección de stock y
-la genealogía del lote por parcela."""
+la genealogía del lote por parcela. Desde la adenda 7, la declaración aduanera de cada lote."""
 
 import uuid
 from datetime import date, datetime
@@ -193,3 +193,44 @@ class Recomprobacion(Base):
     ejecutada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     resultado: Mapped[str] = mapped_column(Text)
     detalle: Mapped[dict] = mapped_column(JSONB)
+
+
+ANULACION = (
+    "(anulada_en IS NULL) = (anulada_por IS NULL) AND (anulada_en IS NULL) = (motivo_anulacion IS NULL)"
+)
+
+
+class DeclaracionAduanera(Base):
+    """La declaración aduanera de un lote (adenda 7, sección 4): los cuatro datos que escribe la persona, con
+    su archivo de tipo `dam`. No se edita ni se borra: se anula con motivo y se carga otra. Un lote tiene como
+    máximo una sin anular. Un trigger lo asegura en la base."""
+
+    __tablename__ = "declaraciones_aduaneras"
+    __table_args__ = (
+        CheckConstraint("char_length(numero) BETWEEN 5 AND 30", name="numero_valido"),
+        CheckConstraint("peso_neto_kg > 0", name="peso_positivo"),
+        CheckConstraint("subpartida ~ '^[0-9]{4,10}$'", name="subpartida_solo_digitos"),
+        CheckConstraint(ANULACION, name="anulacion_completa"),
+        # Sección 4.1, regla 1: como máximo una sin anular por lote.
+        Index(
+            "uq_declaraciones_aduaneras_lote_vigente",
+            "lote_id",
+            unique=True,
+            postgresql_where=text("anulada_en IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lote_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("lotes.id"))
+    documento_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documentos.id"))
+    numero: Mapped[str] = mapped_column(Text)
+    fecha_numeracion: Mapped[date] = mapped_column(Date)
+    peso_neto_kg: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    subpartida: Mapped[str] = mapped_column(Text)
+    registrada_por: Mapped[uuid.UUID] = mapped_column(ForeignKey("perfiles.id"))
+    registrada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+    # Verdadero si se cargó con el lote cerrado, después de emitir el DEX.
+    posterior_al_dex: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    anulada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    anulada_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))
+    motivo_anulacion: Mapped[str | None] = mapped_column(Text)

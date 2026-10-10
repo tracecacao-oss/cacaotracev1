@@ -16,3 +16,4 @@ ignore = ["S101"]  # assert es la forma normal de verificar en pytest
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S105", "S106"]  # claves falsas de prueba
+"tests/test_lote_legalidad.py" = ["F811"]  # usa las fixtures de tests/test_dex.py

@@ -1,5 +1,6 @@
 """Configuración del backend, leída de variables de entorno (y de backend/.env en local)."""
 
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -57,6 +58,8 @@ class Settings(BaseSettings):
     # actuación de diligencia cuenta para sus temas durante estos meses desde su fecha.
     renta_vigencia_meses: int = Field(18, ge=1)
     actuacion_vigencia_meses: int = Field(12, ge=1)
+    # Adenda 7: diferencia de peso (%) entre la declaración aduanera y el lote desde la que "difiere".
+    dam_tolerancia_peso_pct: Decimal = Field(Decimal("1"), ge=0, le=100)
     distancia_cuerpo_agua_m: int = Field(100, ge=0, le=5000)
     capas_legales_activas: str = (
         "sernanp_anp,sernanp_amortiguamiento,serfor_zonificacion,"

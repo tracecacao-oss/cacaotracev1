@@ -33,6 +33,7 @@ def _caso_en_idiomas(d: DatosLote, comprobacion: str, caso: dict, extra: dict) -
         valores = {
             "codigo": codigo,
             "estado": {i: _estado(i, p.habilitacion_estado if p else "") for i in textos.IDIOMAS},
+            "productor": caso.get("productor") or "—",
         }
         en = textos.t("en", "casos.parcela_estado", **valores)
     elif comprobacion == "sin_parcelas_excluidas":

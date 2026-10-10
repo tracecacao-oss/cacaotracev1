@@ -1,5 +1,6 @@
 """Parte 9: informe de hallazgos, DEX, certificaciones de la cooperativa y clasificación del país. Emite y
-anula el DEX solo un administrador; descargan el administrador y el operador; el lector solo consulta."""
+anula el DEX solo un administrador; descargan el administrador y el operador; el lector solo consulta. Desde
+la adenda 7, el cuadro de legalidad por requisito del lote."""
 
 import uuid
 from datetime import date
@@ -25,7 +26,7 @@ from app.schemas.dex import (
     EstadoDex,
 )
 from app.schemas.recepcion import Motivo
-from app.services import certificaciones, configuracion_plataforma, dex, hallazgos
+from app.services import certificaciones, configuracion_plataforma, cuadro_legalidad, dex, hallazgos
 from app.storage import ClienteStorage, obtener_storage
 
 router = APIRouter(tags=["dex"])
@@ -41,6 +42,17 @@ Storage = Annotated[ClienteStorage, Depends(obtener_storage)]
 @router.get("/lotes/{lote_id}/hallazgos")
 def informe_preliminar(lote_id: uuid.UUID, contexto: Lectura) -> dict[str, Any]:
     return hallazgos.preliminar(contexto, lote_id)
+
+
+# Adenda 7, sección 5: el cuadro de legalidad por requisito, preliminar o sellado en el DEX.
+@router.get("/lotes/{lote_id}/legalidad")
+def cuadro_de_legalidad(lote_id: uuid.UUID, contexto: Lectura) -> dict[str, Any]:
+    return cuadro_legalidad.cuadro(contexto, lote_id)
+
+
+@router.get("/lotes/{lote_id}/legalidad/{fila}")
+def fila_del_cuadro(lote_id: uuid.UUID, fila: str, contexto: Lectura) -> dict[str, Any]:
+    return cuadro_legalidad.fila(contexto, lote_id, fila)
 
 
 @router.get("/lotes/{lote_id}/geojson")

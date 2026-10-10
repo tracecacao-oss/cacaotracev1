@@ -55,6 +55,7 @@ from app.models.diligencia import (  # noqa: E402
     PoliticaOrganizacion,
 )
 from app.models.exportacion import (  # noqa: E402
+    DeclaracionAduanera,
     Importador,
     Lote,
     LoteAsignacion,
@@ -114,6 +115,7 @@ __all__ = [
     "Certificacion",
     "ConfiguracionPlataforma",
     "Dex",
+    "DeclaracionAduanera",
     "Importador",
     "Lote",
     "LoteAsignacion",

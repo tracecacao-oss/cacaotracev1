@@ -59,7 +59,8 @@ export default async function verificar({ parametros: [tipo, codigo] }) {
         { etiqueta: "Fecha de emisión", valor: fecha(doc.emitido_en, { hora: true }) },
         { etiqueta: "Huella SHA-256 del contenido", valor: doc.contenido_sha256, mono: true, extra: "Coincide con la impresa en el PDF si el documento no fue alterado." },
       ]),
-      // Adenda 6: la declaración aduanera que se agregó al lote después de emitir el DEX, aparte.
+      // Adendas 6 y 7: la declaración aduanera que se agregó al lote después de emitir el DEX, aparte, con tres
+      // datos: su número, su fecha de numeración y la fecha en que se agregó. Sin pesos ni archivo.
       doc.agregado?.length > 0 && [
         h("h2", { class: "verif-sub" }, "Agregado después de la emisión"),
         h("p", { class: "sub" }, "No forma parte del DEX: su contenido y su huella no cambian."),
@@ -67,8 +68,7 @@ export default async function verificar({ parametros: [tipo, codigo] }) {
           doc.agregado.flatMap((a) => [
             { etiqueta: a.nombre, valor: a.numero, mono: true },
             { etiqueta: "Fecha de numeración", valor: fecha(a.fecha_numeracion) },
-            { etiqueta: "Cargada", valor: fecha(a.cargado_en, { hora: true }) },
-            { etiqueta: "Cotejo en fuente", valor: a.cotejado ? `Cotejada el ${fecha(a.cotejado_en)}` : "Sin cotejo" },
+            { etiqueta: "Agregada el", valor: fecha(a.agregado_en, { hora: true }) },
           ]),
         ),
       ],

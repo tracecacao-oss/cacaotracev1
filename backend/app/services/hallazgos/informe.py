@@ -110,6 +110,8 @@ def _frases(idioma: str, hallazgos: list[Hallazgo]) -> list[str]:
         }
         if codigo in CON_TEMAS:
             valores["temas"] = textos.en_idioma(idioma, lista[0].datos["temas"])
+        if codigo == "dam_difiere_del_lote":
+            valores["diferencias"] = textos.en_idioma(idioma, lista[0].datos["diferencias"])
         if codigo == "analisis_requiere_revision":
             citas: list[str] = []
             for h in lista:

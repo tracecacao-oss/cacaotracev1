@@ -119,6 +119,8 @@ def lote_admite(tipo: str, estado_lote: str) -> bool:
     if tipo in documentos_embarque.DESPUES_DEL_DEX:
         return estado_lote in (*ESTADOS_LOTE_CON_EMBARQUE, "cerrado")
     return estado_lote in ESTADOS_LOTE_CON_EMBARQUE
+
+
 # Los genera el sistema o forman parte de un registro que no se edita: no se anulan a mano.
 NO_ANULABLES = (
     "respuesta_analisis",
@@ -360,11 +362,25 @@ def url_firmada(contexto: Contexto, storage: ClienteStorage, documento_id: uuid.
         ) from exc
 
 
+def _tiene_declaracion(sesion: Session, documento_id: uuid.UUID) -> bool:
+    from app.models import DeclaracionAduanera  # evita importación circular
+
+    return sesion.scalar(select(exists().where(DeclaracionAduanera.documento_id == documento_id)))
+
+
 def anular(contexto: Contexto, documento_id: uuid.UUID, motivo: str) -> Documento:
     documento = documento_visible(contexto, documento_id)
     if documento.tipo in NO_ANULABLES:
         raise error_api(
             400, "documento_no_anulable", f"La {NOMBRES_TIPO[documento.tipo]} no se anula a mano."
+        )
+    if documento.tipo == "dam" and _tiene_declaracion(contexto.sesion, documento.id):
+        # Adenda 7: decisión del equipo del 2026-10-10. Se anula la declaración aduanera, con su archivo. Un
+        # archivo cargado antes de la adenda 7, sin sus cuatro datos, sí se anula solo.
+        raise error_api(
+            400,
+            "anular_la_declaracion",
+            "El archivo de la declaración aduanera no se anula solo: se anula la declaración, desde su lote.",
         )
     if documento.tipo == "politica_organizacion":
         # Adenda 6: se anula la política, con su motivo; su archivo se conserva.

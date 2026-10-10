@@ -5,7 +5,8 @@ escribieron las personas (notas, motivos, explicaciones) no se traduce: en el PD
 español, bajo "Original text in Spanish". Orden de las secciones: leyenda y mensaje final; identificación,
 exportador, importador y orden, y producto; genealogía con el croquis; respaldo por parcela; declaraciones
 de los productores (adenda 5); la organización y su diligencia (adenda 6); proceso y embarque;
-recomprobación; informe de hallazgos completo; documentos de evidencia.
+recomprobación; informe de hallazgos completo; documentos de evidencia. Desde la adenda 7, la legalidad por
+requisito va después de la genealogía y antes del respaldo por parcela.
 """
 
 import io
@@ -328,6 +329,83 @@ def _genealogia(pdf: Pdf, c: dict[str, Any]) -> None:
 
 
 # ---------- Respaldo por parcela ----------
+
+
+# ---------- Adenda 7: legalidad por requisito ----------
+
+
+def _pct1(valor: Any) -> str:
+    """Un decimal en el PDF; el contenido sellado lleva dos."""
+    return f"{textos.numero(valor, 1)} %"
+
+
+def _nombre_fila(t, f: dict[str, Any]) -> str:
+    nombre = t("filas." + f["codigo"])
+    return f"{nombre} ({', '.join(f['referencias'])})" if f["referencias"] else nombre
+
+
+def _cuenta(x: dict[str, Any]) -> str:
+    return f"{x['n']} ({_pct1(x['pct'])})"
+
+
+def _legalidad_por_requisito(pdf: Pdf, c: dict[str, Any]) -> None:
+    """Después de la genealogía y antes del respaldo por parcela (sección 8, regla 2): el cuadro sellado,
+    agrupado por de quién es cada fila, y los requisitos que no se piden. Sin totales ni colores."""
+    cuadro = c.get("legalidad_por_requisito")
+    if cuadro is None:  # DEX anteriores a la adenda 7
+        return
+    t = lambda ruta: textos.obtener(pdf.idioma, f"cuadro.{ruta}")  # noqa: E731
+    pdf.seccion(t("titulo"), t("sub"))
+    for grupo in ("parcela", "productor", "organizacion", "lote"):
+        filas = [f for f in cuadro["filas"] if f["de"] == grupo]
+        if not filas:
+            continue
+        pdf.subtitulo(t(f"grupos.{grupo}"))
+        if grupo in ("parcela", "productor"):
+            tabla = []
+            for f in filas:
+                nombre = _nombre_fila(t, f)
+                if f["aplica"]["n"] == 0:
+                    tabla.append([nombre, t("no_aplica_lote"), "", "", ""])
+                    continue
+                niveles = t("niveles").format(**f["con_sustento"]["niveles"])
+                tabla.append(
+                    [
+                        nombre,
+                        _cuenta(f["aplica"]),
+                        f"{_cuenta(f['con_sustento'])}\n{niveles}",
+                        _cuenta(f["por_atender"]),
+                        _cuenta(f["sin_sustento"]),
+                    ]
+                )
+            pdf.tabla(
+                [t("requisito"), t("aplica"), t("con_sustento"), t("por_atender"), t("sin_sustento")],
+                tabla,
+                [46, 26, 52, 26, pdf.ancho - 150],
+                tamano=6.6,
+            )
+        else:
+            pdf.tabla(
+                [t("requisito"), t("estado"), t("falta")],
+                [
+                    [
+                        _nombre_fila(t, f),
+                        pdf.estado(f["estado"]),
+                        _falta_organizacion(pdf, f["codigo"], f.get("falta_codigos") or []) or "—",
+                    ]
+                    for f in filas
+                ],
+                [60, 30, pdf.ancho - 90],
+                tamano=6.8,
+            )
+    pdf.subtitulo(t("no_se_piden_titulo"))
+    nombres = t("no_se_piden")
+    pdf.tabla(
+        ["Ref.", t("requisito"), ""],
+        [[ref, nombres[ref][0], nombres[ref][1]] for ref in (x["referencia"] for x in cuadro["no_se_piden"])],
+        [16, 60, pdf.ancho - 76],
+        tamano=6.6,
+    )
 
 
 def _uso_suelo(pdf: Pdf, cobertura: list[dict[str, Any]]) -> None:
@@ -681,6 +759,17 @@ def _declaraciones(pdf: Pdf, c: dict[str, Any]) -> None:
 # ---------- Adenda 6: la organización y su diligencia ----------
 
 
+def _falta_organizacion(pdf: Pdf, codigo: str, codigos: list[str]) -> str:
+    """Lo que falta a un requisito de la organización, en el idioma del PDF: temas de la política, temas sin
+    actuación o documentos."""
+    t = lambda ruta: textos.obtener(pdf.idioma, f"organizacion.{ruta}")  # noqa: E731
+    if codigo == "integridad":
+        return ", ".join(t(f"temas_politica.{x}") for x in codigos)
+    if codigo == "actuaciones":
+        return ", ".join(t(f"temas.{x}") for x in codigos)
+    return ", ".join(pdf.documento(x) for x in codigos)
+
+
 def _organizacion(pdf: Pdf, c: dict[str, Any]) -> None:
     """Después de las declaraciones de los productores (sección 11): los requisitos de la organización, los
     cinco temas de su política, el cuadro de señales y sus actuaciones vigentes. De cada actuación, fecha,
@@ -692,11 +781,7 @@ def _organizacion(pdf: Pdf, c: dict[str, Any]) -> None:
     pdf.seccion(pdf.L("organizacion"), pdf.L("organizacion_sub"))
 
     def falta(codigo: str, codigos: list[str]) -> str:
-        if codigo == "integridad":
-            return ", ".join(t(f"temas_politica.{x}") for x in codigos)
-        if codigo == "actuaciones":
-            return ", ".join(t(f"temas.{x}") for x in codigos)
-        return ", ".join(pdf.documento(x) for x in codigos)
+        return _falta_organizacion(pdf, codigo, codigos)
 
     pdf.subtitulo(pdf.L("requisitos_organizacion"))
     pdf.tabla(
@@ -817,6 +902,46 @@ def _proceso_y_embarque(pdf: Pdf, c: dict[str, Any]) -> None:
         [36, 24, 30, 22, pdf.ancho - 112],
         tamano=6.5,
     )
+    # Adenda 7, sección 8, regla 3: la declaración aduanera, con sus cuatro datos y la comparación.
+    for x in c["embarque"]:
+        if x.get("tipo") != "dam" or "peso_neto_kg" not in x:
+            continue
+        comparacion = x.get("comparacion") or {}
+        if comparacion.get("difiere"):
+            partes = []
+            if comparacion.get("peso_difiere"):
+                partes.append(
+                    textos.t(
+                        pdf.idioma,
+                        "aduanas.difiere_peso",
+                        peso_declarado=textos.numero(comparacion["peso_declarado_kg"]),
+                        peso_lote=textos.numero(comparacion["peso_lote_kg"]),
+                        diferencia_pct=textos.numero(comparacion["diferencia_pct"]),
+                    )
+                )
+            if comparacion.get("subpartida_difiere"):
+                partes.append(
+                    textos.t(
+                        pdf.idioma,
+                        "aduanas.difiere_subpartida",
+                        subpartida=comparacion["subpartida"],
+                        partida=comparacion["partida_orden"],
+                    )
+                )
+            texto = pdf.L("dam_difiere", diferencias=textos.lista(pdf.idioma, partes))
+        else:
+            texto = pdf.L("dam_coincide")
+        pdf.parrafo(
+            pdf.L(
+                "embarque_dam",
+                numero=x.get("numero"),
+                fecha=pdf.fecha(x.get("fecha_numeracion")),
+                peso=textos.numero(x["peso_neto_kg"]),
+                subpartida=x.get("subpartida"),
+                comparacion=texto,
+            ),
+            tamano=7.5,
+        )
 
 
 def _recomprobacion(pdf: Pdf, c: dict[str, Any]) -> None:
@@ -937,6 +1062,7 @@ def documento(
     _mensaje(pdf, c["informe"])
     _identificacion(pdf, c)
     _genealogia(pdf, c)
+    _legalidad_por_requisito(pdf, c)
     _respaldo(pdf, c, imagenes or {})
     _declaraciones(pdf, c)
     _organizacion(pdf, c)

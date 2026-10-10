@@ -26,6 +26,7 @@ from app.errores import error_api, no_encontrado
 from app.fechas import LIMA, ahora
 from app.models import (
     Cooperativa,
+    DeclaracionAduanera,
     Dex,
     Documento,
     Importador,
@@ -36,10 +37,19 @@ from app.models import (
     Perfil,
     Recomprobacion,
 )
-from app.schemas.dex import AgregadoDespues, ArchivoDex, DescargaDex, DexDetalle, DexPublico, DexSalida
+from app.schemas.dex import (
+    AgregadoDespues,
+    AgregadoPublico,
+    ArchivoDex,
+    DescargaDex,
+    DexDetalle,
+    DexPublico,
+    DexSalida,
+)
 from app.services import cooperativa as servicio_cooperativa
 from app.services import (
     correlativos,
+    cuadro_legalidad,
     declaracion_productor,
     diligencia,
     documentos,
@@ -50,6 +60,7 @@ from app.services import (
     recomprobacion,
     sello,
 )
+from app.services import embarque as servicio_embarque
 from app.services.auditoria import registrar_auditoria
 from app.services.documentos import Archivo
 from app.services.lotes import lote_visible
@@ -60,7 +71,9 @@ from app.storage import ClienteStorage, ErrorStorage
 # 3: adenda 5, el bloque "productores": lo que cada productor declaró, con el estado del día de la emisión.
 # 4: adenda 6, el bloque "organizacion" (expediente por tipo de organización, requisitos, política, señales y
 # actuaciones vigentes); el exportador lista solo los documentos que aplican a su tipo.
-VERSION_CONTENIDO = 4
+# 5: adenda 7, el bloque "legalidad_por_requisito" (el cuadro sellado) y, si el lote tiene declaración
+# aduanera, sus cuatro datos y la comparación con el lote en el embarque.
+VERSION_CONTENIDO = 5
 REFERENCIA_ANEXO = (
     "Reglamento (UE) 2023/1115, anexo II; texto consolidado del 18/09/2026 (CELEX 02023R1115-20260918)"
 )
@@ -366,16 +379,26 @@ def construir_contenido(
 ) -> dict[str, Any]:
     sesion = contexto.sesion
     importador, orden = _bloque_importador_orden(d)
-    embarque = [
-        {
+    declaracion = servicio_embarque.vigente(sesion, d.lote.id)
+    embarque = []
+    for doc in _documentos_embarque(sesion, d.lote):
+        if doc.tipo == "dam" and (declaracion is None or declaracion.documento_id != doc.id):
+            continue  # adenda 7: la declaración aduanera cuenta por su registro con los cuatro datos
+        fila = {
             "tipo": doc.tipo,
             "numero": doc.numero,
             "entidad_emisora": doc.entidad_emisora,
             "fecha_emision": doc.fecha_emision,
             "sha256": doc.sha256,
         }
-        for doc in _documentos_embarque(sesion, d.lote)
-    ]
+        if doc.tipo == "dam":
+            fila |= {
+                "fecha_numeracion": declaracion.fecha_numeracion,
+                "peso_neto_kg": declaracion.peso_neto_kg,
+                "subpartida": declaracion.subpartida,
+                "comparacion": servicio_embarque.comparar(sesion, declaracion, d.lote).model_dump(),
+            }
+        embarque.append(fila)
     certificaciones = []
     for c in hallazgos.informe.certificaciones_vigentes(d):
         doc = sesion.get(Documento, c.documento_id) if c.documento_id else None
@@ -418,6 +441,7 @@ def construir_contenido(
         "respaldo": _bloque_respaldo(contexto, d),
         "productores": _bloque_productores(d),
         "organizacion": diligencia.bloque(sesion, d.cooperativa),
+        "legalidad_por_requisito": cuadro_legalidad.calcular(d, sellado=True, dex=codigo),
         "proceso": _bloque_proceso(d),
         "embarque": embarque,
         "recomprobacion": {
@@ -612,6 +636,12 @@ def generar_archivos(contenido: dict[str, Any], huella: str, url: str, sesion, p
                 "contenido_sha256": huella,
                 "es_demo": bool(contenido.get("es_demo")),
                 "informe": contenido["informe"],
+                # Adenda 7, sección 8, regla 4: el cuadro, para quien lo lea con un programa.
+                **(
+                    {"legalidad_por_requisito": contenido["legalidad_por_requisito"]}
+                    if contenido.get("legalidad_por_requisito")
+                    else {}
+                ),
             }
         ),
         "leeme": leeme(contenido, huella, url).encode("utf-8"),
@@ -810,35 +840,34 @@ def de_lote(sesion, lote_id: uuid.UUID) -> Dex | None:
 
 
 def agregados(sesion, dex: Dex) -> list[AgregadoDespues]:
-    """Adenda 6, sección 7, regla 7: la declaración aduanera cargada en el lote después de emitir el DEX. El
-    DEX no cambia: se muestra aparte, con su número, su fecha de numeración, la fecha en que se cargó y si
-    tiene cotejo. Es la que no quedó sellada en el embarque del DEX (se compara por su huella). De un DEX
-    anulado, solo la que se cargó mientras estuvo vigente: la de después es del DEX siguiente."""
+    """Adenda 6, sección 7, regla 7, y adenda 7, sección 4.4: la declaración aduanera del lote que no quedó
+    sellada en el embarque del DEX (se compara por la huella de su archivo). El DEX no cambia: se muestra
+    aparte, con sus cuatro datos, la comparación con el lote, la fecha en que se cargó y si tiene cotejo. De
+    un DEX anulado, solo la que se cargó mientras estuvo vigente: la de después es del DEX siguiente."""
     sellados = {x.get("sha256") for x in (dex.contenido or {}).get("embarque", [])}
     consulta = (
-        select(Documento)
-        .where(
-            Documento.entidad == "lote",
-            Documento.entidad_id == dex.lote_id,
-            Documento.tipo.in_(documentos_embarque.DESPUES_DEL_DEX),
-            Documento.anulado_en.is_(None),
-        )
-        .order_by(Documento.creado_en)
+        select(DeclaracionAduanera, Documento)
+        .join(Documento, Documento.id == DeclaracionAduanera.documento_id)
+        .where(DeclaracionAduanera.lote_id == dex.lote_id, DeclaracionAduanera.anulada_en.is_(None))
+        .order_by(DeclaracionAduanera.registrada_en)
     )
     if dex.anulado_en is not None:
-        consulta = consulta.where(Documento.creado_en <= dex.anulado_en)
-    filas = sesion.scalars(consulta)
+        consulta = consulta.where(DeclaracionAduanera.registrada_en <= dex.anulado_en)
+    lote = sesion.get(Lote, dex.lote_id)
     return [
         AgregadoDespues(
             tipo=doc.tipo,
             nombre=documentos_embarque.POR_CODIGO[doc.tipo].nombre,
-            numero=doc.numero,
-            fecha_numeracion=doc.fecha_emision,
-            cargado_en=doc.creado_en,
+            numero=declaracion.numero,
+            fecha_numeracion=declaracion.fecha_numeracion,
+            peso_neto_kg=declaracion.peso_neto_kg,
+            subpartida=declaracion.subpartida,
+            comparacion=servicio_embarque.comparar(sesion, declaracion, lote),
+            cargado_en=declaracion.registrada_en,
             cotejado=doc.cotejado_en is not None,
             cotejado_en=doc.cotejado_en,
         )
-        for doc in filas
+        for declaracion, doc in sesion.execute(consulta).all()
         if doc.sha256 not in sellados
     ]
 
@@ -949,7 +978,16 @@ def publico(sesion, codigo: str) -> DexPublico:
         contenido_sha256=dex.contenido_sha256,
         cooperativa=razon_social,
         es_demo=bool(es_demo),
-        agregado=agregados(sesion, dex),
+        # Adenda 7, sección 4.4, regla 4: tres datos, sin pesos ni archivo.
+        agregado=[
+            AgregadoPublico(
+                nombre=a.nombre,
+                numero=a.numero,
+                fecha_numeracion=a.fecha_numeracion,
+                agregado_en=a.cargado_en,
+            )
+            for a in agregados(sesion, dex)
+        ],
     )
 
 

@@ -30,6 +30,7 @@ const ACCIONES = [
   ["dex.", "DEX"],
   ["certificacion.", "Certificaciones"],
   ["politica.", "Política de la organización"],
+  ["declaracion_aduanera.", "Declaraciones aduaneras"],
   ["actuacion.", "Actuaciones de diligencia"],
   ["superadmin.", "Consultas de soporte"],
 ];
@@ -62,6 +63,9 @@ const TEXTO_ACCION = {
   "politica.anular": "Anuló una política de la organización",
   "actuacion.registrar": "Registró una actuación de diligencia",
   "actuacion.anular": "Anuló una actuación de diligencia",
+  // Adenda 7: la declaración aduanera del lote.
+  "declaracion_aduanera.registrar": "Cargó la declaración aduanera de un lote",
+  "declaracion_aduanera.anular": "Anuló la declaración aduanera de un lote",
   "documento.cargar": "Cargó un documento",
   "documento.anular": "Anuló un documento",
   "parcela.crear": "Registró una parcela",
