@@ -9,7 +9,7 @@ import { rolEfectivo } from "../estado.js";
 import { hoyLima as hoy } from "../fechas.js";
 import { ESTADOS_CASILLA, insigniaNivel } from "../textos.js";
 import { lugares } from "../ubigeo.js";
-import { abrirModal, cabeceraFicha, campo, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
+import { abrirModal, cabeceraFicha, campo, claseTono, enviarCon, fecha, h, icono, leyendaTonos, ordenarPorTono, rejilla, seccion, toast } from "../ui.js";
 
 function insignia(clase, texto) {
   return h("span", { class: `badge ${clase}`.trim() }, h("span", { class: "dot" }), texto);
@@ -78,12 +78,17 @@ function abrirCotejo(documento, casilla, alCotejar) {
   });
 }
 
+/** Los seis impiden que un lote quede listo: rojo si falta o venció, amarillo si vence pronto, verde vigente. */
+function tonoCasilla(c) {
+  return c.estado === "vigente" ? "listo" : c.estado === "por_vencer" ? "falta" : "bloquea";
+}
+
 function filaCasilla(c, puedo, recargar) {
   const [clase, texto] = ESTADOS_CASILLA[c.estado] ?? ["", c.estado];
   const vigentes = c.documentos.filter((d) => d.vigente);
   return h(
     "li",
-    { class: "casilla" },
+    { class: claseTono(tonoCasilla(c)) },
     h(
       "div",
       { class: "casilla-h" },
@@ -124,7 +129,7 @@ export default async function cooperativaLegal({ recargar }) {
       cabeceraFicha({
         inicio: h("span", { class: "ins-icono" }, icono("cooperativa")),
         titulo: c.razon_social,
-        insignias: [insignia(exp.estado === "completo" ? "ok" : "warn", exp.estado === "completo" ? "Expediente completo" : "Expediente incompleto")],
+        insignias: [insignia(exp.estado === "completo" ? "ok" : "bad", exp.estado === "completo" ? "Expediente completo" : "Expediente incompleto")],
         detalle: [h("span", { class: "mono" }, `RUC ${c.ruc}`), c.codigo ? ` · código ${c.codigo}` : "", ` · ${lugares(c.distrito, c.provincia, c.departamento)}`],
       }),
       seccion({
@@ -132,7 +137,7 @@ export default async function cooperativaLegal({ recargar }) {
         sub: "Los usa el DEX para identificar al exportador. Los cuatro son necesarios para que un lote quede listo.",
         acciones: puedo.admin && h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirDatos(c, recargar) }, "Editar"),
         contenido: [
-          c.faltan_datos.length > 0 && h("p", { class: "alerta warn" }, `Falta: ${c.faltan_datos.join(", ")}.`),
+          c.faltan_datos.length > 0 && h("p", { class: "alerta bad" }, `Falta: ${c.faltan_datos.join(", ")}. Sin estos datos, ningún lote queda listo.`),
           rejilla([
             { grupo: "Cooperativa" },
             { etiqueta: "Razón social", valor: c.razon_social },
@@ -149,8 +154,9 @@ export default async function cooperativaLegal({ recargar }) {
         titulo: "Expediente legal",
         sub: "Seis documentos sin exenciones: los seis deben estar vigentes o por vencer para que un lote quede listo.",
         contenido: [
-          exp.faltan.length > 0 && h("p", { class: "alerta warn" }, `Falta o está vencido: ${exp.faltan.map((x) => nombres[x]).join(", ")}.`),
-          h("ul", { class: "casillas" }, exp.casillas.map((x) => filaCasilla(x, puedo, recargar))),
+          exp.faltan.length > 0 && h("p", { class: "alerta bad" }, `Falta o está vencido: ${exp.faltan.map((x) => nombres[x]).join(", ")}.`),
+          leyendaTonos({ bloquea: "falta o venció: ningún lote queda listo", falta: "vence pronto", listo: "vigente" }),
+          h("ul", { class: "casillas" }, ordenarPorTono(exp.casillas, tonoCasilla).map((x) => filaCasilla(x, puedo, recargar))),
         ],
       }),
     ),

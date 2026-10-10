@@ -4161,3 +4161,64 @@ button.tira-item:hover {
   padding-left: 18px;
   font-size: 13px;
 }
+/* Tono de una casilla (pedido del equipo del 2026-10-09): rojo suave si impide avanzar, amarillo si falta pero
+   no impide, verde si ya está. Sin tono, opcional o no aplica. */
+.casilla.tono-bloquea {
+  background: var(--rose-tint);
+  border-color: color-mix(in srgb, var(--rose) 28%, transparent);
+  box-shadow: inset 3px 0 0 var(--rose);
+}
+.casilla.tono-falta {
+  background: var(--amber-tint);
+  border-color: color-mix(in srgb, var(--amber) 28%, transparent);
+  box-shadow: inset 3px 0 0 var(--amber);
+}
+.casilla.tono-listo {
+  background: var(--emerald-tint);
+  border-color: color-mix(in srgb, var(--emerald) 24%, transparent);
+  box-shadow: inset 3px 0 0 var(--emerald);
+}
+.casilla[class*="tono-"] .casilla-doc {
+  background: var(--surface);
+}
+.leyenda-tonos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.leyenda-tono {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.leyenda-tono .muestra {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+.leyenda-tono.tono-bloquea .muestra {
+  background: var(--rose-tint);
+  border-color: var(--rose);
+}
+.leyenda-tono.tono-falta .muestra {
+  background: var(--amber-tint);
+  border-color: var(--amber);
+}
+.leyenda-tono.tono-listo .muestra {
+  background: var(--emerald-tint);
+  border-color: var(--emerald);
+}
+/* En la lista de requisitos de la compuerta, lo que falta va sobre rojo suave. */
+.requisitos li.falta {
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--rose-tint);
+}
+.requisitos li.cumple {
+  padding: 0 10px;
+}

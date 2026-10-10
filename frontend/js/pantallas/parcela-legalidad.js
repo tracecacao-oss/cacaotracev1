@@ -9,7 +9,7 @@ import { rolEfectivo } from "../estado.js";
 import { hoyLima as hoy } from "../fechas.js";
 import { COLORES, capaArcGIS, capaGeojson, crearMapa, encuadrar, estilo } from "../mapa.js";
 import { ESTADOS_REQUISITO, REQUISITOS, insigniaAlerta, insigniaNivel } from "../textos.js";
-import { abrirModal, campo, enviarCon, fecha, h, icono, seccion, toast } from "../ui.js";
+import { abrirModal, campo, claseTono, enviarCon, fecha, h, icono, leyendaTonos, ordenarPorTono, seccion, toast } from "../ui.js";
 
 // Lo que firma el productor o la comunidad no lleva número ni entidad emisora (adenda 4, sección 6).
 const SIN_NUMERO = new Set(["declaracion_jurada_tenencia", "constancia_comunal", "acta_comunal"]);
@@ -125,7 +125,8 @@ function filaVariable(v, ctx, puedo) {
   const sinCruce = v.cruzable && !v.cruce;
   return h(
     "li",
-    { class: "casilla" },
+    // Sin respuesta, el perfil queda incompleto e impide habilitar.
+    { class: claseTono(v.valor ? "listo" : "bloquea") },
     h(
       "div",
       { class: "casilla-h" },
@@ -133,7 +134,7 @@ function filaVariable(v, ctx, puedo) {
       h(
         "span",
         { class: "fila-acciones" },
-        v.valor ? insignia(v.valor === "no" ? "" : "info", v.etiqueta) : insignia("", "Falta el dato"),
+        v.valor ? insignia(v.valor === "no" ? "" : "info", v.etiqueta) : insignia("bad", "Falta el dato"),
         v.nivel && insigniaNivel(v.nivel),
       ),
     ),
@@ -221,7 +222,7 @@ async function bloquePerfil(leg, ctx, puedo) {
   return seccion({
     titulo: "Perfil legal",
     sub: "Nueve datos de los que sale qué requisitos aplican. Cinco los responde el cruce con capas oficiales; los otros los declara una persona.",
-    acciones: [insignia(leg.perfil_completo ? "ok" : "warn", leg.perfil_completo ? "Completo" : "Incompleto"), volver],
+    acciones: [insignia(leg.perfil_completo ? "ok" : "bad", leg.perfil_completo ? "Completo" : "Incompleto"), volver],
     contenido: [
       leg.cruce.en_cola && h("p", { class: "nota-cola" }, icono("clock"), "La parcela está en la cola del cruce con las capas oficiales. Esta pestaña se actualiza sola."),
       fallaron.length > 0 &&
@@ -232,6 +233,7 @@ async function bloquePerfil(leg, ctx, puedo) {
         ),
       leg.cruce.aproximacion && h("p", { class: "alerta info" }, "La parcela es un punto: se cruzó como un círculo con su área declarada, así que las respuestas son una aproximación."),
       await mapaDelCruce(ctx, leg),
+      leyendaTonos({ bloquea: "sin respuesta: impide habilitar", falta: null, listo: "respondida" }),
       h("h4", { class: "subtitulo-bloque" }, "Lo que responde el cruce con capas oficiales"),
       h("ul", { class: "casillas" }, cruzables.map((v) => filaVariable(v, ctx, puedo))),
       h("h4", { class: "subtitulo-bloque" }, "Lo que declara una persona"),
@@ -360,6 +362,14 @@ function lineaDocumento(d, ctx, puedo, consultables) {
   );
 }
 
+/** Rojo si su falta impide habilitar; amarillo si falta, vence pronto o no impide; verde si está sustentado. */
+function tonoRequisito(r) {
+  if (r.estado === "no_aplica") return null;
+  if (r.estado === "sustentado") return "listo";
+  if (r.estado === "por_vencer") return "falta";
+  return r.bloquea ? "bloquea" : "falta";
+}
+
 function filaRequisito(r, ctx, puedo) {
   const [clase, texto] = ESTADOS_REQUISITO[r.estado] ?? ["", r.estado];
   const nombres = Object.fromEntries(r.aceptados.map((a) => [a.codigo, a.nombre]));
@@ -369,7 +379,7 @@ function filaRequisito(r, ctx, puedo) {
   const aplica = !["no_aplica", "sin_dato"].includes(r.estado);
   return h(
     "li",
-    { class: `casilla requisito-legal estado-${r.estado}` },
+    { class: `${claseTono(tonoRequisito(r))} requisito-legal estado-${r.estado}` },
     h(
       "div",
       { class: "casilla-h" },
@@ -406,12 +416,16 @@ function filaRequisito(r, ctx, puedo) {
 }
 
 function bloqueRequisitos(leg, ctx, puedo) {
-  const aplican = leg.requisitos.filter((r) => r.estado !== "no_aplica");
+  const aplican = ordenarPorTono(
+    leg.requisitos.filter((r) => r.estado !== "no_aplica"),
+    tonoRequisito,
+  );
   const noAplican = leg.requisitos.filter((r) => r.estado === "no_aplica");
   return seccion({
     titulo: "Requisitos",
     sub: "Cada requisito aplica según el perfil. Dice por qué aplica, qué pide el orientador, con qué se sustenta y qué sigue.",
     contenido: [
+      leyendaTonos({ bloquea: "impide habilitar", falta: "falta o vence pronto, no impide", listo: "sustentado" }),
       h("ul", { class: "casillas" }, aplican.map((r) => filaRequisito(r, ctx, puedo))),
       noAplican.length > 0 &&
         h(
@@ -474,7 +488,7 @@ function bloqueIncidencias(leg, ctx, puedo) {
           leg.incidencias.map((i) =>
             h(
               "li",
-              { class: "casilla" },
+              { class: claseTono(i.estado !== "abierta" ? null : i.tipo === "tenencia" ? "bloquea" : "falta") },
               h(
                 "div",
                 { class: "casilla-h" },
