@@ -847,12 +847,15 @@ def requisitos_salida(estado: EstadoProductor) -> list[dict]:
 
 
 def sugerencias(sesion: Session, cooperativa_id: uuid.UUID) -> list[str]:
-    """Sección 5.6, regla 5: los nombres ya declarados en la organización."""
+    """Sección 5.6, regla 5: los nombres ya declarados en la organización. De las grafías de un mismo
+    nombre (sin tildes, mayúsculas ni espacios de más) se sugiere la que se declaró primero."""
+    primera = func.min(DeclaracionProductor.registrada_en)
     nombres = sesion.scalars(
         select(DeclaracionProducto.nombre)
         .join(DeclaracionProductor, DeclaracionProductor.id == DeclaracionProducto.declaracion_id)
         .where(DeclaracionProductor.cooperativa_id == cooperativa_id)
-        .distinct()
+        .group_by(DeclaracionProducto.nombre)
+        .order_by(primera, DeclaracionProducto.nombre)
         .limit(500)
     )
     vistos: dict[str, str] = {}
