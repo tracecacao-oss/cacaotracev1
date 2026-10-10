@@ -39,7 +39,7 @@ REQUISITO = {
     "tenencia_sustentada": "Tenencia con sustento",
     "permisos_obligatorios": "Permisos obligatorios con sustento",
     "sin_conflicto_de_tenencia": "Sin incidencias de tenencia abiertas",
-    "productor_listo": "Productor con DNI y consentimiento",
+    "productor_listo": "Productor con DNI, consentimiento y declaración anual vigente",
 }
 OBSERVACION_2020 = {
     "bosque": "bosque",
@@ -94,6 +94,9 @@ ALERTAS = {
     "en_zona_de_amortiguamiento": "Está en la zona de amortiguamiento de un área protegida",
     "requisito_sin_sustento": "Un requisito que no bloquea está sin sustento o vencido",
     "incidencia_abierta": "Tiene una incidencia abierta",
+    # Adenda 5, sección 8
+    "productor_por_atender": "El productor declaró algo que queda por atender",
+    "productor_sin_sustento": "A la declaración del productor le falta un papel o una revisión",
 }
 ESTADO_REQUISITO = {
     "sin_dato": "Falta el dato",
@@ -380,6 +383,75 @@ def _legalidad(pdf: Documento, leg: dict[str, Any]) -> None:
         )
 
 
+ORIGEN_DECLARACION = {
+    "productor": "El productor, desde su cuenta",
+    "personal": "El personal, con la hoja firmada por el productor",
+}
+REVISION_PRODUCTO = {"figura": "Figura", "no_figura": "No figura", "sin_revisar": "Sin revisar"}
+ORIENTADOR = (
+    "Según el Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco "
+    "del EUDR (MIDAGRI, MINCETUR y ADEX; European Forest Institute, 2026)."
+)
+
+
+def revision_producto(p: dict[str, Any]) -> str:
+    """Sin "autorizado" ni "prohibido": figura o no figura en el registro consultado ese día."""
+    if p["revision"] == "sin_revisar":
+        return "Sin revisar en el registro de SENASA"
+    texto = "Figura" if p["revision"] == "figura" else "No figura"
+    texto += f" en el registro de SENASA consultado el {_fecha(p['revisado_en'])}"
+    return texto + (f" (registro {p['registro']})" if p.get("registro") else "")
+
+
+def _declaracion(pdf: Documento, d: dict[str, Any]) -> None:
+    """Versión 6 (adenda 5): la declaración anual del productor, sus productos y sus siete requisitos."""
+    pdf.seccion(
+        "Declaración anual del productor",
+        "Lo que el productor declaró: la organización no lo comprobó en campo. " + ORIENTADOR,
+    )
+    if not d.get("declarada_en"):
+        pdf.parrafo("El productor no tenía una declaración anual vigente al emitirse este documento.")
+        return
+    pdf.dato("Declarada el", _fecha(d["declarada_en"]))
+    pdf.dato("Quién la registró", ORIGEN_DECLARACION.get(d["origen"], d["origen"]))
+    pdf.dato("Vale hasta", _fecha(d["vigente_hasta"]))
+    pdf.dato("Versiones", f"Cuestionario {d['version_cuestionario']} · texto {d['version_texto']}")
+    pdf.tabla(
+        ["Pregunta", "Respuesta"],
+        [[r["pregunta"], r["etiqueta"]] for r in d["respuestas"]],
+        [110, pdf.ancho - 110],
+        tamano=7,
+    )
+    if d["productos"]:
+        pdf.tabla(
+            ["Producto declarado", "Tipo", "Revisión"],
+            [[p["nombre"], p["tipo"].capitalize(), revision_producto(p)] for p in d["productos"]],
+            [56, 26, pdf.ancho - 82],
+            tamano=7,
+        )
+    filas = []
+    for r in d["requisitos"]:
+        detalle = "; ".join(f"{h['texto']} {h['valor']}" for h in r["hechos"])
+        if r["falta"]:
+            *antes, ultimo = r["falta"]
+            falta = f"{', '.join(antes)} y {ultimo}" if antes else ultimo
+            detalle = "; ".join(filter(None, [detalle, f"Falta {falta}"]))
+        filas.append(
+            [
+                f"{r['nombre']} ({', '.join(r['referencias'])})",
+                r["etiqueta"],
+                NIVEL.get(r.get("nivel_verificacion") or "", "—"),
+                detalle or "—",
+            ]
+        )
+    pdf.tabla(
+        ["Requisito", "Estado", "Nivel", "Lo declarado o lo que falta"],
+        filas,
+        [52, 20, 26, pdf.ancho - 98],
+        tamano=7,
+    )
+
+
 def documento(
     contenido: dict[str, Any], huella: str, url: str, imagenes: dict[str, bytes] | None = None
 ) -> Documento:
@@ -417,6 +489,9 @@ def documento(
         (ppa["codigo"] or "Registrado") if ppa["registrado"] else "No registrado",
         nivel=NIVEL[ppa["nivel"]],
     )
+    # Versión 6 (adenda 5): los DOP anteriores no traen la declaración.
+    if p.get("declaracion"):
+        _declaracion(pdf, p["declaracion"])
 
     # Parcela
     pa = c["parcela"]

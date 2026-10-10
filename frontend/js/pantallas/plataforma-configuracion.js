@@ -1,6 +1,8 @@
 // Configuración de plataforma (Parte 9, superadministrador): la clasificación de riesgo del país que el
 // informe de hallazgos muestra como contexto (criterio 6), con su fecha y la publicación de la Comisión
 // Europea de donde sale. Si está vacía, el informe dice "clasificación del país no registrada".
+// Adenda 5, sección 9: también el valor de la UIT con su año y el jornal de referencia con su nota, que usa la
+// declaración anual del productor. Vacíos, el sistema no los asume.
 
 import { llamarApi } from "../api.js";
 import { abrirModal, cabeceraFicha, campo, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
@@ -37,6 +39,40 @@ function abrirEdicion(c, alGuardar) {
   });
 }
 
+const soles = (valor) => `S/ ${Number(valor).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function abrirReferencias(c, alGuardar) {
+  const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-referencias" }, "Guardar");
+  const nota = h("textarea", { class: "input texto-libre", name: "jornal_referencia_nota", maxlength: 1000, rows: 3 });
+  nota.value = c.jornal_referencia_nota ?? "";
+  const formulario = h(
+    "form",
+    { class: "form", id: "form-referencias" },
+    h(
+      "div",
+      { class: "grid2" },
+      campo({ etiqueta: "Valor de la UIT (S/)", name: "uit_soles", type: "number", min: "0.01", step: "0.01", inputmode: "decimal", value: c.uit_soles ?? "" }),
+      campo({ etiqueta: "Año de la UIT", name: "uit_anio", type: "number", min: 2000, max: 2100, step: 1, inputmode: "numeric", value: c.uit_anio ?? "" }),
+    ),
+    campo({ etiqueta: "Jornal de referencia (S/ por día)", name: "jornal_minimo_referencia", type: "number", min: "0.01", step: "0.01", inputmode: "decimal", value: c.jornal_minimo_referencia ?? "" }),
+    h("label", { class: "field" }, "De dónde sale el jornal de referencia", nota, h("small", {}, "Confírmalo con el contador antes de registrarlo.")),
+    h("p", { class: "panel-sub" }, "La UIT va con su año y el jornal con su nota. Déjalos vacíos para borrarlos: la pregunta de las 75 UIT irá sin monto y el jornal no se comparará con nada. Cada declaración guarda los valores con que se evaluó."),
+  );
+  const { cerrar } = abrirModal({ titulo: "Valores de referencia", contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
+  enviarCon(formulario, boton, async (datos) => {
+    const cuerpo = {
+      uit_soles: datos.uit_soles || null,
+      uit_anio: datos.uit_anio ? Number(datos.uit_anio) : null,
+      jornal_minimo_referencia: datos.jornal_minimo_referencia || null,
+      jornal_referencia_nota: datos.jornal_referencia_nota || null,
+    };
+    await llamarApi("/admin/configuracion", { metodo: "PUT", cuerpo });
+    cerrar();
+    toast("Valores de referencia guardados.");
+    alGuardar();
+  });
+}
+
 export default async function plataformaConfiguracion({ recargar }) {
   const c = await llamarApi("/admin/configuracion", { sinConsulta: true });
   return {
@@ -63,6 +99,15 @@ export default async function plataformaConfiguracion({ recargar }) {
             { etiqueta: "Último cambio", valor: c.actualizado_en ? `${fecha(c.actualizado_en, { hora: true })} · ${c.actualizado_por_nombre ?? "—"}` : null },
           ]),
         ],
+      }),
+      seccion({
+        titulo: "Valores de referencia de la declaración del productor",
+        sub: "Cambian con el tiempo y el sistema no los asume.",
+        acciones: h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirReferencias(c, recargar) }, "Cambiar"),
+        contenido: rejilla([
+          { etiqueta: "UIT", valor: c.uit_soles ? `${soles(c.uit_soles)} (${c.uit_anio})` : "No registrada: la pregunta de las 75 UIT va sin monto" },
+          { etiqueta: "Jornal de referencia", valor: c.jornal_minimo_referencia ? soles(c.jornal_minimo_referencia) : "No registrado: el jornal declarado no se compara", extra: c.jornal_referencia_nota },
+        ]),
       }),
     ),
   };

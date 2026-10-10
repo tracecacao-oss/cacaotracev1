@@ -312,15 +312,29 @@ function abrirCargaMasiva(alTerminar) {
   });
 }
 
+// Adenda 5: los cuatro casos de la declaración anual que pide atender el inicio.
+const FILTROS_DECLARACION = [
+  ["", "Todos"],
+  ["vencida", "Declaración vencida"],
+  ["por_vencer", "Por vencer"],
+  ["por_firmar", "Por firmar"],
+  ["sin_declaracion", "Sin declaración"],
+];
+
 export default async function productores({ navegar }) {
   const lista = h("div", {}, cargando());
   let busqueda = "";
   let pagina = 1;
+  let declaracion = "";
   const puedeRegistrar = puede("registrarProductores");
+  const chips = h("div", { class: "fchips", role: "group", "aria-label": "Declaración anual", "data-etiqueta": "Declaración" });
 
   async function cargar() {
+    for (const b of chips.children) b.setAttribute("aria-pressed", String(b.dataset.valor === declaracion));
     try {
-      const datos = await llamarApi("/productores", { parametros: { q: busqueda, pagina, por_pagina: 25 } });
+      const parametros = { q: busqueda, pagina, por_pagina: 25 };
+      if (declaracion) parametros.declaracion = declaracion;
+      const datos = await llamarApi("/productores", { parametros });
       reemplazar(lista, tabla(datos));
     } catch (error) {
       lista.replaceChildren(errorDeCarga(error));
@@ -329,8 +343,8 @@ export default async function productores({ navegar }) {
 
   function tabla(datos) {
     if (datos.total === 0) {
-      return busqueda
-        ? vacio({ titulo: "Sin resultados", texto: `Ningún productor coincide con “${busqueda}”.` })
+      return busqueda || declaracion
+        ? vacio({ titulo: "Sin resultados", texto: busqueda ? `Ningún productor coincide con “${busqueda}”.` : "Ningún productor está en ese caso." })
         : vacio({
             titulo: "Aún no hay productores",
             texto: "Aquí aparece el padrón de productores afiliados a la cooperativa.",
@@ -383,6 +397,12 @@ export default async function productores({ navegar }) {
     ];
   }
 
+  for (const [valor, texto] of FILTROS_DECLARACION) {
+    chips.append(
+      h("button", { class: "fchip", type: "button", "data-valor": valor, onclick: () => ((declaracion = valor), (pagina = 1), cargar()) }, texto),
+    );
+  }
+
   const buscar = conRetraso((valor) => {
     busqueda = valor.trim();
     pagina = 1;
@@ -408,6 +428,7 @@ export default async function productores({ navegar }) {
         puedeRegistrar &&
           h("div", { class: "acciones-lista" }, h("button", { class: "btn", type: "button", onclick: () => abrirCargaMasiva(cargar) }, icono("upload"), "Carga masiva")),
       ),
+      h("div", { class: "barra-lista" }, chips),
       lista,
     ),
   };

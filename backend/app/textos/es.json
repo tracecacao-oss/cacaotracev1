@@ -109,7 +109,15 @@
     "instrumento_ambiental_sin_sustento": "{parcela} tiene {area} ha y {estado} {instrumento}. Orientador, requisitos {referencias}.",
     "junto_a_cuerpo_de_agua": "{parcela} colinda con un río, quebrada, lago o laguna{agua}, {cita}. {nota} Orientador, requisito {referencias}.",
     "en_patrimonio_cultural": "{parcela} se superpone con un sitio arqueológico o de patrimonio cultural{sitio}, {cita}. {nota} Orientador, requisito {referencias}.",
-    "incidencia_registrada": "{parcela} tiene una incidencia {tipo} {estado}, registrada el {fecha}. Fuente: {fuente}."
+    "incidencia_registrada": "{parcela} tiene una incidencia {tipo} {estado}, registrada el {fecha}. Fuente: {fuente}.",
+    "condiciones_de_trabajo_por_atender": "{productor} declara {hechos}. Orientador, requisitos {referencias}.",
+    "menores_en_la_parcela": "{productor} declara que en sus parcelas trabajan personas menores de 18 años {quienes}; la más joven tiene {edad} años y {escuela}. Orientador, requisito {referencias}.",
+    "trabajo_no_libre": "{productor} declara que no todas las personas que contrata pueden dejar el trabajo cuando quieran, sin deudas ni documentos retenidos. Orientador, requisitos {referencias}.",
+    "agroquimico_no_figura": "{productor} declara usar productos que no figuran en el registro de SENASA: {productos}. Orientador, requisito {referencias}.",
+    "envases_por_atender": "{productor} declara que {destino} los envases vacíos de los productos que usa. Orientador, requisito {referencias}.",
+    "agroquimicos_sin_revisar": "{productor} declara usar productos que la organización no buscó en el registro de SENASA: {productos}. Orientador, requisito {referencias}.",
+    "permanentes_sin_relacion": "{productor} declara tener trabajadores todo el año y no se cargó la relación de trabajadores permanentes. Orientador, requisito {referencias}.",
+    "tributos_sin_sustento": "{productor} {falta}. Orientador, requisito {referencias}."
   },
   "mensaje": {
     "analisis_requiere_revision": "El análisis de cobertura forestal de {sujetos}, que {aporta} {peso} % del lote, devolvió {citas}.",
@@ -161,7 +169,15 @@
     "instrumento_ambiental_sin_sustento": "Parcelas de 10 ha o más sin el instrumento de gestión ambiental cargado: {sujetos}, que {aporta} {peso} % del lote.",
     "junto_a_cuerpo_de_agua": "Parcelas que colindan con un río, quebrada, lago o laguna: {sujetos}, que {aporta} {peso} % del lote.",
     "en_patrimonio_cultural": "Parcelas que se superponen con un sitio de patrimonio cultural: {sujetos}, que {aporta} {peso} % del lote.",
-    "incidencia_registrada": "Incidencias registradas ({n}), en {sujetos}, que {aporta} {peso} % del lote."
+    "incidencia_registrada": "Incidencias registradas ({n}), en {sujetos}, que {aporta} {peso} % del lote.",
+    "condiciones_de_trabajo_por_atender": "Productores que declaran condiciones de trabajo por atender: {sujetos}, que {aporta} {peso} % del lote.",
+    "menores_en_la_parcela": "Productores que declaran personas menores de 18 años trabajando en sus parcelas: {sujetos}, que {aporta} {peso} % del lote.",
+    "trabajo_no_libre": "Productores que declaran que sus trabajadores no pueden dejar el trabajo libremente: {sujetos}, que {aporta} {peso} % del lote.",
+    "agroquimico_no_figura": "Productores que declaran productos que no figuran en el registro de SENASA: {sujetos}, que {aporta} {peso} % del lote.",
+    "envases_por_atender": "Productores que declaran quemar, enterrar, botar o volver a usar los envases vacíos: {sujetos}, que {aporta} {peso} % del lote.",
+    "agroquimicos_sin_revisar": "Productores con productos declarados sin buscar en el registro de SENASA: {sujetos}, que {aporta} {peso} % del lote.",
+    "permanentes_sin_relacion": "Productores con trabajadores todo el año sin la relación de trabajadores cargada: {sujetos}, que {aporta} {peso} % del lote.",
+    "tributos_sin_sustento": "Productores con el requisito tributario sin sustento: {sujetos}, que {aporta} {peso} % del lote."
   },
   "comun": {
     "aporta_uno": "aporta",
@@ -272,7 +288,7 @@
     "analisis_vigente": "análisis de cobertura vigente",
     "revision_atendida": "revisión de imágenes atendida",
     "expediente_completo": "expediente legal completo",
-    "productor_listo": "productor con DNI y consentimiento",
+    "productor_listo": "productor con DNI, consentimiento y declaración anual vigente",
     "perfil_legal_completo": "perfil legal completo",
     "tenencia_sustentada": "tenencia con sustento",
     "permisos_obligatorios": "permisos obligatorios con sustento",
@@ -508,7 +524,20 @@
     "por_excepcion": "por la excepción de la Ley N.º 31973",
     "incidencias": "Incidencias",
     "tipo": "Tipo",
-    "descripcion_incidencia": "Qué se encontró, fuente y cierre"
+    "descripcion_incidencia": "Qué se encontró, fuente y cierre",
+    "declaraciones": "Declaraciones de los productores",
+    "declaraciones_sub": "Lo que cada productor del lote declaró en su declaración anual, con el estado de hoy.",
+    "declaraciones_nota": "Son declaraciones de los productores: la organización no las comprobó en campo, salvo que la nota de seguimiento diga otra cosa. Marco: Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco del EUDR (MIDAGRI, MINCETUR y ADEX; European Forest Institute, 2026), requisitos 2.3, 2.7, 4.1 a 4.7, 5.2 a 5.4 y 7.1.",
+    "total_productores": "Productores del lote",
+    "contratan": "Contratan trabajadores",
+    "usan_agroquimicos": "Usan agroquímicos",
+    "con_algo_por_atender": "Con algo por atender",
+    "declaracion": "Declaración",
+    "lo_declarado": "Lo declarado",
+    "requisitos_productor": "Requisitos por atender o sin sustento",
+    "seguimiento": "Nota de seguimiento",
+    "declarada_el": "Declarada el {fecha} ({origen}); vale hasta el {hasta}",
+    "nada_por_atender": "Ninguno"
   },
   "anexo": {
     "nota_general": "Ayuda para el importador con los campos de la declaración de diligencia debida que salen de este flujo, en el orden del Anexo II del Reglamento (UE) 2023/1115 (texto consolidado del 18/09/2026). No es un envío a TRACES ni usa su interfaz.",
@@ -626,5 +655,91 @@
     "tenencia": "Tenencia",
     "ambiental": "Ambiental",
     "otra": "Otra"
+  },
+  "declaracion": {
+    "hechos": {
+      "horas_por_dia": "que se trabaja {valor} horas en un día normal",
+      "jornal_soles": "que paga S/ {valor} por un día de trabajo, menos que la referencia de S/ {referencia}",
+      "seguro_salud": {
+        "algunos": "que solo algunas de las personas que contrata están afiliadas a EsSalud o al SIS",
+        "ninguno": "que ninguna de las personas que contrata está afiliada a EsSalud o al SIS"
+      },
+      "equipo_proteccion": {
+        "no": "que no les da equipo de protección"
+      },
+      "mismo_pago": {
+        "no": "que no paga lo mismo a hombres y mujeres por el mismo trabajo"
+      },
+      "descanso_maternidad_paternidad": {
+        "no": "que no respeta el descanso por maternidad y por paternidad"
+      },
+      "menores_trabajan": {
+        "si_de_la_familia": "de su familia",
+        "si_contratados": "contratadas"
+      },
+      "menores_van_a_la_escuela": {
+        "si": "van a la escuela",
+        "algunos": "solo algunas van a la escuela",
+        "no": "no van a la escuela"
+      },
+      "destino_envases": {
+        "quema": "quema",
+        "entierra": "entierra",
+        "bota_o_reutiliza": "bota o vuelve a usar"
+      }
+    },
+    "tipos_producto": {
+      "fertilizante": "fertilizante",
+      "herbicida": "herbicida",
+      "insecticida": "insecticida",
+      "fungicida": "fungicida",
+      "otro": "otro"
+    },
+    "producto_consultado": "{nombre} ({tipo}), registro consultado el {fecha}",
+    "tributos_no_sabe": "declara que no sabe si sus ventas del año pasan de 75 UIT",
+    "tributos_falta": "declara que sus ventas del año pasan de 75 UIT, y falta {faltan}",
+    "falta": {
+      "ruc": "el RUC en su ficha",
+      "declaracion_renta": "su declaración anual del impuesto a la renta"
+    },
+    "requisitos": {
+      "condiciones_de_trabajo": "Condiciones de trabajo",
+      "igualdad_y_maternidad": "Igualdad de pago y descanso por maternidad y paternidad",
+      "trabajo_libre": "Trabajo libre",
+      "menores_de_edad": "Sin trabajo de menores de 18 años",
+      "agroquimicos": "Agroquímicos registrados",
+      "envases": "Manejo de envases y residuos",
+      "tributos": "Tributos de su régimen"
+    },
+    "estados": {
+      "sin_dato": "falta la declaración",
+      "no_aplica": "no aplica",
+      "declarado": "declarado",
+      "por_atender": "por atender",
+      "sin_sustento": "sin sustento",
+      "sustentado": "sustentado"
+    },
+    "estado_productor": {
+      "sin_declaracion": "Sin declaración anual",
+      "por_firmar": "Declaración por firmar",
+      "vencida": "Declaración anual vencida"
+    },
+    "resumen": {
+      "solo_familia": "Trabaja con su familia",
+      "eventuales": "Contrata por días o por temporada ({n} personas)",
+      "permanentes": "Tiene trabajadores todo el año ({n} personas)",
+      "usa_no": "No usa agroquímicos",
+      "usa_si": "Usa agroquímicos ({n} productos)",
+      "ventas_no": "Ventas del año de hasta 75 UIT",
+      "ventas_si": "Ventas del año de más de 75 UIT",
+      "ventas_no_sabe": "No sabe si sus ventas pasan de 75 UIT",
+      "eventuales_uno": "Contrata por días o por temporada (1 persona)",
+      "permanentes_uno": "Tiene trabajadores todo el año (1 persona)",
+      "usa_si_uno": "Usa agroquímicos (1 producto)"
+    },
+    "origenes": {
+      "productor": "desde su cuenta",
+      "personal": "con hoja firmada"
+    }
   }
 }

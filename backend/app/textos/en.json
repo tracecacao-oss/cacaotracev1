@@ -109,7 +109,15 @@
     "instrumento_ambiental_sin_sustento": "{parcela} has {area} ha and {estado} {instrumento}. Guidance document, requirements {referencias}.",
     "junto_a_cuerpo_de_agua": "{parcela} borders a river, stream, lake or lagoon{agua}, {cita}. {nota} Guidance document, requirement {referencias}.",
     "en_patrimonio_cultural": "{parcela} overlaps with an archaeological or cultural heritage site{sitio}, {cita}. {nota} Guidance document, requirement {referencias}.",
-    "incidencia_registrada": "{parcela} has {tipo} incident {estado}, recorded on {fecha}. Source: {fuente}."
+    "incidencia_registrada": "{parcela} has {tipo} incident {estado}, recorded on {fecha}. Source: {fuente}.",
+    "condiciones_de_trabajo_por_atender": "{productor} declares {hechos}. Guidance document, requirements {referencias}.",
+    "menores_en_la_parcela": "{productor} declares that people under 18 {quienes} work on their plots; the youngest is {edad} years old and {escuela}. Guidance document, requirement {referencias}.",
+    "trabajo_no_libre": "{productor} declares that not everyone they hire can leave the job whenever they want, free of debts or withheld documents. Guidance document, requirements {referencias}.",
+    "agroquimico_no_figura": "{productor} declares using products that are not listed in the SENASA register: {productos}. Guidance document, requirement {referencias}.",
+    "envases_por_atender": "{productor} declares that they {destino} the empty containers of the products they use. Guidance document, requirement {referencias}.",
+    "agroquimicos_sin_revisar": "{productor} declares using products that the organisation has not looked up in the SENASA register: {productos}. Guidance document, requirement {referencias}.",
+    "permanentes_sin_relacion": "{productor} declares having year-round workers and the list of permanent workers has not been uploaded. Guidance document, requirement {referencias}.",
+    "tributos_sin_sustento": "{productor} {falta}. Guidance document, requirement {referencias}."
   },
   "mensaje": {
     "analisis_requiere_revision": "The forest cover analysis of {sujetos}, which {aporta} {peso} % of the lot, returned {citas}.",
@@ -161,7 +169,15 @@
     "instrumento_ambiental_sin_sustento": "Plots of 10 ha or more without the environmental management instrument uploaded: {sujetos}, which {aporta} {peso} % of the lot.",
     "junto_a_cuerpo_de_agua": "Plots that border a river, stream, lake or lagoon: {sujetos}, which {aporta} {peso} % of the lot.",
     "en_patrimonio_cultural": "Plots that overlap with a cultural heritage site: {sujetos}, which {aporta} {peso} % of the lot.",
-    "incidencia_registrada": "Recorded incidents ({n}), in {sujetos}, which {aporta} {peso} % of the lot."
+    "incidencia_registrada": "Recorded incidents ({n}), in {sujetos}, which {aporta} {peso} % of the lot.",
+    "condiciones_de_trabajo_por_atender": "Producers who declare working conditions to be addressed: {sujetos}, which {aporta} {peso} % of the lot.",
+    "menores_en_la_parcela": "Producers who declare people under 18 working on their plots: {sujetos}, which {aporta} {peso} % of the lot.",
+    "trabajo_no_libre": "Producers who declare that their workers cannot freely leave the job: {sujetos}, which {aporta} {peso} % of the lot.",
+    "agroquimico_no_figura": "Producers who declare products not listed in the SENASA register: {sujetos}, which {aporta} {peso} % of the lot.",
+    "envases_por_atender": "Producers who declare burning, burying, throwing away or reusing empty containers: {sujetos}, which {aporta} {peso} % of the lot.",
+    "agroquimicos_sin_revisar": "Producers with declared products not looked up in the SENASA register: {sujetos}, which {aporta} {peso} % of the lot.",
+    "permanentes_sin_relacion": "Producers with year-round workers without the list of workers uploaded: {sujetos}, which {aporta} {peso} % of the lot.",
+    "tributos_sin_sustento": "Producers with the tax requirement without support: {sujetos}, which {aporta} {peso} % of the lot."
   },
   "comun": {
     "aporta_uno": "contributes",
@@ -272,7 +288,7 @@
     "analisis_vigente": "current forest cover analysis",
     "revision_atendida": "image review done",
     "expediente_completo": "complete legal file",
-    "productor_listo": "producer with ID copy and consent",
+    "productor_listo": "producer with ID copy, consent and a current annual declaration",
     "perfil_legal_completo": "complete legal profile",
     "tenencia_sustentada": "tenure with support",
     "permisos_obligatorios": "mandatory permits with support",
@@ -508,7 +524,20 @@
     "por_excepcion": "under the exception of Law No. 31973",
     "incidencias": "Incidents",
     "tipo": "Type",
-    "descripcion_incidencia": "What was found, source and closure"
+    "descripcion_incidencia": "What was found, source and closure",
+    "declaraciones": "Producers' declarations",
+    "declaraciones_sub": "What each producer in the lot stated in their annual declaration, as of today.",
+    "declaraciones_nota": "These are the producers' own declarations: the organisation did not verify them in the field, unless the follow-up note says otherwise. Framework: Guidance document for due diligence on the legality of coffee and cocoa under the EUDR (MIDAGRI, MINCETUR and ADEX; European Forest Institute, 2026), requirements 2.3, 2.7, 4.1 to 4.7, 5.2 to 5.4 and 7.1.",
+    "total_productores": "Producers in the lot",
+    "contratan": "Hire workers",
+    "usan_agroquimicos": "Use agrochemicals",
+    "con_algo_por_atender": "With something to be addressed",
+    "declaracion": "Declaration",
+    "lo_declarado": "What they declared",
+    "requisitos_productor": "Requirements to be addressed or without support",
+    "seguimiento": "Follow-up note",
+    "declarada_el": "Declared on {fecha} ({origen}); valid until {hasta}",
+    "nada_por_atender": "None"
   },
   "anexo": {
     "nota_general": "Help for the importer with the due diligence statement fields that come from this flow, in the order of Annex II to Regulation (EU) 2023/1115 (consolidated text of 18/09/2026). It is not a submission to TRACES and does not use its interface.",
@@ -626,5 +655,91 @@
     "tenencia": "Tenure",
     "ambiental": "Environmental",
     "otra": "Other"
+  },
+  "declaracion": {
+    "hechos": {
+      "horas_por_dia": "that a normal working day is {valor} hours",
+      "jornal_soles": "that they pay S/ {valor} for a day's work, less than the reference of S/ {referencia}",
+      "seguro_salud": {
+        "algunos": "that only some of the people they hire have health insurance",
+        "ninguno": "that none of the people they hire has health insurance"
+      },
+      "equipo_proteccion": {
+        "no": "that they do not provide them with protective equipment"
+      },
+      "mismo_pago": {
+        "no": "that they do not pay men and women the same for the same work"
+      },
+      "descanso_maternidad_paternidad": {
+        "no": "that they do not respect maternity and paternity leave"
+      },
+      "menores_trabajan": {
+        "si_de_la_familia": "from their family",
+        "si_contratados": "who are hired"
+      },
+      "menores_van_a_la_escuela": {
+        "si": "they attend school",
+        "algunos": "only some of them attend school",
+        "no": "they do not attend school"
+      },
+      "destino_envases": {
+        "quema": "burn",
+        "entierra": "bury",
+        "bota_o_reutiliza": "throw away or reuse"
+      }
+    },
+    "tipos_producto": {
+      "fertilizante": "fertiliser",
+      "herbicida": "herbicide",
+      "insecticida": "insecticide",
+      "fungicida": "fungicide",
+      "otro": "other"
+    },
+    "producto_consultado": "{nombre} ({tipo}), register checked on {fecha}",
+    "tributos_no_sabe": "declares not knowing whether their annual sales exceed 75 UIT",
+    "tributos_falta": "declares annual sales above 75 UIT, and the following is missing: {faltan}",
+    "falta": {
+      "ruc": "the RUC (tax ID) in their record",
+      "declaracion_renta": "their annual income tax return"
+    },
+    "requisitos": {
+      "condiciones_de_trabajo": "Working conditions",
+      "igualdad_y_maternidad": "Equal pay and maternity and paternity leave",
+      "trabajo_libre": "Freely chosen work",
+      "menores_de_edad": "No work by people under 18",
+      "agroquimicos": "Registered agrochemicals",
+      "envases": "Handling of containers and waste",
+      "tributos": "Taxes under their regime"
+    },
+    "estados": {
+      "sin_dato": "declaration missing",
+      "no_aplica": "not applicable",
+      "declarado": "declared",
+      "por_atender": "to be addressed",
+      "sin_sustento": "without support",
+      "sustentado": "supported"
+    },
+    "estado_productor": {
+      "sin_declaracion": "No annual declaration",
+      "por_firmar": "Declaration awaiting signature",
+      "vencida": "Annual declaration expired"
+    },
+    "resumen": {
+      "solo_familia": "Works with their family",
+      "eventuales": "Hires by the day or by season ({n} people)",
+      "permanentes": "Has year-round workers ({n} people)",
+      "usa_no": "Does not use agrochemicals",
+      "usa_si": "Uses agrochemicals ({n} products)",
+      "ventas_no": "Annual sales up to 75 UIT",
+      "ventas_si": "Annual sales above 75 UIT",
+      "ventas_no_sabe": "Does not know whether sales exceed 75 UIT",
+      "eventuales_uno": "Hires by the day or by season (1 person)",
+      "permanentes_uno": "Has year-round workers (1 person)",
+      "usa_si_uno": "Uses agrochemicals (1 product)"
+    },
+    "origenes": {
+      "productor": "from their account",
+      "personal": "with signed sheet"
+    }
   }
 }

@@ -393,8 +393,18 @@ def test_validar_emite_el_dop(api, sesion, coop, cancha, operador, productor, pa
         "no_verificado",
     }
     assert bloques <= dop.contenido.keys()
-    # Adenda 4: el DOP versión 5 sella la legalidad por requisito en lugar del expediente.
-    assert dop.contenido["version"] == 5 and "expediente" not in dop.contenido
+    # Adenda 4: el DOP sella la legalidad por requisito en lugar del expediente. Adenda 5: versión 6, con la
+    # declaración anual dentro del productor.
+    assert dop.contenido["version"] == 6 and "expediente" not in dop.contenido
+    declaracion = dop.contenido["productor"]["declaracion"]
+    assert declaracion["estado"] == "vigente" and declaracion["origen"] == "personal"
+    assert [r["codigo"] for r in declaracion["respuestas"]] == [
+        "quien_trabaja",
+        "menores_trabajan",
+        "usa_agroquimicos",
+        "ventas_superan_75_uit",
+    ]
+    assert len(declaracion["requisitos"]) == 7 and "seguimiento" not in declaracion
     assert dop.contenido["tanda"]["codigo"] == tanda["codigo"]
     assert dop.contenido["identificacion"]["misma_persona"] is True
     assert dop.contenido["habilitacion"]["decision"]["nota"] == NOTA_HABILITAR
@@ -417,6 +427,50 @@ def test_validar_emite_el_dop(api, sesion, coop, cancha, operador, productor, pa
     assert api.post(f"/tandas/{tanda['id']}/anular", json={"motivo": "x"}).status_code == 400
     guia = next(d for d in tanda["documentos"] if d["tipo"] == "documento_entrega")
     assert api.post(f"/documentos/{guia['id']}/anular", json={"motivo": "x"}).status_code == 400
+
+
+def test_un_dop_anterior_a_la_adenda_5_no_cambia_y_se_lee(
+    api, sesion, coop, cancha, operador, productor, parcela, storage_falso
+):
+    """Adenda 5, sección 11: el DOP sube a la versión 6; los anteriores no traen la declaración, se leen como
+    antes y una declaración nueva no toca lo sellado."""
+    import copy
+
+    from app.pdf import dop as dop_pdf
+    from app.services.dops import url_verificacion
+    from tests.habilitacion_util import declarar_anual
+
+    _, dop = _validada(api, sesion, operador, productor, parcela, cancha)
+    sellado, huella = copy.deepcopy(dop.contenido), dop.contenido_sha256
+    actual = " ".join(dop_pdf.documento(dop.contenido, huella, url_verificacion(dop.codigo)).textos)
+    assert "Declaración anual del productor" in actual and "¿Quién trabaja en sus parcelas?" in actual
+    anterior = copy.deepcopy(dop.contenido)
+    anterior["version"] = 5
+    del anterior["productor"]["declaracion"]
+    texto = " ".join(dop_pdf.documento(anterior, huella, url_verificacion(dop.codigo)).textos)
+    assert "Declaración anual del productor" not in texto and "Productor" in texto
+    # Una declaración nueva no cambia el DOP ya emitido.
+    declarar_anual(
+        sesion,
+        productor,
+        operador,
+        {
+            "quien_trabaja": "eventuales",
+            "trabajadores_numero": 2,
+            "acuerdo_por_escrito": "si",
+            "jornal_soles": 60,
+            "horas_por_dia": 8,
+            "seguro_salud": "todos",
+            "equipo_proteccion": "si",
+            "pueden_dejar_el_trabajo": "si",
+            "menores_trabajan": "no",
+            "usa_agroquimicos": "no",
+            "ventas_superan_75_uit": "no",
+        },
+    )
+    sesion.refresh(dop)
+    assert dop.contenido == sellado and dop.contenido_sha256 == huella == sello.huella(dop.contenido)
+    assert api.get(f"/dops/{dop.id}").status_code == 200
 
 
 def test_el_dop_lleva_la_decision_de_habilitar_vigente(

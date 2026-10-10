@@ -2,8 +2,9 @@
 
 Sigue el guion paso a paso, con el rol que corresponde en cada pantalla: el superadministrador crea la
 cooperativa; el administrador carga sus datos y su expediente, crea al operador, configura, habilita,
-valida las tandas y emite el DEX; el operador registra productores, parcelas con su título y su perfil
-legal (adenda 4), tandas, corridas, la orden, el lote y el embarque. Llama a las mismas funciones que los
+valida las tandas y emite el DEX; el operador registra productores con su declaración anual y su hoja
+firmada (adenda 5), parcelas con su título y su perfil legal (adenda 4), tandas, corridas, la orden, el lote y
+el embarque. Llama a las mismas funciones que los
 endpoints, con los mismos esquemas de entrada; no inserta filas ni fuerza estados.
 
 Como el escenario es el camino feliz, cualquier alerta que pida una nota detiene la carga con
@@ -17,8 +18,16 @@ from typing import Any
 
 from app.catalogos import perfil_legal
 from app.demo.escenario import EscenarioDetenido, _contexto, _paso
-from app.demo.simulacion import CALIDAD, HUMEDAD, Cooperativa, Documento, Simulacion, geojson
-from app.fechas import ahora
+from app.demo.simulacion import (
+    CALIDAD,
+    DECLARACION_FAMILIA,
+    HUMEDAD,
+    Cooperativa,
+    Documento,
+    Simulacion,
+    geojson,
+)
+from app.fechas import ahora, hoy_lima
 from app.models import Perfil
 from app.schemas.cooperativa import CooperativaCambios
 from app.schemas.exportacion import Confirmacion, ImportadorNuevo, OrdenNueva
@@ -40,6 +49,7 @@ from app.services import (
     configuracion,
     cooperativa,
     corridas,
+    declaracion_productor,
     dex,
     documentos,
     embarque,
@@ -226,6 +236,16 @@ class _Carga:
                     entidad_id=creado.id,
                     tipo="dni",
                     archivo=self._archivo(p.copia_dni),
+                )
+            with self._paso(f"registrar la declaración anual de {p.nombres} {p.apellidos}"):
+                declaracion = declaracion_productor.registrar(self.operador, creado.id, DECLARACION_FAMILIA)
+                declaracion_productor.cargar_hoja_firmada(
+                    self.operador,
+                    self.storage,
+                    creado.id,
+                    declaracion.id,
+                    self._archivo(p.hoja_declaracion),
+                    hoy_lima(),
                 )
             self.ids["productores"][p.clave] = creado.id
 

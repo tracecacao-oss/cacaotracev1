@@ -20,6 +20,10 @@ export const PENDIENTES_PERSONAL = {
   sin_documento_dni: "Falta la copia del DNI",
   sin_consentimiento: "Falta el consentimiento de datos",
   sin_parcelas: "No tiene parcelas registradas",
+  // Adenda 5
+  sin_declaracion_anual: "Falta la declaración anual",
+  declaracion_por_firmar: "Falta la hoja firmada de la declaración",
+  declaracion_por_vencer: "La declaración anual vence pronto",
 };
 
 // Para el productor, en lenguaje simple.
@@ -27,6 +31,10 @@ export const PENDIENTES_PRODUCTOR = {
   sin_documento_dni: "Falta subir la foto de tu DNI",
   sin_consentimiento: "Falta aceptar el uso de tus datos",
   sin_parcelas: "Falta registrar tus parcelas",
+  // Adenda 5
+  sin_declaracion_anual: "Falta tu declaración anual",
+  declaracion_por_firmar: "Tu declaración anual espera tu firma",
+  declaracion_por_vencer: "Tu declaración anual vence pronto",
 };
 
 export const ALERTAS = {
@@ -50,6 +58,9 @@ export const ALERTAS = {
   en_zona_de_amortiguamiento: "Está en la zona de amortiguamiento de un área protegida",
   requisito_sin_sustento: "Un requisito legal que no bloquea está sin sustento o vencido",
   incidencia_abierta: "Tiene una incidencia abierta",
+  // Adenda 5: la declaración anual del productor.
+  productor_por_atender: "El productor declaró algo que queda por atender",
+  productor_sin_sustento: "A la declaración del productor le falta un papel o una revisión",
 };
 const ALERTAS_GRAVES = new Set(["superposicion", "superposicion_con_excluida", "documento_vencido", "analisis_con_error"]);
 
@@ -78,7 +89,7 @@ export const REQUISITOS = {
   tenencia_sustentada: "Tenencia con sustento",
   permisos_obligatorios: "Permisos obligatorios con sustento",
   sin_conflicto_de_tenencia: "Sin incidencias de tenencia abiertas",
-  productor_listo: "Productor con DNI documentado y consentimiento",
+  productor_listo: "Productor con DNI documentado, consentimiento y declaración anual vigente",
 };
 
 // Para el productor, en lenguaje simple.
@@ -92,7 +103,7 @@ export const REQUISITOS_PRODUCTOR = {
   tenencia_sustentada: "Falta el documento de tu derecho sobre la tierra, o la declaración jurada firmada",
   permisos_obligatorios: "Falta un permiso de tu parcela: acuerdo con la comunidad, acuerdo de conservación o contrato forestal",
   sin_conflicto_de_tenencia: "Hay un reclamo sobre tu tierra que la cooperativa está revisando",
-  productor_listo: "Falta la foto de tu DNI o aceptar el uso de tus datos",
+  productor_listo: "Falta la foto de tu DNI, aceptar el uso de tus datos o tu declaración anual",
 };
 
 // Adenda 4: estados de un requisito legal. Dicen con qué se sustenta, nunca que se cumple.
@@ -171,6 +182,10 @@ export const TIPOS_DOCUMENTO = {
   imagen_satelital: "Imagen satelital",
   imagen_externa: "Imagen externa",
   certificacion: "Certificación",
+  // Adenda 5: los papeles de la declaración anual del productor.
+  hoja_declaracion_productor: "Hoja firmada de la declaración anual",
+  relacion_trabajadores: "Relación de trabajadores permanentes",
+  declaracion_renta: "Declaración anual del impuesto a la renta",
 };
 
 export function insigniaAlerta(codigo) {

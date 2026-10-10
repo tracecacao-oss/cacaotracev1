@@ -20,6 +20,7 @@ const MODULOS_PRODUCTOR = [
   { texto: "Mi perfil", ruta: "#/mi-perfil", icono: "perfil" },
   { texto: "Mis parcelas", ruta: "#/mis-parcelas", icono: "parcelas" },
   { texto: "Mis entregas", ruta: "#/mis-entregas", icono: "entregas" },
+  { texto: "Mi declaración", ruta: "#/mi-declaracion", icono: "file" },
 ];
 const PLATAFORMA = { texto: "Plataforma", ruta: "#/plataforma/cooperativas", icono: "plataforma" };
 

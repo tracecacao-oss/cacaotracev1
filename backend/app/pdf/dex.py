@@ -3,8 +3,9 @@
 Los dos tienen la misma estructura y las mismas cifras. Los textos fijos salen de app/textos; lo que
 escribieron las personas (notas, motivos, explicaciones) no se traduce: en el PDF en inglés aparece en
 español, bajo "Original text in Spanish". Orden de las secciones: leyenda y mensaje final; identificación,
-exportador, importador y orden, y producto; genealogía con el croquis; respaldo por parcela; proceso y
-embarque; recomprobación; informe de hallazgos completo; documentos de evidencia.
+exportador, importador y orden, y producto; genealogía con el croquis; respaldo por parcela; declaraciones
+de los productores (adenda 5); proceso y embarque; recomprobación; informe de hallazgos completo; documentos
+de evidencia.
 """
 
 import io
@@ -593,6 +594,90 @@ def _legalidad(pdf: Pdf, leg: dict[str, Any]) -> None:
         )
 
 
+# ---------- Adenda 5: declaraciones de los productores ----------
+
+
+def _lo_declarado(pdf: Pdf, r: dict[str, str], n_productos: int) -> str:
+    t = lambda ruta, **v: textos.t(pdf.idioma, f"declaracion.resumen.{ruta}", **v)  # noqa: E731
+    quien, n = r["quien_trabaja"], r.get("trabajadores_numero")
+    partes = [t(f"{quien}_uno" if n == 1 and quien != "solo_familia" else quien, n=n)]
+    if r.get("usa_agroquimicos") == "si":
+        partes.append(t("usa_si_uno" if n_productos == 1 else "usa_si", n=n_productos))
+    else:
+        partes.append(t("usa_no"))
+    partes.append(t(f"ventas_{r['ventas_superan_75_uit']}"))
+    return ". ".join(partes) + "."
+
+
+def _declaraciones(pdf: Pdf, c: dict[str, Any]) -> None:
+    """Después del respaldo por parcela: un cuadro de totales y una fila por productor (sección 11)."""
+    productores = c.get("productores")
+    if productores is None:  # DEX anteriores a la adenda 5
+        return
+    t = lambda ruta: textos.obtener(pdf.idioma, f"declaracion.{ruta}")  # noqa: E731
+    pdf.seccion(pdf.L("declaraciones"), pdf.L("declaraciones_sub"))
+    pdf.parrafo(pdf.L("declaraciones_nota"), tamano=7.5)
+    con = [x for x in productores if x.get("declarada_en")]
+    respuestas = [{r["codigo"]: r["valor"] for r in x["respuestas"]} for x in con]
+    pdf.tabla(
+        [
+            pdf.L("total_productores"),
+            pdf.L("contratan"),
+            pdf.L("usan_agroquimicos"),
+            pdf.L("con_algo_por_atender"),
+        ],
+        [
+            [
+                len(productores),
+                sum(r.get("quien_trabaja") not in (None, "solo_familia") for r in respuestas),
+                sum(r.get("usa_agroquimicos") == "si" for r in respuestas),
+                sum(any(q["estado"] == "por_atender" for q in x["requisitos"]) for x in con),
+            ]
+        ],
+        [pdf.ancho / 4] * 4,
+        tamano=7.5,
+    )
+    filas = []
+    for x in productores:
+        nombre = f"{x['productor']} ({', '.join(x['parcelas'])})"
+        if not x.get("declarada_en"):
+            filas.append([nombre, t(f"estado_productor.{x['estado']}"), "—", "—", "—"])
+            continue
+        r = {q["codigo"]: q["valor"] for q in x["respuestas"]}
+        declaracion = pdf.L(
+            "declarada_el",
+            fecha=pdf.fecha(x["declarada_en"]),
+            origen=t(f"origenes.{x['origen']}"),
+            hasta=pdf.fecha(x["vigente_hasta"]),
+        )
+        pendientes = [
+            f"{t('requisitos.' + q['codigo'])} ({', '.join(q['referencias'])}): {t('estados.' + q['estado'])}"
+            for q in x["requisitos"]
+            if q["estado"] in ("por_atender", "sin_sustento")
+        ]
+        filas.append(
+            [
+                nombre,
+                declaracion,
+                _lo_declarado(pdf, r, len(x["productos"])),
+                "; ".join(pendientes) or pdf.L("nada_por_atender"),
+                pdf.original(x.get("seguimiento")) or "—",
+            ]
+        )
+    pdf.tabla(
+        [
+            pdf.L("productor"),
+            pdf.L("declaracion"),
+            pdf.L("lo_declarado"),
+            pdf.L("requisitos_productor"),
+            pdf.L("seguimiento"),
+        ],
+        filas,
+        [30, 30, 36, 46, pdf.ancho - 142],
+        tamano=6.3,
+    )
+
+
 # ---------- Proceso, embarque y recomprobación ----------
 
 
@@ -762,6 +847,7 @@ def documento(
     _identificacion(pdf, c)
     _genealogia(pdf, c)
     _respaldo(pdf, c, imagenes or {})
+    _declaraciones(pdf, c)
     _proceso_y_embarque(pdf, c)
     _recomprobacion(pdf, c)
     _informe(pdf, c["informe"])

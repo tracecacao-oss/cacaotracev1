@@ -496,6 +496,80 @@ Regla de grupo para el productor: un hecho declarado que deja algo por atender v
 - [ ] Registrar el valor de la UIT y, con el contador, el jornal de referencia.
 - [ ] Volver a cargar las declaraciones de los productores de la simulación, que quedarán sin ella tras la migración.
 
+## 15. Construcción (9 de octubre de 2026)
+
+Registro de Claude Code. Rama `feat/adenda-5-productor`, migración 0017.
+
+### Confirmado antes de construir
+
+Las tres comprobaciones de la sección 14 y las decisiones del equipo están en el recuadro de "Antes de programar": 18 años para todos, el literal h tal cual y `kilos_12_meses` en peso seco equivalente.
+
+### Decisiones de construcción por confirmar
+
+La adenda no las dice.
+
+1. **Ante qué organización.** La declaración se busca ante la organización de la afiliación activa del productor, como ya hace el análisis con `_cooperativa_de`. Si no hay afiliación activa, se usa la organización que registró la parcela.
+2. **Lo que el sistema calcula.**
+   - `area_total_ha` es la suma de todas las parcelas activas del productor, igual que en su ficha.
+   - El `contexto` guarda además los códigos de esas parcelas, para que la hoja y su copia digan siempre lo mismo.
+   - `kilos_12_meses` cuenta las tandas validadas en la organización desde el mismo día de hace 12 meses, sin las de DOP anulado.
+3. **Estado con dos declaraciones.** Si hay una vigente y otra por firmar, la ficha muestra el estado de la vigente y aparte la por firmar.
+   - Los pendientes, el filtro de la lista y el grupo del inicio cuentan a ese productor solo como "por firmar". Así los cuatro casos no se repiten.
+   - Una declaración vencida suma el pendiente `sin_declaracion_anual`.
+4. **Papeles.**
+   - La relación de trabajadores se acepta solo con `quien_trabaja = permanentes`.
+   - La declaración de renta se acepta solo si las ventas no son `no`.
+   - Otro caso responde 400.
+   - Se cargan a la declaración vigente o a la por firmar. El productor carga los suyos desde su cuenta, a su vigente.
+   - La hoja firmada no se anula a mano.
+5. **Revisión de productos.**
+   - La revisión se copia solo al registrar la declaración. Se toma la más reciente de la organización con el mismo nombre normalizado y el mismo tipo, revisada en los últimos 12 meses.
+   - La copia conserva la fecha de la consulta original.
+   - Cambiar a mano una revisión copiada le quita la marca de copiada.
+   - El número de registro de SENASA se guarda solo con "Figura".
+6. **Seguimiento.** La nota se escribe sobre la declaración guardada como vigente y va de 50 a 2 000 caracteres.
+7. **Requisitos.**
+   - Lo que falta se calcula aunque el requisito esté por atender. Por eso un productor con permanentes sin seguro y sin relación deja dos hallazgos (sección 6).
+   - Las alertas siguen el estado de cada requisito (sección 8, regla 3).
+   - Un requisito es `documentado` solo con un papel cargado. La revisión en SENASA lo deja `sustentado` sin cambiar su nivel.
+   - La pantalla muestra la insignia de nivel solo cuando es `documentado`, porque una respuesta siempre es declarada.
+   - El jornal se compara con la referencia guardada en el `contexto` de la declaración, no con la de hoy (sección 9, regla 2).
+8. **Cuestionario.**
+   - Las condiciones de cada pregunta son datos (`cuando`, con cinco reglas). La interfaz repite esas reglas en `frontend/js/declaracion.js` y la API vuelve a validar.
+   - Cada pregunta tiene una ayuda en tercera persona para el personal (`ayuda_personal`). No cambia preguntas ni valores: el cuestionario sigue en la versión 1.
+9. **Pantalla del productor.**
+   - Para renovar, trae marcadas las respuestas de su última declaración.
+   - Antes de "Declaro" muestra las cláusulas segunda a sexta y la frase final del Anexo A.
+10. **Hoja.**
+    - Las preguntas van en tercera persona (de usted).
+    - La copia no lleva líneas de firma y dice quién la declaró, cuándo y hasta cuándo vale.
+    - El archivo se llama `declaracion-anual-{dni}-para-firmar.pdf` o `-copia.pdf`.
+11. **Hallazgos.**
+    - Viven en `services/hallazgos/productor.py`.
+    - Las referencias de `condiciones_de_trabajo_por_atender` son las de los hechos declarados (de 4.2 a 4.7).
+    - El informe no usa la palabra "seguro" (prueba de valoraciones de la Parte 9). Por eso el hecho dice "afiliadas a EsSalud o al SIS".
+12. **DOP, versión 6.**
+    - `productor.declaracion` va sin la nota de seguimiento, porque el productor ve sus DOP.
+    - "No verificado" suma: "La declaración anual es la palabra del productor: la organización no la comprobó en campo."
+13. **DEX, versión 3.**
+    - El bloque `productores` lleva por productor su nombre, sus parcelas en el lote, su peso, el mismo bloque del DOP y la nota de seguimiento.
+    - No lleva DNI. De sus papeles van solo el tipo y la huella.
+    - En el cuadro de totales, "Con algo por atender" cuenta los productores con un requisito `por_atender`, no los que están sin sustento.
+14. **Configuración de plataforma.**
+    - `PUT /admin/configuracion` cambia solo los campos que recibe. La pantalla envía la clasificación del país y los valores de referencia por separado.
+    - La UIT va con su año y el jornal con su nota, o ninguno de los dos.
+15. **Rutas adicionales.** `GET /productores?declaracion=` acepta `vencida`, `por_vencer`, `por_firmar` y `sin_declaracion`. En la interfaz, `#/productores/{id}/declaracion` abre la ficha en la pestaña Declaración.
+16. **Migración.** El trigger de `declaraciones_productor` también impide cambiar `vigente_hasta` una vez puesta.
+17. **Escenario de demostración y simulación.**
+    - Cada productor queda con la declaración de cuatro preguntas (familia, sin menores, sin agroquímicos y ventas de hasta 75 UIT), registrada por el operador y con la hoja firmada del día.
+    - El paquete de simulación suma una hoja de muestra por productor y dos pasos del guion: registrar la declaración y cargar la hoja firmada.
+
+### Para el equipo
+
+1. Al desplegar, el comando de inicio de Render aplica la migración 0017. Ningún productor recibe una declaración: sus parcelas habilitadas pasan a observadas hasta que declare (sección 8, regla 5). Eso incluye las de la simulación, cuyo guion ya trae los pasos.
+2. Registrar en Plataforma › Configuración el valor de la UIT y, con el contador, el jornal de referencia.
+3. Los pendientes de la sección 14.
+
 ## Anexo A — Declaración jurada anual del productor
 
 Versión 1, redactada para revisión de un asesor legal. Lo que va entre llaves lo llena el sistema; las líneas, el productor. El productor que declara desde su cuenta lee las cláusulas segunda a sexta antes de tocar "Declaro".

@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     # lindero a esta distancia o menos de un río o un lago "colinda" con él; y las capas oficiales que se
     # cruzan con la parcela (códigos de app/catalogos/capas_legales.py, separados por comas).
     declaracion_vigencia_meses: int = Field(12, ge=1)
+    # Adenda 5: la declaración anual del productor vale estos meses desde que se declaró.
+    declaracion_productor_vigencia_meses: int = Field(12, ge=1)
     distancia_cuerpo_agua_m: int = Field(100, ge=0, le=5000)
     capas_legales_activas: str = (
         "sernanp_anp,sernanp_amortiguamiento,serfor_zonificacion,"

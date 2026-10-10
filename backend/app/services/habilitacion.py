@@ -19,6 +19,7 @@ from app.contexto import Contexto
 from app.errores import error_api
 from app.fechas import ahora
 from app.models import (
+    Afiliacion,
     AnalisisCobertura,
     DecisionHabilitacion,
     Documento,
@@ -38,6 +39,7 @@ from app.schemas.habilitacion import (
     ResumenHabilitacion,
 )
 from app.services import analisis as servicio_analisis
+from app.services import declaracion_productor as servicio_declaracion
 from app.services import expediente as servicio_expediente
 from app.services import legalidad as servicio_legalidad
 from app.services import revisiones_imagenes as servicio_revisiones
@@ -51,7 +53,7 @@ NOMBRE_FUENTE = {"whisp": "Whisp", "gfw": "GFW", "mapbiomas": "MapBiomas"}
 @dataclass
 class Evaluacion:
     requisitos: list[Requisito]
-    alertas: list[str]  # las de la Parte 4 y de la adenda 4
+    alertas: list[str]  # las de la Parte 4 y de las adendas 4 y 5
     legalidad: servicio_legalidad.Legalidad
     analisis: list[AnalisisCobertura]
     visitas: list[VisitaCampo]  # solo para la procedencia: una visita ya no atiende un análisis
@@ -75,6 +77,7 @@ def _requisitos(
     leg: servicio_legalidad.Legalidad,
     dni_documentado: bool,
     consentimiento: bool,
+    falta_declaracion: str | None,
 ) -> list[Requisito]:
     r = []
     r.append(
@@ -151,16 +154,20 @@ def _requisitos(
         r.append(Requisito(codigo="revision_atendida", cumple=cumple, detalle=detalle))
     # Adenda 4, sección 8: expediente_completo se reemplaza por estos cuatro.
     r.extend(leg.compuerta())
+    # Adenda 5, sección 8: también la declaración anual vigente.
     falta_productor = [
         n
         for n, ok in (("copia del DNI", dni_documentado), ("consentimiento de datos", consentimiento))
         if not ok
     ]
+    if falta_declaracion:
+        falta_productor.append(falta_declaracion)
     r.append(
         Requisito(
             codigo="productor_listo",
             cumple=not falta_productor,
-            detalle="El DNI del productor está documentado y su consentimiento registrado."
+            detalle="El DNI del productor está documentado, su consentimiento registrado y su declaración "
+            "anual vigente."
             if not falta_productor
             else f"Falta del productor: {_lista(falta_productor)}.",
         )
@@ -228,6 +235,19 @@ def evaluar(
         )
     )
 
+    # La declaración es ante la organización de la afiliación activa, como _cooperativa_de del análisis.
+    afiliadas = dict(
+        sesion.execute(
+            select(Afiliacion.productor_id, Afiliacion.cooperativa_id).where(
+                Afiliacion.productor_id.in_(productores), Afiliacion.estado == "activa"
+            )
+        ).all()
+    )
+    organizacion = {p.id: afiliadas.get(p.productor_id, p.cooperativa_registro_id) for p in parcelas}
+    declaraciones = servicio_declaracion.estados(
+        sesion, {(p.productor_id, organizacion[p.id]) for p in parcelas}
+    )
+
     resultado = {}
     cambio = False
     for parcela in parcelas:
@@ -237,6 +257,7 @@ def evaluar(
         )
         leg = legalidades[parcela.id]
         productor = productores[parcela.productor_id]
+        declaracion = declaraciones[(parcela.productor_id, organizacion[parcela.id])]
         requisitos = _requisitos(
             parcela,
             abiertas=abiertas.get(parcela.id, 0),
@@ -245,8 +266,9 @@ def evaluar(
             leg=leg,
             dni_documentado=productor.id in con_dni,
             consentimiento=productor.consentimiento_datos_en is not None,
+            falta_declaracion=declaracion.falta,
         )
-        alertas = servicio_analisis.alertas(estado_analisis) + leg.alertas()
+        alertas = servicio_analisis.alertas(estado_analisis) + leg.alertas() + declaracion.alertas
         if parcela.id in con_excluida:
             alertas.append("superposicion_con_excluida")
         evaluacion = Evaluacion(

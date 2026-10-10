@@ -56,6 +56,10 @@ TIPOS_DOCUMENTO = (
     "dex_hallazgos",
     "dex_leeme",
     "dex_paquete",
+    # Adenda 5: los papeles de la declaración anual del productor
+    "hoja_declaracion_productor",
+    "relacion_trabajadores",
+    "declaracion_renta",
 )
 ENTIDADES_DOCUMENTO = (
     "productor",
@@ -70,6 +74,8 @@ ENTIDADES_DOCUMENTO = (
     "lote",
     "certificacion",
     "dex",
+    # Adenda 5
+    "declaracion_productor",
 )
 ESTADOS_HABILITACION = ("pendiente", "habilitada", "observada", "excluida")
 ESTADOS_MIDAGRI = ("no_registrada", "sin_observacion", "en_revision", "validado")

@@ -44,5 +44,36 @@
       {"tipo": "firma", "texto": "Firma y sello: ______________________\nNombre: ______________________   Cargo: ______________   DNI N.º __________"},
       {"tipo": "referencias", "texto": "Referencias: Ley N.º 24656, Ley General de Comunidades Campesinas; Decreto Ley N.º 22175, Ley de Comunidades Nativas y de Desarrollo Agrario de la Selva y Ceja de Selva; Documento orientador, requisitos 1.3 y 1.4. Versión 1."}
     ]
+  },
+  "declaracion_productor": {
+    "version": 1,
+    "anexo": "Anexo A de la adenda 5",
+    "nota": "Versión 1, redactada para revisión de un asesor legal. Adenda 5 de CacaoTrace, Anexo A.",
+    "bloques": [
+      {"tipo": "titulo", "texto": "DECLARACIÓN JURADA ANUAL DEL PRODUCTOR"},
+      {"tipo": "subtitulo", "texto": "sobre el trabajo en sus parcelas, el uso de agroquímicos y sus obligaciones tributarias"},
+      {"tipo": "parrafo", "texto": "Yo, {productor}, identificado(a) con DNI N.º {dni}, con domicilio en {direccion}, productor(a) que entrega cacao a {organizacion}, con RUC N.º {ruc}, y que conduce {numero} parcela(s) registrada(s) con los códigos {codigos}, que suman {area} hectáreas, en pleno uso de mis facultades y de manera libre y voluntaria, **DECLARO BAJO JURAMENTO** lo siguiente:"},
+      {"tipo": "parrafo", "texto": "**PRIMERO. De mis respuestas.** A las preguntas que me formuló la organización sobre los últimos doce meses, respondo:"},
+      {"tipo": "respuestas", "texto": ""},
+      {"tipo": "parrafo", "en_pantalla": true, "texto": "**SEGUNDO. De la información que recibí.** La organización me ha informado, y así lo entiendo, que de acuerdo con la legislación peruana:"},
+      {"tipo": "literal", "en_pantalla": true, "texto": "a) en el régimen laboral agrario no debe trabajar ninguna persona menor de dieciocho (18) años, y la organización aplica esa edad en todas sus parcelas, también al trabajo de la familia;"},
+      {"tipo": "literal", "en_pantalla": true, "texto": "b) la jornada de trabajo no debe pasar de ocho (8) horas diarias o cuarenta y ocho (48) horas semanales;"},
+      {"tipo": "literal", "en_pantalla": true, "texto": "c) quien contrata trabajadores, aunque sea por días y de palabra, debe pagarles no menos que la remuneración mínima vigente, afiliarlos al seguro de salud y contratarles el seguro de vida de ley;"},
+      {"tipo": "literal", "en_pantalla": true, "texto": "d) quien contrata trabajadores debe darles condiciones seguras y el equipo de protección que su labor requiera, en especial cuando aplican agroquímicos;"},
+      {"tipo": "literal", "en_pantalla": true, "texto": "e) toda persona es libre de dejar su trabajo, y nadie puede ser obligado a trabajar ni retenido por deudas, documentos o pagos pendientes;"},
+      {"tipo": "literal", "en_pantalla": true, "texto": "f) a igual trabajo corresponde igual pago, sin distinción entre hombres y mujeres, y la madre y el padre trabajadores tienen derecho a su descanso por el nacimiento de un hijo;"},
+      {"tipo": "literal", "en_pantalla": true, "texto": "g) solo deben usarse plaguicidas y fertilizantes registrados ante el SENASA;"},
+      {"tipo": "literal", "en_pantalla": true, "texto": "h) los envases vacíos de plaguicidas no se queman, no se entierran, no se botan ni se reutilizan: se someten al triple lavado y se entregan en un centro de acopio."},
+      {"tipo": "parrafo", "en_pantalla": true, "texto": "**TERCERO. De mis compromisos.** Me comprometo a: (i) comunicar a la organización cualquier cambio en lo declarado, dentro de los treinta (30) días calendario de ocurrido; (ii) entregar los documentos que sustenten mis respuestas cuando la organización me los pida; y (iii) recibir las visitas que la organización programe a mis parcelas para conocer lo declarado."},
+      {"tipo": "parrafo", "en_pantalla": true, "texto": "**CUARTO. De la finalidad.** Formulo esta declaración para que {organizacion} sustente la legalidad de la producción del cacao que le entrego. Autorizo que la conserve y la ponga a disposición de sus compradores y de las autoridades competentes, para los fines de la diligencia debida que exige el Reglamento (UE) 2023/1115."},
+      {"tipo": "parrafo", "en_pantalla": true, "texto": "**QUINTO. De la vigencia.** Esta declaración vale por doce (12) meses desde su fecha. La renovaré al vencer ese plazo o antes, si lo declarado cambia."},
+      {"tipo": "parrafo", "en_pantalla": true, "texto": "**SEXTO. De la veracidad.** Lo declarado responde a la verdad. Conozco que, de comprobarse su falsedad, asumo las responsabilidades civiles y penales que correspondan según la legislación peruana, y que la organización podrá dejar de recibir mi cacao."},
+      {"tipo": "parrafo", "en_pantalla": true, "texto": "Esta declaración no reemplaza las obligaciones del declarante ante las autoridades de trabajo, tributarias, sanitarias ni ambientales."},
+      {"tipo": "fecha", "texto": "__________, ____ de __________ de 20____."},
+      {"tipo": "firma", "texto": "Firma: ______________________   Huella dactilar: [        ]\n{productor} · DNI N.º {dni}"},
+      {"tipo": "firma", "texto": "**Testigo a ruego** (solo si el declarante no sabe o no puede firmar; el declarante pone su huella)\nNombre: ______________________   DNI N.º __________   Firma: __________"},
+      {"tipo": "firma", "texto": "**Recibido por la organización**\nNombre: ______________________   Cargo: ______________   Fecha: ____/____/______   Firma: __________"},
+      {"tipo": "referencias", "texto": "Referencias: Ley N.º 31110, Ley del régimen laboral agrario, y su reglamento, Decreto Supremo N.º 005-2021-MIDAGRI; Decreto Supremo N.º 001-2015-MINAGRI, Reglamento del Sistema Nacional de Plaguicidas de Uso Agrícola; Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco del EUDR, requisitos 2.3, 2.7, 4.1 a 4.7, 5.2 a 5.4 y 7.1. Versión 1."}
+    ]
   }
 }

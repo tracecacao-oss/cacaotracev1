@@ -44,6 +44,7 @@ def documentos_de(c: sim.Cooperativa) -> list[sim.Documento]:
     return [
         *c.documentos,
         *(p.copia_dni for p in c.productores),
+        *(p.hoja_declaracion for p in c.productores),
         *(d for p in c.parcelas for d in p.documentos),
         *(t.liquidacion for t in c.tandas),
         *c.orden.embarque,
@@ -376,6 +377,26 @@ def _cooperativa(g: Guion, k: int, c: sim.Cooperativa) -> None:
                 ("Archivo (foto o PDF, hasta 10 MB)", p.copia_dni.archivo, ARCHIVO),
             ],
             "Cargar documento",
+        )
+        g.paso(
+            f"Declaración anual de {p.nombres} {p.apellidos}",
+            operador,
+            f"Productores › {p.nombres} {p.apellidos} › pestaña Declaración › Registrar declaración",
+            [(pregunta, respuesta, ELEGIR) for pregunta, respuesta in p.hoja_declaracion.secciones[1][1]],
+            "Guardar declaración",
+            "Solo aparecen estas cuatro preguntas: las demás se abren según las respuestas.",
+        )
+        g.paso(
+            f"Hoja firmada de {p.nombres} {p.apellidos}",
+            operador,
+            f"Productores › {p.nombres} {p.apellidos} › pestaña Declaración › Cargar hoja firmada",
+            [
+                ("Fecha de firma", "La de hoy", CONFIRMAR),
+                ("Archivo (foto o PDF, hasta 10 MB)", p.hoja_declaracion.archivo, ARCHIVO),
+            ],
+            "Cargar hoja firmada",
+            "Con datos reales, primero se descarga la hoja, el productor la firma y pone su huella. Aquí va "
+            "una muestra. La declaración queda vigente por 12 meses.",
         )
     for p in c.parcelas:
         pr = c.productor(p.productor)

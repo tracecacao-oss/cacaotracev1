@@ -28,6 +28,9 @@ Adaptaciones a la especificación:
   respondió; el cruce corre después en el trabajador y, si dice algo más exigente, manda lo que diga.
   PA-00008 queda con el perfil incompleto (antes: con el expediente incompleto) y el documento que se anula
   al final es el título de PA-00007 (antes: su sustento laboral, que ya no se carga).
+- Adenda 5: cada productor necesita su declaración anual vigente. El operador registra las respuestas de un
+  productor que trabaja con su familia, sin menores ni agroquímicos y con ventas de hasta 75 UIT, y carga la
+  hoja firmada con la fecha del día.
 - Las cuentas nuevas actúan con su contraseña temporal: el cambio obligatorio lo exige la API a las personas
   (app/contexto.py), y cada usuario de demostración la cambia al entrar por primera vez.
 - No registra la clasificación del país: es un dato regulatorio de toda la plataforma y lo fija el equipo.
@@ -86,6 +89,7 @@ from app.services import (
     configuracion,
     cooperativa,
     corridas,
+    declaracion_productor,
     dex,
     documentos,
     embarque,
@@ -206,6 +210,15 @@ SUPERPUESTAS = {"PA-00006", "PA-00007"}
 COTEJADA = ("PA-00001", "titulo_sunarp")
 # Al final se anula este documento: la parcela pasa a observada y bloquea el lote 2.
 ANULADO = ("PA-00007", "titulo_sunarp")
+
+
+# Adenda 5: la declaración más corta (cuatro preguntas).
+RESPUESTAS_FAMILIA = {
+    "quien_trabaja": "solo_familia",
+    "menores_trabajan": "no",
+    "usa_agroquimicos": "no",
+    "ventas_superan_75_uit": "no",
+}
 
 
 def _metros_por_grado(lat: float) -> tuple[float, float]:
@@ -616,6 +629,16 @@ class _Siembra:
                     entidad_id=productor.id,
                     tipo="dni",
                     archivo=self._archivo("Copia del DNI", f"Demo {nombre}, DNI {dni}"),
+                )
+            with _paso(f"Registrar la declaración anual de Demo {nombre}"):
+                declaracion = declaracion_productor.registrar(self.operador, productor.id, RESPUESTAS_FAMILIA)
+                declaracion_productor.cargar_hoja_firmada(
+                    self.operador,
+                    self.storage,
+                    productor.id,
+                    declaracion.id,
+                    self._archivo("Hoja firmada de la declaración anual", f"Demo {nombre}, DNI {dni}"),
+                    hoy_lima(),
                 )
             self.resultado.productores[f"Demo {nombre}"] = productor.id
         with _paso("Crear el acceso del productor Demo Uno"):

@@ -1,5 +1,6 @@
 // Ficha del productor, con el inspector del diseño: cabecera con nombre, DNI, pendientes y área
-// total, y pestañas Datos, Parcelas (con mapa), Documentos y Acceso.
+// total, y pestañas Datos, Parcelas (con mapa), Declaración (adenda 5), Documentos y Acceso.
+// #/productores/{id}/declaracion abre la ficha en la pestaña Declaración.
 
 import { llamarApi } from "../api.js";
 import { formularioCarga, listaDocumentos } from "../documentos.js";
@@ -22,11 +23,13 @@ import {
   toast,
   vacio,
 } from "../ui.js";
+import { pestanaDeclaracion } from "./productor-declaracion.js";
 import { camposFicha, cuerpoFicha, insigniaAcceso } from "./productores.js";
 
 const PESTANAS = [
   ["datos", "Datos"],
   ["parcelas", "Parcelas"],
+  ["declaracion", "Declaración"],
   ["documentos", "Documentos"],
   ["acceso", "Acceso"],
 ];
@@ -294,8 +297,11 @@ export default async function productor(ctx) {
 
   async function mostrarPestana(clave) {
     pestanaRecordada = clave;
+    // La dirección sigue a la pestaña Declaración, para enlazarla desde los pendientes del inicio.
+    const direccion = clave === "declaracion" ? `#/productores/${p.id}/declaracion` : `#/productores/${p.id}`;
+    if (location.hash !== direccion) history.replaceState(null, "", direccion);
     for (const b of barra.children) b.setAttribute("aria-selected", String(b.dataset.clave === clave));
-    const generadores = { datos: pestanaDatos, parcelas: pestanaParcelas, documentos: pestanaDocumentos, acceso: pestanaAcceso };
+    const generadores = { datos: pestanaDatos, parcelas: pestanaParcelas, declaracion: pestanaDeclaracion, documentos: pestanaDocumentos, acceso: pestanaAcceso };
     try {
       cuerpo.replaceChildren(await generadores[clave](p, ctx));
     } catch (error) {
@@ -305,6 +311,7 @@ export default async function productor(ctx) {
   for (const [clave, texto] of PESTANAS) {
     barra.append(h("button", { type: "button", role: "tab", "data-clave": clave, onclick: () => mostrarPestana(clave) }, texto));
   }
+  if (ctx.parametros[1]) pestanaRecordada = ctx.parametros[1];
   mostrarPestana(PESTANAS.some(([c]) => c === pestanaRecordada) ? pestanaRecordada : "datos");
 
   const n = p.parcelas.activas;

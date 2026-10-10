@@ -7,10 +7,12 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.contexto import Contexto, requiere_rol
+from app.errores import error_api
 from app.routers.comun import leer_archivo
 from app.routers.legalidad import Plantilla, pdf
 from app.routers.parcelas import ClaseTitulo, TipoDocumentoParcela, cargar_documento_de_parcela
 from app.routers.productores import crear_parcela_desde_formulario
+from app.schemas.declaracion import DeclaracionProductorSalida, MiDeclaracion
 from app.schemas.habilitacion import AnalisisSalida, ConvergenciaSalida, HabilitacionSalida
 from app.schemas.imagenes import ImagenesSalida, RevisionSalida
 from app.schemas.legalidad import LegalidadSalida
@@ -19,6 +21,7 @@ from app.schemas.productores import MisCambios, ProductorDetalle
 from app.schemas.recepcion import DopDetalle, DopSalida, TandaSalida
 from app.services import (
     analisis,
+    declaracion_productor,
     documentos,
     dops,
     habilitacion,
@@ -165,6 +168,51 @@ def plantilla_de_mi_parcela(parcela_id: uuid.UUID, nombre: Plantilla, contexto: 
 @router.get("/parcelas/{parcela_id}/habilitacion", response_model=HabilitacionSalida)
 def habilitacion_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
     return habilitacion.obtener(contexto, parcelas.parcela_visible(contexto, parcela_id))
+
+
+# ---------- Adenda 5: mi declaración anual ----------
+
+
+def _mi_declaracion(contexto: Contexto) -> DeclaracionProductorSalida:
+    declaracion_productor.productor_afiliado(contexto, contexto.productor_id)
+    # El productor no ve la nota de seguimiento (sección 10).
+    return declaracion_productor.salida(
+        contexto.sesion, contexto.productor_id, contexto.cooperativa_id, personal=False
+    )
+
+
+@router.get("/declaracion", response_model=DeclaracionProductorSalida)
+def mi_declaracion(contexto: Productor):
+    return _mi_declaracion(contexto)
+
+
+@router.post("/declaracion", response_model=DeclaracionProductorSalida, status_code=201)
+def declarar(datos: MiDeclaracion, contexto: Productor):
+    declaracion_productor.declarar(contexto, datos.respuestas, datos.declaro)
+    return _mi_declaracion(contexto)
+
+
+@router.get("/declaracion/hoja")
+def hoja_de_mi_declaracion(contexto: Productor):
+    """La copia de mi declaración vigente."""
+    declaracion_productor.productor_afiliado(contexto, contexto.productor_id)
+    estado = declaracion_productor.estado_de(contexto.sesion, contexto.productor_id, contexto.cooperativa_id)
+    if estado.vigente is None:
+        raise error_api(404, "sin_declaracion", "Todavía no tienes una declaración anual.")
+    return pdf(*declaracion_productor.hoja(contexto.sesion, estado.vigente))
+
+
+@router.post("/declaracion/documentos", response_model=DocumentoSalida, status_code=201)
+def cargar_papel_de_mi_declaracion(
+    contexto: Productor,
+    storage: Storage,
+    tipo: Annotated[Literal["relacion_trabajadores", "declaracion_renta"], Form()],
+    archivo: Annotated[UploadFile, File()],
+):
+    documento = declaracion_productor.cargar_papel(
+        contexto, storage, contexto.productor_id, None, tipo, leer_archivo(archivo)
+    )
+    return documento_salida(documento, None)
 
 
 # ---------- Parte 5: mis entregas y mis DOP, solo lectura ----------

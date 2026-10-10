@@ -45,6 +45,9 @@ export function anularDocumento(documento, alCambiar) {
   });
 }
 
+// La hoja firmada hizo vigente su declaración (adenda 5): no se anula a mano.
+const NO_ANULABLES = new Set(["hoja_declaracion_productor"]);
+
 export function listaDocumentos(documentos, { puedeAnular = false, alCambiar }) {
   if (!documentos.length) return vacio({ titulo: "Sin documentos", texto: "Aquí aparecen los documentos que respaldan los datos." });
   return h(
@@ -74,7 +77,7 @@ export function listaDocumentos(documentos, { puedeAnular = false, alCambiar }) 
               "td",
               { class: "acciones" },
               h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => verDocumento(d) }, "Ver"),
-              puedeAnular && d.vigente && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => anularDocumento(d, alCambiar) }, "Anular"),
+              puedeAnular && d.vigente && !NO_ANULABLES.has(d.tipo) && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => anularDocumento(d, alCambiar) }, "Anular"),
             ),
           ),
         ),

@@ -36,7 +36,13 @@ def test_pendientes_y_niveles_iniciales(api, operador, productor):
     ficha = api.como(operador).get(f"/productores/{productor.id}").json()
     assert ficha["nivel_identidad"] == "declarado"
     assert ficha["nivel_ppa"] == "no_registrado"
-    assert ficha["pendientes"] == ["sin_documento_dni", "sin_consentimiento", "sin_parcelas"]
+    # Adenda 5: también la declaración anual.
+    assert ficha["pendientes"] == [
+        "sin_documento_dni",
+        "sin_consentimiento",
+        "sin_parcelas",
+        "sin_declaracion_anual",
+    ]
 
 
 def test_documento_dni_eleva_la_identidad(api, operador, productor, storage_falso):

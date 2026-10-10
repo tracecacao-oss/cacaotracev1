@@ -772,7 +772,9 @@ def test_emision_completa(api, sesion, admin, operador, basico, storage_falso):
     assert archivos == {"pdf_es", "pdf_en", "geojson", "anexo_ii", "hallazgos", "leeme", "paquete"}
     # Adenda 4: el respaldo de cada parcela trae su legalidad por requisito, con las seis capas consultadas.
     sellado = sesion.get(Dex, uuid.UUID(dex["id"])).contenido
-    assert sellado["version"] == 2
+    # Adenda 5: versión 3, con el bloque de las declaraciones de los productores.
+    assert sellado["version"] == 3
+    assert [x["estado"] for x in sellado["productores"]] == ["vigente"] * len(sellado["productores"])
     for respaldo in sellado["respaldo"]:
         leg = respaldo["legalidad"]
         tenencia = next(r for r in leg["requisitos"] if r["codigo"] == "tenencia")
@@ -1160,3 +1162,139 @@ def test_el_pdf_del_dex_lleva_el_uso_del_suelo_en_su_idioma(
     # Cada clase de la leyenda tiene su nombre oficial en inglés.
     assert set(leyenda.NOMBRES_EN) == set(leyenda.CLASES)
     assert leyenda.nombre(33, "en") == "River, lake or ocean" and leyenda.nombre(0, "en") == "No data"
+
+
+# ---------- Adenda 5: los hallazgos y las declaraciones de los productores ----------
+
+SEGUIMIENTO_PRODUCTOR = (
+    "Se visitó al productor el 5 de octubre: se le explicó la jornada legal, el manejo de envases y se "
+    "acordó revisar en enero."
+)
+DECLARACION_CON_TODO = {
+    "quien_trabaja": "permanentes",
+    "trabajadores_numero": 3,
+    "acuerdo_por_escrito": "no",
+    "jornal_soles": 50,
+    "horas_por_dia": 10,
+    "seguro_salud": "ninguno",
+    "equipo_proteccion": "si",
+    "pueden_dejar_el_trabajo": "no",
+    "menores_trabajan": "si_contratados",
+    "menor_edad_minima": 15,
+    "menores_van_a_la_escuela": "algunos",
+    "usa_agroquimicos": "si",
+    "productos": [
+        {"nombre": "Herbicida X", "tipo": "herbicida"},
+        {"nombre": "Abono Y", "tipo": "fertilizante"},
+    ],
+    "quien_aplica": "trabajadores",
+    "destino_envases": "quema",
+    "ventas_superan_75_uit": "no_sabe",
+}
+CODIGOS_PRODUCTOR = {
+    "condiciones_de_trabajo_por_atender",
+    "menores_en_la_parcela",
+    "trabajo_no_libre",
+    "agroquimico_no_figura",
+    "envases_por_atender",
+    "agroquimicos_sin_revisar",
+    "permanentes_sin_relacion",
+    "tributos_sin_sustento",
+}
+
+
+@pytest.fixture
+def con_declaraciones(api, sesion, coop, admin, operador, productor, expediente_cooperativa):
+    """Un productor con dos parcelas que declara de todo y otro, con una, que trabaja con su familia."""
+    from tests.habilitacion_util import declarar_anual
+
+    vecino = factorias.productor(sesion, coop, nombres="Vecino", apellidos="Familiar")
+    p1 = _parcela(api, sesion, admin, operador, productor, 0)
+    p2 = _parcela(api, sesion, admin, operador, productor, 600)
+    p3 = _parcela(api, sesion, admin, operador, vecino, 1200)
+    declaracion = declarar_anual(
+        sesion, productor, operador, DECLARACION_CON_TODO, revisiones={"Herbicida X": "no_figura"}
+    )
+    ruta = f"/productores/{productor.id}/declaraciones/{declaracion.id}/seguimiento"
+    assert api.como(admin).put(ruta, json={"nota": SEGUIMIENTO_PRODUCTOR}).status_code == 200
+    datos = _lote(api, sesion, coop, operador, [p1, p2, p3])
+    return datos | {"parcelas": (p1, p2, p3), "vecino": vecino}
+
+
+def test_hallazgos_del_productor(api, sesion, operador, productor, con_declaraciones):
+    from app.services.hallazgos.datos import cargar
+
+    informe = _informe(api.como(operador), con_declaraciones["lote"])
+    del_productor = [h for h in informe["hallazgos"] if h["sujeto"]["tipo"] == "productor"]
+    por_codigo = {h["codigo"]: h for h in del_productor}
+    assert set(por_codigo) == CODIGOS_PRODUCTOR
+    nombre = f"{productor.nombres} {productor.apellidos}"
+    p1, p2, _ = con_declaraciones["parcelas"]
+    d = cargar(sesion, sesion.get(Lote, uuid.UUID(con_declaraciones["lote"]["id"])))
+    peso = d.peso_parcela[p1.id] + d.peso_parcela[p2.id]
+    for h in del_productor:
+        entrada = CATALOGO[h["codigo"]]
+        assert (h["grupo"], h["etapa"], h["criterio"]) == (entrada.grupo, 1, 11)
+        assert h["sujeto"]["codigo"] == nombre and h["peso_en_lote_pct"] == f"{peso:.2f}"
+        assert h["explicacion"] == SEGUIMIENTO_PRODUCTOR
+        assert h["datos"]["referencias"] and h["datos"]["nivel_orientador"] and h["datos"]["diligencia"]
+        assert h["hecho"]["es"].startswith(f"{nombre} declara") or "declara" in h["hecho"]["es"]
+        assert "declares" in h["hecho"]["en"]
+    condiciones = por_codigo["condiciones_de_trabajo_por_atender"]["hecho"]["es"]
+    assert "10 horas" in condiciones and "EsSalud" in condiciones
+    assert por_codigo["condiciones_de_trabajo_por_atender"]["datos"]["referencias"] == "4.2, 4.4"
+    menores = por_codigo["menores_en_la_parcela"]["hecho"]["es"]
+    assert "contratadas" in menores and "15 años" in menores and "solo algunas van a la escuela" in menores
+    no_figura = por_codigo["agroquimico_no_figura"]["hecho"]["es"]
+    assert "Herbicida X" in no_figura and textos.fecha("es", hoy_lima()) in no_figura
+    assert "Abono Y" in por_codigo["agroquimicos_sin_revisar"]["hecho"]["es"]
+    assert "quema" in por_codigo["envases_por_atender"]["hecho"]["es"]
+    assert "no sabe" in por_codigo["tributos_sin_sustento"]["hecho"]["es"]
+    assert por_codigo["condiciones_de_trabajo_por_atender"]["grupo"] == "requiere_atencion"
+    assert por_codigo["permanentes_sin_relacion"]["grupo"] == "no_verificado"
+    # El vecino trabaja con su familia: ningún hallazgo. El mensaje final dice cada código una vez.
+    assert all(h["sujeto"]["codigo"] == nombre for h in del_productor)
+    assert informe["mensaje_texto"]["es"].count("Productores que declaran") >= 1
+
+
+def test_un_productor_sin_declaracion_vigente_no_genera_estos_hallazgos(
+    api, sesion, operador, productor, con_declaraciones
+):
+    from tests.habilitacion_util import declarar_anual
+
+    # Su declaración vence: la de hoy se reemplaza por la misma, firmada hace 13 meses.
+    declarar_anual(
+        sesion,
+        productor,
+        operador,
+        DECLARACION_CON_TODO,
+        declarada_en=hoy_lima() - timedelta(days=400),
+    )
+    informe = _informe(api.como(operador), con_declaraciones["lote"])
+    assert not [h for h in informe["hallazgos"] if h["sujeto"]["tipo"] == "productor"]
+
+
+def test_el_dex_trae_las_declaraciones_de_los_productores(
+    api, sesion, admin, operador, productor, con_declaraciones
+):
+    lote = _listo(api, sesion, con_declaraciones, operador)
+    respuesta = _emitir(api, admin, lote)
+    assert respuesta.status_code == 201, respuesta.text
+    dex = sesion.get(Dex, uuid.UUID(respuesta.json()["id"]))
+    productores = dex.contenido["productores"]
+    assert [x["productor"] for x in productores] == [
+        f"{productor.nombres} {productor.apellidos}",
+        "Vecino Familiar",
+    ]
+    primero = productores[0]
+    assert primero["seguimiento"] == SEGUIMIENTO_PRODUCTOR and len(primero["requisitos"]) == 7
+    # Nombres y apellidos, nunca el DNI.
+    assert productor.dni not in json.dumps(productores)
+    for idioma, titulo, totales in (
+        ("es", "Declaraciones de los productores", "Productores del lote"),
+        ("en", "Producers' declarations", "Producers in the lot"),
+    ):
+        documento = pdf_dex.documento(dex.contenido, dex.contenido_sha256, "https://x.test", idioma)
+        texto = " ".join(documento.textos)
+        assert titulo in texto and totales in texto
+        assert "Vecino Familiar" in texto and SEGUIMIENTO_PRODUCTOR in texto

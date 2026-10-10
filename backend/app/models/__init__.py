@@ -40,6 +40,10 @@ from app.models.acceso import (  # noqa: E402
     Perfil,
     Productor,
 )
+from app.models.declaracion import (  # noqa: E402
+    DeclaracionProducto,
+    DeclaracionProductor,
+)
 from app.models.dex import (  # noqa: E402
     Certificacion,
     ConfiguracionPlataforma,
@@ -97,6 +101,8 @@ from app.models.recepcion import (  # noqa: E402
 )
 
 __all__ = [
+    "DeclaracionProducto",
+    "DeclaracionProductor",
     "Certificacion",
     "ConfiguracionPlataforma",
     "Dex",

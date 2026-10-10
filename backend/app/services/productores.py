@@ -6,17 +6,18 @@ según existan documentos vigentes, para que nunca queden desactualizados.
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Select, case, func, or_, select
+from sqlalchemy import Select, and_, case, exists, func, not_, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.auth_admin import ClienteAuthAdmin, ErrorAuthAdmin
 from app.contexto import Contexto, cooperativa_del_contexto
 from app.errores import error_api, no_encontrado
-from app.models import Afiliacion, Cooperativa, Parcela, Perfil, Productor
+from app.fechas import hoy_lima
+from app.models import Afiliacion, Cooperativa, DeclaracionProductor, Parcela, Perfil, Productor
 from app.schemas.parcelas import DocumentoSalida
 from app.schemas.productores import (
     AccesoProductor,
@@ -62,6 +63,8 @@ def _consulta(cooperativa_id: uuid.UUID) -> Select:
             area_total.label("area_total"),
             documentos.vigente("productor", Productor.id, "dni").label("tiene_dni"),
             documentos.vigente("productor", Productor.id, "constancia_ppa").label("tiene_ppa"),
+            _declaracion_hasta(cooperativa_id).label("declaracion_hasta"),
+            _declaracion_por_firmar(cooperativa_id).label("declaracion_por_firmar"),
         )
         .join(Productor, Productor.id == Afiliacion.productor_id)
         .outerjoin(Perfil, Perfil.productor_id == Productor.id)
@@ -69,7 +72,67 @@ def _consulta(cooperativa_id: uuid.UUID) -> Select:
     )
 
 
-def pendientes_de(productor: Productor, tiene_dni: bool, parcelas_activas: int) -> list[str]:
+# ---------- Adenda 5: la declaración anual, en la lista y en los pendientes ----------
+
+
+def _declaracion_hasta(cooperativa_id: uuid.UUID):
+    """Hasta cuándo vale la declaración guardada como vigente ante la organización (nula si no hay)."""
+    return (
+        select(DeclaracionProductor.vigente_hasta)
+        .where(
+            DeclaracionProductor.productor_id == Productor.id,
+            DeclaracionProductor.cooperativa_id == cooperativa_id,
+            DeclaracionProductor.estado == "vigente",
+        )
+        .scalar_subquery()
+    )
+
+
+def _declaracion_por_firmar(cooperativa_id: uuid.UUID):
+    return exists().where(
+        DeclaracionProductor.productor_id == Productor.id,
+        DeclaracionProductor.cooperativa_id == cooperativa_id,
+        DeclaracionProductor.estado == "por_firmar",
+    )
+
+
+def estado_declaracion(hasta, por_firmar: bool) -> str:
+    """El mismo estado que services/declaracion_productor.py: la vigente manda; luego la por firmar."""
+    from app.services.declaracion_productor import DIAS_POR_VENCER  # evita importación circular
+
+    hoy = hoy_lima()
+    if hasta is not None and hasta >= hoy:
+        return "por_vencer" if (hasta - hoy).days <= DIAS_POR_VENCER else "vigente"
+    if por_firmar:
+        return "por_firmar"
+    return "vencida" if hasta is not None else "sin_declaracion"
+
+
+def _filtro_declaracion(cooperativa_id: uuid.UUID, caso: str):
+    """Los cuatro casos del inicio y de la lista (sección 10). Se excluyen entre sí, como los pendientes:
+    con una declaración por firmar, el productor cuenta solo como por firmar."""
+    from app.services.declaracion_productor import DIAS_POR_VENCER  # evita importación circular
+
+    hoy = hoy_lima()
+    hasta = _declaracion_hasta(cooperativa_id)
+    por_firmar = _declaracion_por_firmar(cooperativa_id)
+    if caso == "por_firmar":
+        return por_firmar
+    sin_firmar = not_(por_firmar)
+    if caso == "vencida":
+        return and_(sin_firmar, hasta < hoy)
+    if caso == "por_vencer":
+        return and_(sin_firmar, hasta >= hoy, hasta <= hoy + timedelta(days=DIAS_POR_VENCER))
+    return and_(sin_firmar, hasta.is_(None))
+
+
+def pendientes_de(
+    productor: Productor,
+    tiene_dni: bool,
+    parcelas_activas: int,
+    declaracion_hasta=None,
+    declaracion_por_firmar: bool = False,
+) -> list[str]:
     pendientes = []
     if not tiene_dni:
         pendientes.append("sin_documento_dni")
@@ -77,11 +140,28 @@ def pendientes_de(productor: Productor, tiene_dni: bool, parcelas_activas: int) 
         pendientes.append("sin_consentimiento")
     if parcelas_activas == 0:
         pendientes.append("sin_parcelas")
+    # Adenda 5, sección 8, regla 4.
+    estado = estado_declaracion(declaracion_hasta, declaracion_por_firmar)
+    if declaracion_por_firmar:
+        pendientes.append("declaracion_por_firmar")
+    elif estado in ("vencida", "sin_declaracion"):
+        pendientes.append("sin_declaracion_anual")
+    elif estado == "por_vencer":
+        pendientes.append("declaracion_por_vencer")
     return pendientes
 
 
 def _salida(fila, modelo=ProductorSalida, **extra) -> ProductorSalida:
-    afiliacion, perfil, parcelas_activas, area_total, tiene_dni, tiene_ppa = fila
+    (
+        afiliacion,
+        perfil,
+        parcelas_activas,
+        area_total,
+        tiene_dni,
+        tiene_ppa,
+        declaracion_hasta,
+        declaracion_por_firmar,
+    ) = fila
     p = afiliacion.productor
     if not p.ppa_registrado:
         nivel_ppa = "no_registrado"
@@ -112,8 +192,10 @@ def _salida(fila, modelo=ProductorSalida, **extra) -> ProductorSalida:
         ),
         nivel_identidad="documentado" if tiene_dni else "declarado",
         nivel_ppa=nivel_ppa,
-        pendientes=pendientes_de(p, tiene_dni, parcelas_activas),
+        pendientes=pendientes_de(p, tiene_dni, parcelas_activas, declaracion_hasta, declaracion_por_firmar),
         parcelas=ResumenParcelas(activas=parcelas_activas, area_total_ha=Decimal(area_total or 0)),
+        declaracion=estado_declaracion(declaracion_hasta, declaracion_por_firmar),
+        declaracion_vigente_hasta=declaracion_hasta,
         **extra,
     )
 
@@ -124,8 +206,11 @@ def documento_salida(documento, subido_por_nombre) -> DocumentoSalida:
     )
 
 
-def listar(contexto: Contexto, busqueda: str | None, paginacion: Paginacion):
-    consulta = _consulta(cooperativa_del_contexto(contexto))
+def listar(contexto: Contexto, busqueda: str | None, paginacion: Paginacion, declaracion: str | None = None):
+    cooperativa_id = cooperativa_del_contexto(contexto)
+    consulta = _consulta(cooperativa_id)
+    if declaracion:
+        consulta = consulta.where(_filtro_declaracion(cooperativa_id, declaracion))
     if busqueda:
         texto = busqueda.strip()
         consulta = consulta.where(

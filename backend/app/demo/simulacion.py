@@ -39,6 +39,7 @@ from typing import Any
 from shapely.geometry import shape
 
 from app import ubigeo
+from app.catalogos import declaracion_productor as cuestionario
 from app.catalogos import etapas_proceso
 from app.fechas import LIMA
 
@@ -156,6 +157,17 @@ class Productor:
     apellidos: str
     direccion: str
     copia_dni: Documento
+    hoja_declaracion: Documento  # adenda 5: muestra de la hoja firmada de la declaración anual
+
+
+# Adenda 5: los seis productores trabajan con su familia, sin menores ni agroquímicos, y venden menos de
+# 75 UIT: responden cuatro preguntas y nada queda por atender.
+DECLARACION_FAMILIA = {
+    "quien_trabaja": "solo_familia",
+    "menores_trabajan": "no",
+    "usa_agroquimicos": "no",
+    "ventas_superan_75_uit": "no",
+}
 
 
 @dataclass(frozen=True)
@@ -474,7 +486,24 @@ def _cooperativa(hoy: date, c: dict, geometrias: list[dict]) -> Cooperativa:
             )),),
             "Copia simplificada: solo los datos que usa CacaoTrace.",
         )
-        productores.append(Productor(clave, dni, nombre, c["apellidos"], direccion, copia))
+        respuestas = tuple(
+            (cuestionario.POR_CODIGO[k].texto_personal, cuestionario.POR_CODIGO[k].etiqueta(v))
+            for k, v in DECLARACION_FAMILIA.items()
+        )
+        hoja = Documento(
+            "hoja_declaracion_productor", "Hoja firmada de la declaración anual", "Versión 1", razon, hoy,
+            None,
+            f"{carpeta}/02-productores/{_carpeta(nombre)}-declaracion-anual-firmada.pdf",
+            "Declaración jurada anual del productor (hoja firmada)",
+            (
+                ("Productor", (("Nombres y apellidos", f"{nombre} {c['apellidos']}"), ("DNI", dni))),
+                ("Respuestas", respuestas),
+                ("Firma", (("Firma y huella del productor", "Firmada (muestra)"),)),
+            ),
+            "Muestra simplificada: la hoja real la descarga CacaoTrace al registrar la declaración, con el "
+            "texto completo del Anexo A, y el productor la firma y pone su huella.",
+        )
+        productores.append(Productor(clave, dni, nombre, c["apellidos"], direccion, copia, hoja))
         for j, nombre_parcela in enumerate(NOMBRES_PARCELA[i]):
             n = i * 3 + j
             geometria = geometrias[n]
