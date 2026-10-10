@@ -1,14 +1,15 @@
-"""Parte 4: análisis de cobertura forestal, expediente legal y compuerta de habilitación.
+"""Parte 4: análisis de cobertura forestal, cotejo de documentos y compuerta de habilitación.
 
-El operador y el productor arman el expediente; el administrador decide.
+Desde la adenda 4 la legalidad de la parcela vive en app/routers/legalidad.py. El administrador decide.
 """
 
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends
 
 from app.contexto import Contexto, requiere_rol
+from app.errores import error_api
 from app.schemas.habilitacion import (
     AnalisisDetalle,
     AnalisisSalida,
@@ -17,9 +18,6 @@ from app.schemas.habilitacion import (
     ConvergenciaSalida,
     CotejoNuevo,
     ExcluirEntrada,
-    ExencionNueva,
-    ExencionSalida,
-    ExpedienteSalida,
     FuenteSalida,
     HabilitacionSalida,
     HabilitarEntrada,
@@ -79,12 +77,7 @@ def detalle_analisis(analisis_id: uuid.UUID, contexto: Lectura, storage: Storage
     return analisis.detalle(contexto, registro.actuales(), storage, analisis_id)
 
 
-# ---------- Expediente legal ----------
-
-
-@router.get("/parcelas/{parcela_id}/expediente", response_model=ExpedienteSalida)
-def expediente_de_parcela(parcela_id: uuid.UUID, contexto: Lectura):
-    return expediente.salida(contexto.sesion, parcela_visible(contexto, parcela_id))
+# ---------- Cotejo en fuente ----------
 
 
 @router.post("/documentos/{documento_id}/cotejo", response_model=DocumentoSalida)
@@ -93,24 +86,15 @@ def cotejar_documento(documento_id: uuid.UUID, datos: CotejoNuevo, contexto: Reg
     return documento_salida(expediente.cotejar(contexto, documento, datos.nota), None)
 
 
-@router.post("/parcelas/{parcela_id}/exenciones", response_model=ExencionSalida, status_code=201)
-def declarar_exencion(parcela_id: uuid.UUID, datos: ExencionNueva, contexto: Administrador):
-    parcela = parcela_visible(contexto, parcela_id)
-    e = expediente.declarar_exencion(contexto, parcela, datos.tipo, datos.motivo)
-    return ExencionSalida(
-        id=e.id,
-        tipo=e.tipo,
-        motivo=e.motivo,
-        declarada_en=e.declarada_en,
-        declarada_por_nombre=None,
-        retirada_en=None,
+@router.post("/parcelas/{parcela_id}/exenciones", status_code=422)
+def declarar_exencion(parcela_id: uuid.UUID, contexto: Administrador):
+    """Adenda 4, sección 6: ya no se declaran exenciones; las anteriores se conservan como historial."""
+    parcela_visible(contexto, parcela_id)
+    raise error_api(
+        422,
+        "exenciones_sin_efecto",
+        "Ya no se declaran exenciones: el sistema calcula qué requisitos no aplican desde el perfil legal.",
     )
-
-
-@router.post("/exenciones/{exencion_id}/retirar", status_code=204)
-def retirar_exencion(exencion_id: uuid.UUID, contexto: Administrador) -> Response:
-    expediente.retirar_exencion(contexto, exencion_id)
-    return Response(status_code=204)
 
 
 # ---------- Compuerta de habilitación ----------

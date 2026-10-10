@@ -257,12 +257,17 @@ def test_exportar_geojson_sin_datos_personales(api, operador, productor):
 def test_mapa_en_geojson(api, operador, productor):
     api.como(operador)
     crear_parcela(api, productor.id, rectangulo(100, 100))
+    crear_parcela(
+        api, productor.id, rectangulo(100, 100, norte_m=500), nombre="Otra", midagri_estado="validado"
+    )
     coleccion = api.get("/parcelas", params={"formato": "geojson"}).json()
     assert coleccion["type"] == "FeatureCollection"
-    propiedades = coleccion["features"][0]["properties"]
-    # Desde la Parte 4 toda parcela nueva trae expediente_incompleto hasta completar su expediente.
-    assert propiedades["estado_mapa"] == "con_alertas"
-    assert "superposicion" not in propiedades["alertas"]
+    propiedades = {f["properties"]["nombre"]: f["properties"] for f in coleccion["features"]}
+    # Adenda 4: el perfil legal sin completar no es una alerta (lo dice la compuerta); sin sustento de
+    # MIDAGRI, sí.
+    assert propiedades["Parcela Demo"]["estado_mapa"] == "sin_alertas"
+    assert propiedades["Otra"]["estado_mapa"] == "con_alertas"
+    assert "superposicion" not in propiedades["Otra"]["alertas"]
 
 
 def test_desactivar(api, sesion, operador, productor):

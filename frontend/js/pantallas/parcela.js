@@ -1,7 +1,7 @@
 // Detalle de parcela, con el inspector del diseño: cabecera con código, estado y área, y pestañas.
 // General: mapa con alertas y superposiciones al lado, datos, documentos e historial de cambios.
-// Parte 4: cobertura forestal, expediente legal y habilitación (parcela-habilitacion.js); adenda 2:
-// imágenes satelitales y revisión de imágenes (parcela-imagenes.js).
+// Parte 4: cobertura forestal y habilitación (parcela-habilitacion.js); adenda 2: imágenes satelitales y
+// revisión de imágenes (parcela-imagenes.js); adenda 4: legalidad por requisito (parcela-legalidad.js).
 // El personal la ve en #/parcelas/{id}; el productor, la suya en #/mis-parcelas/{id}.
 
 import { llamarApi } from "../api.js";
@@ -11,8 +11,9 @@ import { COLORES, capaGeojson, crearMapa, editorGeometria, encuadrar, estilo } f
 import { ESTADOS_MIDAGRI, MOTIVOS_VISITA, hectareas, insigniaAlerta, insigniaHabilitacion, insigniaNivel } from "../textos.js";
 import { abrirModal, cabeceraFicha, campo, confirmar, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 import { camposUbigeo, lugares } from "../ubigeo.js";
-import { cargarPestana, pestanaCobertura, pestanaExpediente, pestanaHabilitacion } from "./parcela-habilitacion.js";
+import { cargarPestana, pestanaCobertura, pestanaHabilitacion } from "./parcela-habilitacion.js";
 import { pestanaImagenes } from "./parcela-imagenes.js";
+import { pestanaLegalidad } from "./parcela-legalidad.js";
 
 const ACCIONES = {
   "parcela.crear": "Registró la parcela",
@@ -31,6 +32,12 @@ const ACCIONES = {
   "revision_imagenes.anular": "Anuló una revisión de imágenes",
   "exencion.declarar": "Declaró que un documento no aplica",
   "exencion.retirar": "Retiró una exención",
+  // Adenda 4
+  "parcela.perfil_declarar": "Declaró un dato del perfil legal",
+  "parcela.cruce_solicitar": "Pidió volver a cruzar con las capas oficiales",
+  "parcela.cruce": "Se cruzó con las capas oficiales",
+  "parcela.incidencia_registrar": "Registró una incidencia",
+  "parcela.incidencia_cerrar": "Cerró una incidencia",
   "parcela.habilitar": "Habilitó la parcela",
   "parcela.observar": "La parcela pasó a observada",
   "parcela.excluir": "Excluyó la parcela",
@@ -44,7 +51,7 @@ const PESTANAS = [
   ["general", "General"],
   ["cobertura", "Cobertura forestal"],
   ["imagenes", "Imágenes"],
-  ["expediente", "Expediente"],
+  ["legalidad", "Legalidad"],
   ["habilitacion", "Habilitación"],
 ];
 // La pestaña abierta sobrevive a la recarga que sigue a guardar algo en ella.
@@ -305,7 +312,7 @@ export default async function parcela({ hash, parametros, recargar }) {
   const cuerpo = h("div", { class: "contenido-pestana" });
   const barra = h("div", { class: "seg", role: "tablist", "aria-label": "Secciones de la parcela" });
   if (recordada.id !== p.id) recordada = { id: p.id, clave: "general" };
-  const generadores = { cobertura: pestanaCobertura, imagenes: pestanaImagenes, expediente: pestanaExpediente, habilitacion: pestanaHabilitacion };
+  const generadores = { cobertura: pestanaCobertura, imagenes: pestanaImagenes, legalidad: pestanaLegalidad, habilitacion: pestanaHabilitacion };
   const ctx = {
     p,
     base: ruta,

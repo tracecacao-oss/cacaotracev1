@@ -3,7 +3,8 @@
 El plan gratuito de Render no ofrece un proceso trabajador aparte, así que un único hilo dentro de
 la API procesa la cola de análisis, una consulta externa a la vez, y corre la tarea diaria:
 pasar a observada la parcela habilitada que dejó de cumplir, renovar análisis por caducar y, desde la
-Parte 8, recomprobar los lotes listo y bloqueado.
+Parte 8, recomprobar los lotes listo y bloqueado. Desde la adenda 4, también cruza las parcelas con las
+capas oficiales del perfil legal y repite los cruces que fallaron o que tienen más de ANALISIS_VIGENCIA_DIAS.
 Render reinicia el servicio con frecuencia: al arrancar se recupera lo que quedó a medias.
 """
 
@@ -13,7 +14,8 @@ import time
 
 from app.db import SesionLocal
 from app.scripts import reprocesar_whisp
-from app.services import analisis, habilitacion, imagenes, recomprobacion
+from app.services import analisis, cruce, habilitacion, imagenes, recomprobacion
+from app.services.capas_legales.registro import Capas
 from app.services.fuentes import Fuente
 from app.storage import ClienteStorage
 
@@ -25,9 +27,9 @@ PRIMERA_TAREA_DIARIA = 120  # segundos después de arrancar
 
 
 class Trabajador(threading.Thread):
-    def __init__(self, fuentes: dict[str, Fuente], storage: ClienteStorage):
+    def __init__(self, fuentes: dict[str, Fuente], storage: ClienteStorage, capas: Capas | None = None):
         super().__init__(name="cacaotrace-analisis", daemon=True)
-        self.fuentes, self.storage = fuentes, storage
+        self.fuentes, self.storage, self.capas = fuentes, storage, capas
         self.ritmo = analisis.Ritmo()
         self.detenido = threading.Event()
 
@@ -44,13 +46,17 @@ class Trabajador(threading.Thread):
         # Parte 8: los lotes listo y bloqueado se recomprueban; solo queda fila si algo cambió.
         with SesionLocal() as sesion:
             recomprobados = recomprobacion.tarea_diaria(sesion)
+        # Adenda 4: los cruces que fallaron, los que nunca corrieron y los antiguos vuelven a la cola.
+        with SesionLocal() as sesion:
+            cruces = cruce.tarea_diaria(sesion)
         log.info(
             "Tarea diaria: %s parcelas observadas, %s análisis renovados, %s juegos de imágenes encolados, "
-            "%s lotes con recomprobación nueva",
+            "%s lotes con recomprobación nueva, %s cruces con capas legales encolados",
             observadas,
             renovados,
             juegos,
             recomprobados,
+            cruces,
         )
 
     def run(self) -> None:
@@ -89,6 +95,9 @@ class Trabajador(threading.Thread):
                 # Adenda 2 de la Parte 4: las imágenes de las parcelas con alerta, en la misma cola.
                 with SesionLocal() as sesion:
                     hubo_trabajo = imagenes.procesar_siguiente(sesion, self.storage) or hubo_trabajo
+                # Adenda 4: el cruce con las capas oficiales, en la misma cola.
+                with SesionLocal() as sesion:
+                    hubo_trabajo = cruce.procesar_siguiente(sesion, self.capas) or hubo_trabajo
             except Exception:
                 log.exception("Falló una vuelta del bucle de análisis")
             if not hubo_trabajo:

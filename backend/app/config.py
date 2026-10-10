@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     # Parte 10: límites del plan gratuito de Supabase para el control de espacio (GET /admin/uso).
     limite_storage_mb: int = Field(1024, gt=0)
     limite_db_mb: int = Field(500, gt=0)
+    # Adenda 4: legalidad de la parcela por requisito. La declaración jurada de tenencia vence sola; el
+    # lindero a esta distancia o menos de un río o un lago "colinda" con él; y las capas oficiales que se
+    # cruzan con la parcela (códigos de app/catalogos/capas_legales.py, separados por comas).
+    declaracion_vigencia_meses: int = Field(12, ge=1)
+    distancia_cuerpo_agua_m: int = Field(100, ge=0, le=5000)
+    capas_legales_activas: str = (
+        "sernanp_anp,sernanp_amortiguamiento,serfor_zonificacion,"
+        "idep_comunidades,ign_hidrografia,sigda_monumentos"
+    )
 
     @field_validator(
         "supabase_secret_key",
@@ -86,6 +95,10 @@ class Settings(BaseSettings):
     @property
     def es_produccion(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def lista_capas_legales(self) -> list[str]:
+        return [c.strip() for c in self.capas_legales_activas.split(",") if c.strip()]
 
     @property
     def lista_cors(self) -> list[str]:

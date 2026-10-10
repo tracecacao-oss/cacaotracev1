@@ -145,6 +145,52 @@ function agregarLeyendaOficial(L, mapa, capas) {
   mapa.on("overlayadd overlayremove", pintar);
 }
 
+/**
+ * Adenda 4: una capa de un servicio ArcGIS REST (MapServer) dibujada con su operación `export`, como una
+ * imagen del tamaño de la vista que se pide de nuevo al moverla. Al servicio solo le llega el recuadro visible.
+ */
+export function capaArcGIS(L, { servicio, numeros, atribucion, opacidad = 0.55 }) {
+  const Capa = L.Layer.extend({
+    onAdd(mapa) {
+      this._mapa = mapa;
+      this._imagen = null;
+      this._pedir();
+      mapa.on("moveend", this._pedir, this);
+    },
+    onRemove(mapa) {
+      mapa.off("moveend", this._pedir, this);
+      this._imagen?.remove();
+      this._imagen = null;
+    },
+    getAttribution: () => atribucion,
+    _pedir() {
+      const mapa = this._mapa;
+      const limites = mapa.getBounds();
+      const tamano = mapa.getSize();
+      if (!tamano.x || !tamano.y) return;
+      const so = mapa.options.crs.project(limites.getSouthWest());
+      const ne = mapa.options.crs.project(limites.getNorthEast());
+      const parametros = new URLSearchParams({
+        bbox: [so.x, so.y, ne.x, ne.y].join(","),
+        bboxSR: "3857",
+        imageSR: "3857",
+        size: `${tamano.x},${tamano.y}`,
+        dpi: "96",
+        format: "png32",
+        transparent: "true",
+        layers: `show:${numeros.join(",")}`,
+        f: "image",
+      });
+      const nueva = L.imageOverlay(`${servicio}/export?${parametros}`, limites, { opacity: opacidad, interactive: false });
+      const anterior = this._imagen;
+      nueva.once("load", () => anterior?.remove());
+      nueva.addTo(mapa);
+      this._imagen = nueva;
+    },
+  });
+  return new Capa();
+}
+
 /** Crea un mapa en el contenedor, con capas de satélite (si hay clave) y calles. */
 export async function crearMapa(contenedor, { coordenadas = true, capasOficiales = false } = {}) {
   const L = await cargarMapas();

@@ -14,8 +14,9 @@ Decisiones (en el LEEME del paquete):
 - Las dos cooperativas son de demostración (Parte 10): sus DOP, DPP y DEX llevan la marca de agua.
 - Cada cooperativa tiene un administrador y un operador: el operador registra las tandas y el administrador
   las valida, para que el DEX no muestre "registro y validación por la misma persona".
-- Las parcelas son de propiedad titulada: el CUSAF y la autorización forestal se declaran "no aplica" con
-  su motivo; los otros cuatro documentos se cargan.
+- Las parcelas son de propiedad titulada (adenda 4): se carga su título y el operador declara su perfil
+  legal; lo que responde el cruce con las capas oficiales no se declara, salvo que el cruce no haya
+  respondido. Ya no hay exenciones ni documentos laborales, tributarios o de zonificación.
 - La plantilla de proceso se llena con "Llenar con la plantilla sugerida": las etapas que se confirman sin
   cambiar lugar, método y distancia salen en el DPP como "no verificado".
 - Los pesos de las tandas dan proporciones exactas en cada corrida, así que la genealogía no depende del
@@ -49,13 +50,11 @@ CALIDAD = "Grado 1"
 HUMEDAD = Decimal("7.0")
 FIN_VIGENCIA_MINIMO = date(2027, 6, 30)
 
-MOTIVO_CUSAF = (
-    "La parcela es de propiedad privada, inscrita en SUNARP a nombre del productor, y no está en tierras "
-    "forestales del Estado: no corresponde un contrato de cesión en uso para sistemas agroforestales."
-)
-MOTIVO_SERFOR = (
-    "En la parcela no hay aprovechamiento forestal ni cambio de uso de bosque: es cultivo agrícola desde "
-    "antes de 2020, así que no requiere autorización forestal de SERFOR ni de la autoridad regional."
+# Adenda 4: lo que el operador declara del perfil legal de cada parcela (propietario con título, sin riego).
+PERFIL_DECLARADO = (
+    ("tenencia_tipo", "propietario"),
+    ("usa_riego", "no"),
+    ("anio_instalacion_cultivo", "2014"),
 )
 NOTA_HABILITACION_ALERTA = (
     "Se habilita después de revisar las imágenes satelitales de la parcela: antes del 31/12/2020 ya era "
@@ -171,7 +170,7 @@ class Parcela:
     ubicacion: tuple[str, str, str]
     carpeta: str
     documentos: tuple[Documento, ...]
-    exenciones: tuple[tuple[str, str, str], ...]  # (tipo, nombre, motivo)
+    perfil: tuple[tuple[str, str], ...]  # (variable, valor) que declara el operador (adenda 4)
 
 
 @dataclass(frozen=True)
@@ -510,70 +509,11 @@ def _cooperativa(hoy: date, c: dict, geometrias: list[dict]) -> Cooperativa:
                         ("Titularidad", titular),
                     ),
                 ),
-                Documento(
-                    "sunafil", "Sustento laboral ante SUNAFIL", f"SL-{partida}",
-                    "SUNAFIL, Intendencia Regional de San Martín (muestra)", emision, _vence(hoy, 270),
-                    f"{p_carpeta}/sustento-sunafil.pdf",
-                    "Constancia de consulta de antecedentes en materia laboral",
-                    (
-                        (
-                            "Consulta",
-                            titular
-                            + (
-                                ("Resultado", "Sin resoluciones de sanción registradas"),
-                                ("Trabajo en la parcela", "Familiar, sin trabajadores en planilla"),
-                            ),
-                        ),
-                    ),
-                ),
-                Documento(
-                    "sunat", "Ficha RUC u otro sustento de SUNAT", f"CR-{partida}",
-                    "SUNAT", emision, _vence(hoy, 270), f"{p_carpeta}/sustento-sunat.pdf",
-                    "Reporte de consulta RUC por documento de identidad",
-                    (
-                        (
-                            "Consulta",
-                            (
-                                ("Tipo de documento", "DNI"),
-                                ("Número", dni),
-                                ("Resultado", "La persona no registra número de RUC"),
-                                ("Condición", "Productor agrario, persona natural sin RUC"),
-                            ),
-                        ),
-                    ),
-                ),
-                Documento(
-                    "zonificacion", "Sustento de la zonificación forestal de la parcela", f"ZF-{partida}",
-                    "Gobierno Regional de San Martín, Autoridad Regional Ambiental (muestra)", emision,
-                    _vence(hoy, 360), f"{p_carpeta}/zonificacion-forestal.pdf",
-                    "Constancia de zonificación forestal del predio",
-                    (
-                        ("Predio", predio),
-                        (
-                            "Resultado",
-                            (
-                                (
-                                    "Categoría",
-                                    "Tierras con aptitud agropecuaria, fuera de las zonas de "
-                                    "producción forestal",
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
-            )
-            exenciones = (
-                ("cusaf", "Contrato de cesión en uso para sistemas agroforestales (CUSAF)", MOTIVO_CUSAF),
-                (
-                    "autorizacion_serfor",
-                    "Autorización forestal de SERFOR o de la autoridad regional",
-                    MOTIVO_SERFOR,
-                ),
             )
             parcelas.append(
                 Parcela(
                     f"N{n + 1}", f"PA-{n + 1:05d}", clave, nombre_parcela, centro, geometria, area, ubic_p,
-                    p_carpeta, documentos_p, exenciones,
+                    p_carpeta, documentos_p, PERFIL_DECLARADO,
                 )
             )
             # Una tanda por parcela: la corrida A recibe en los días 0 y 1; la B en los días 3 a 5.

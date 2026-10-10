@@ -28,8 +28,9 @@ FUENTES = ("whisp", "gfw", "mapbiomas")
 ESTADOS_ANALISIS = ("pendiente", "en_proceso", "completado", "error")
 MOTIVOS_VISITA = ("analisis_requiere_revision", "verificacion_de_coordenadas", "otro")
 USOS_OBSERVADOS = ("cacao_bajo_sombra", "cacao_sin_sombra", "bosque", "otro_cultivo", "mixto")
-# Los dos documentos de tenencia no admiten exención.
-TIPOS_CON_EXENCION = ("cusaf", "autorizacion_serfor", "sunafil", "sunat", "zonificacion")
+# Adenda 4: las exenciones ya no se declaran; las anteriores se conservan como historial.
+# autorizacion_serfor pasó a llamarse autorizacion_cambio_uso (migración 0016).
+TIPOS_CON_EXENCION = ("cusaf", "autorizacion_cambio_uso", "sunafil", "sunat", "zonificacion")
 DECISIONES = ("habilitar", "observar", "excluir")
 
 

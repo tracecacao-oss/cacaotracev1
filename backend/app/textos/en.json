@@ -9,7 +9,8 @@
     "7": "Information from certification or other third-party verified schemes (Art. 10(2), point (n))",
     "8": "Indigenous peoples, human rights and armed conflict (Art. 10(2), points (c), (d) and (h))",
     "9": "Claims, substantiated concerns and history of non-compliance (Art. 10(2), points (e) and (l))",
-    "10": "Conclusions of the Commission expert groups (Art. 10(2), point (k))"
+    "10": "Conclusions of the Commission expert groups (Art. 10(2), point (k))",
+    "11": "Other information on the legality of production (Art. 10(2), point (m))"
   },
   "criterios_cortos": {
     "1": "forests and deforestation",
@@ -21,7 +22,8 @@
     "7": "third-party certification",
     "8": "indigenous peoples, human rights and armed conflict",
     "9": "claims and history of non-compliance",
-    "10": "conclusions of the expert groups"
+    "10": "conclusions of the expert groups",
+    "11": "other information on legality"
   },
   "citas": {
     "sin_resultado": "{fuente}: no result",
@@ -95,7 +97,19 @@
     "desviacion_fifo": "The stock selection of lot {lote} departed from the FIFO order.",
     "vinculo_fisico_no_comprobado": "The system does not check the physical link between the beans and the plot.",
     "historial_regional_no_cubierto": "The system does not include the deforestation history of the region.",
-    "criterio_no_cubierto": "The system does not cover the criterion “{criterio}”: it is for the operator."
+    "criterio_no_cubierto": "The system does not cover the criterion “{criterio}”: it is for the operator.",
+    "tenencia_sin_documento_formal": "The tenure of {parcela} is supported only by a sworn statement of the producer, signed on {fecha}. Guidance document, requirements {referencias}.",
+    "perfil_declarado_sin_cruce": "In {parcela}, {variables}: a person declared it, not the overlay with the official layer.",
+    "en_area_de_conservacion": "{parcela} overlaps with {areas}, {cita}.",
+    "tierra_forestal_por_excepcion": "{parcela} is on land suited to forestry or protection, {cita}, and is supported by the exception of Law No. 31973 with {documento}. Keeps at least 30 % of its area under forest: {reserva}. Guidance document, requirements {referencias}.",
+    "zonificacion_forestal_desconocida": "The forest zoning layer does not classify the department of {parcela}, {cita}: it is not known whether it is on land suited to forestry or protection.",
+    "en_area_protegida": "{parcela} {situacion}, {cita}. The guidance document asks not to affect threatened species or biodiversity (requirement 2.13).",
+    "comunidad_no_inscrita": "{parcela} is on land of the community {comunidad}, which {inscrita}. Guidance document, requirements {referencias}.",
+    "riego_sin_licencia": "The crop of {parcela} is irrigated and {estado} the water use licence or permit. Guidance document, requirement {referencias}.",
+    "instrumento_ambiental_sin_sustento": "{parcela} has {area} ha and {estado} {instrumento}. Guidance document, requirements {referencias}.",
+    "junto_a_cuerpo_de_agua": "{parcela} borders a river, stream, lake or lagoon{agua}, {cita}. {nota} Guidance document, requirement {referencias}.",
+    "en_patrimonio_cultural": "{parcela} overlaps with an archaeological or cultural heritage site{sitio}, {cita}. {nota} Guidance document, requirement {referencias}.",
+    "incidencia_registrada": "{parcela} has {tipo} incident {estado}, recorded on {fecha}. Source: {fuente}."
   },
   "mensaje": {
     "analisis_requiere_revision": "The forest cover analysis of {sujetos}, which {aporta} {peso} % of the lot, returned {citas}.",
@@ -135,7 +149,19 @@
     "desviacion_fifo": "The stock selection of the lot departed from the FIFO order.",
     "vinculo_fisico_no_comprobado": "The system does not check the physical link between the beans and the plot.",
     "historial_regional_no_cubierto": "The system does not include the deforestation history of the region.",
-    "criterio_no_cubierto": "The criteria {sujetos} are not covered by the system and are for the operator."
+    "criterio_no_cubierto": "The criteria {sujetos} are not covered by the system and are for the operator.",
+    "tenencia_sin_documento_formal": "The tenure of {sujetos}, which {aporta} {peso} % of the lot, is supported only by a sworn statement of the producer.",
+    "perfil_declarado_sin_cruce": "Legal profile data declared by a person and not by the overlay with the official layer, in {sujetos}, which {aporta} {peso} % of the lot.",
+    "en_area_de_conservacion": "Plots that overlap with a regional or private conservation area: {sujetos}, which {aporta} {peso} % of the lot.",
+    "tierra_forestal_por_excepcion": "Plots on forest land supported by the exception of Law No. 31973: {sujetos}, which {aporta} {peso} % of the lot.",
+    "zonificacion_forestal_desconocida": "Plots in departments that the forest zoning layer does not classify: {sujetos}, which {aporta} {peso} % of the lot.",
+    "en_area_protegida": "Plots inside a natural protected area or in its buffer zone: {sujetos}, which {aporta} {peso} % of the lot.",
+    "comunidad_no_inscrita": "Plots on land of a community not registered in the Public Registries, or without that data: {sujetos}, which {aporta} {peso} % of the lot.",
+    "riego_sin_licencia": "Irrigated plots without a water use licence or permit uploaded: {sujetos}, which {aporta} {peso} % of the lot.",
+    "instrumento_ambiental_sin_sustento": "Plots of 10 ha or more without the environmental management instrument uploaded: {sujetos}, which {aporta} {peso} % of the lot.",
+    "junto_a_cuerpo_de_agua": "Plots that border a river, stream, lake or lagoon: {sujetos}, which {aporta} {peso} % of the lot.",
+    "en_patrimonio_cultural": "Plots that overlap with a cultural heritage site: {sujetos}, which {aporta} {peso} % of the lot.",
+    "incidencia_registrada": "Recorded incidents ({n}), in {sujetos}, which {aporta} {peso} % of the lot."
   },
   "comun": {
     "aporta_uno": "contributes",
@@ -181,7 +207,28 @@
     "criterio_citado": "“{criterio}”",
     "proporcion_conjuntos": "{parcela} ({n} of {total} datasets)",
     "registra_uno": "records",
-    "registra_varios": "record"
+    "registra_varios": "record",
+    "cita_capa": "according to the layer “{capas}”, queried on {fecha}",
+    "cita_declarado": "as declared by a person on {fecha}",
+    "anp_dentro": "is inside {area} and is supported by {sustento}",
+    "anp_dentro_sin_sustento": "is inside {area} and has no conservation agreement uploaded",
+    "anp_amortiguamiento": "is in the buffer zone of {area}",
+    "sin_nombre": "no name in the layer",
+    "sin_nota": "No note has been recorded.",
+    "con_nota": "A note has been recorded.",
+    "agua_cerca": " ({nombre}, {distancia} m from the boundary)",
+    "sitio": " ({nombre})",
+    "documento_emitido": "{documento}, issued on {fecha}",
+    "no_tiene": "has not uploaded",
+    "tiene_vencido": "only has an expired",
+    "comunidad_no_inscrita": "is not registered in the Public Registries",
+    "comunidad_no_se_sabe": "has no known registration in the Public Registries",
+    "comunidad_sin_nombre": "with no name recorded",
+    "ficha_tecnica": "the Environmental Technical Sheet (Ficha Técnica Ambiental)",
+    "instrumento_mayor": "the DIA, EIA-sd, EIA-d or PAMA",
+    "incidencia_abierta": "open",
+    "incidencia_cerrada": "closed on {fecha}",
+    "reserva_sin_dato": "no answer"
   },
   "clasificaciones": {
     "bajo": "low",
@@ -207,7 +254,12 @@
     "vencido": "expired",
     "faltante": "missing",
     "no_aplica": "not applicable",
-    "no_requerida": "not required"
+    "no_requerida": "not required",
+    "sin_dato": "data missing",
+    "sustentado": "supported",
+    "sin_sustento": "without support",
+    "abierta": "open",
+    "cerrada": "closed"
   },
   "niveles": {
     "declarado": "Declared",
@@ -220,7 +272,11 @@
     "analisis_vigente": "current forest cover analysis",
     "revision_atendida": "image review done",
     "expediente_completo": "complete legal file",
-    "productor_listo": "producer with ID copy and consent"
+    "productor_listo": "producer with ID copy and consent",
+    "perfil_legal_completo": "complete legal profile",
+    "tenencia_sustentada": "tenure with support",
+    "permisos_obligatorios": "mandatory permits with support",
+    "sin_conflicto_de_tenencia": "no open tenure incidents"
   },
   "comprobaciones": {
     "parcelas_habilitadas": "Enabled plots",
@@ -271,7 +327,19 @@
     "certificado_fitosanitario": "Phytosanitary certificate",
     "guia_remision": "Delivery note (guía de remisión)",
     "liquidacion_compra": "Purchase settlement (liquidación de compra)",
-    "certificacion": "Certification"
+    "certificacion": "Certification",
+    "titulo_no_inscrito": "Unregistered property title",
+    "certificado_catastral": "Cadastral information record (Certificado de información catastral)",
+    "contrato_de_uso": "Lease, loan for use or use-assignment contract",
+    "declaracion_jurada_tenencia": "Sworn statement of tenure",
+    "constancia_comunal": "Community record on the use of its land",
+    "acta_comunal": "Community assembly minutes authorising the use",
+    "acuerdo_conservacion": "Conservation agreement with the head of the protected area",
+    "autorizacion_cambio_uso": "Land-use change or clearing authorisation",
+    "constancia_saneamiento_31145": "Record of land titling clean-up under Law No. 31145",
+    "licencia_agua": "Water use licence or permit",
+    "ficha_tecnica_ambiental": "Environmental Technical Sheet (Ficha Técnica Ambiental)",
+    "instrumento_ambiental": "Environmental instrument: DIA, EIA-sd, EIA-d or PAMA"
   },
   "datos_lote": {
     "orden": "Order",
@@ -350,7 +418,7 @@
     "punto": "Point",
     "poligono": "Polygon",
     "respaldo": "Backing per plot",
-    "respaldo_sub": "Its DOPs, its enabling, what each analysis source said and its legal file.",
+    "respaldo_sub": "Its DOPs, its enablement, what each analysis source said and its legality by requirement.",
     "dops": "DOP",
     "habilitacion": "Enabling",
     "decidio": "Decided by",
@@ -400,12 +468,12 @@
     "con_observaciones": "With observations",
     "informe": "Findings report",
     "sujeto": "Subject",
-    "criterio": "Criterion",
+    "criterio": "Theme",
     "peso": "Share of the lot",
     "hecho": "Fact",
     "explicacion": "Explanation",
     "etapa": "Stage",
-    "criterios_titulo": "The ten criteria of Article 10(2) of Regulation (EU) 2023/1115",
+    "criterios_titulo": "The 14 criteria of Article 10(2), grouped into 11 themes",
     "evidencia": "Evidence documents",
     "evidencia_sub": "They are not in the package. The cooperative provides copies if the importer asks for them.",
     "de": "Of",
@@ -419,7 +487,28 @@
     "tenencia_cubierta": "Not required: tenure is covered by {documento}",
     "uso_suelo": "Land use by year (ha), according to MapBiomas Peru",
     "uso_suelo_nota": "Hectares of each class of the MapBiomas Peru legend (Collection 3) within the plot, year by year, with the class names of the official legend. 30 m pixels in the plot: {pixeles}. No legend class corresponds to cocoa alone.",
-    "clase": "Class"
+    "clase": "Class",
+    "legalidad": "Legality of the plot by requirement",
+    "orientador": "Framework: Guidance document for due diligence on the legality of coffee and cocoa under the EUDR (MIDAGRI, MINCETUR and ADEX; European Forest Institute, 2026). The document itself states that it is not legally binding and is not legal advice. The table states which requirements apply to the plot and what supports them.",
+    "dato": "Legal profile data",
+    "valor": "Value",
+    "origen": "Origin and date",
+    "aproximacion": "approximation: the plot is a point and was overlaid as a circle",
+    "capas": "Official layers queried",
+    "capa": "Layer",
+    "capa_fallo": "The service did not respond",
+    "capa_pendiente": "Not overlaid yet",
+    "capa_sin_zonificacion": "The layer does not classify the department of the plot",
+    "capa_no_figura": "The plot is not shown in the layer",
+    "capa_otras": "also touches: {categorias}",
+    "requisitos_legales": "Legal requirements",
+    "requisito": "Requirement (guidance document reference)",
+    "nivel_diligencia": "Implementation and due diligence",
+    "sustento": "Support",
+    "por_excepcion": "under the exception of Law No. 31973",
+    "incidencias": "Incidents",
+    "tipo": "Type",
+    "descripcion_incidencia": "What was found, source and closure"
   },
   "anexo": {
     "nota_general": "Help for the importer with the due diligence statement fields that come from this flow, in the order of Annex II to Regulation (EU) 2023/1115 (consolidated text of 18/09/2026). It is not a submission to TRACES and does not use its interface.",
@@ -456,5 +545,86 @@
     "To verify the file, open the public verification address: it shows the code, the status, the date, the fingerprint and the cooperative.",
     "",
     "This file is not a Due Diligence Statement, it does not assess the level of risk and it is not signed."
-  ]
+  ],
+  "incidencias": {
+    "tenencia": "a tenure",
+    "ambiental": "an environmental",
+    "otra": "another type of"
+  },
+  "reserva_bosque_30": {
+    "si": "yes",
+    "no": "no",
+    "sin_bosque": "it has no forest"
+  },
+  "variables": {
+    "tenencia_tipo": "the right over the land",
+    "en_anp": "the natural protected area",
+    "en_tierra_forestal": "the forest land",
+    "en_tierra_comunal": "the community land",
+    "junto_a_cuerpo_de_agua": "the closeness to a river or lake",
+    "en_patrimonio_cultural": "the cultural heritage",
+    "usa_riego": "the irrigation",
+    "anio_instalacion_cultivo": "the year the crop was planted",
+    "reserva_bosque_30": "the 30 % forest reserve"
+  },
+  "perfil": {
+    "tenencia_tipo": "Right over the land",
+    "en_anp": "Natural protected area",
+    "en_tierra_forestal": "Land suited to forestry or protection",
+    "en_tierra_comunal": "Community land",
+    "junto_a_cuerpo_de_agua": "Borders a river, stream, lake or lagoon",
+    "en_patrimonio_cultural": "Archaeological or cultural heritage site",
+    "usa_riego": "Irrigation",
+    "anio_instalacion_cultivo": "Year the cocoa was planted",
+    "reserva_bosque_30": "Keeps at least 30 % of its area under forest"
+  },
+  "valores_perfil": {
+    "propietario": "Owner",
+    "poseedor": "Possessor",
+    "uso_por_acuerdo": "Uses another person's land by agreement",
+    "comunal_miembro": "Member of the community that owns the land",
+    "comunal_tercero": "Uses community land without being a member",
+    "titulo_habilitante": "Public land with a use assignment or conservation agreement",
+    "no": "No",
+    "si": "Yes",
+    "dentro": "Inside",
+    "zona_de_amortiguamiento": "In the buffer zone",
+    "sin_zonificacion": "No forest zoning in the layer",
+    "sin_bosque": "Has no forest"
+  },
+  "origenes": {
+    "cruce": "Overlay with the official layer",
+    "declarado": "Declared by a person"
+  },
+  "capas": {
+    "sernanp_anp": "Nationally administered natural protected areas and reserved zones",
+    "sernanp_amortiguamiento": "Buffer zones",
+    "serfor_zonificacion": "Forest zoning",
+    "idep_comunidades": "Native and peasant communities",
+    "ign_hidrografia": "Hydrography of the national 1:100,000 map",
+    "sigda_monumentos": "Delimited pre-Hispanic archaeological monuments"
+  },
+  "requisitos_legales": {
+    "tenencia": "Land tenure",
+    "acuerdo_comunal": "Agreement with the community",
+    "area_protegida": "Conservation agreement in the protected area",
+    "tierra_forestal": "Enabling title on forest or protection land",
+    "agua_de_riego": "Water licence for irrigation",
+    "instrumento_ambiental": "Environmental management instrument",
+    "faja_marginal": "Riparian strip of rivers and lakes",
+    "patrimonio_cultural": "Cultural heritage"
+  },
+  "niveles_orientador": {
+    "alto": "High",
+    "bajo": "Low"
+  },
+  "diligencias": {
+    "aligerada": "Simplified",
+    "estandar": "Standard"
+  },
+  "tipos_incidencia": {
+    "tenencia": "Tenure",
+    "ambiental": "Environmental",
+    "otra": "Other"
+  }
 }

@@ -52,6 +52,18 @@ def catalogo() -> Catalogo:
     return Catalogo(departamentos, provincias, distritos, arbol)
 
 
+@cache
+def _codigos_departamento() -> dict[str, str]:
+    with ARCHIVO.open(encoding="utf-8", newline="") as archivo:
+        return {_clave(f["departamento"]): f["ubigeo"][:2] for f in csv.DictReader(archivo)}
+
+
+def codigo_departamento(nombre: str | None) -> str | None:
+    """El código del INEI del departamento ("SAN MARTIN" → "22"). Adenda 4: la capa de zonificación forestal
+    de SERFOR identifica los departamentos con este código."""
+    return _codigos_departamento().get(_clave(nombre)) if nombre else None
+
+
 def oficial(departamento: str, provincia: str, distrito: str) -> tuple[str, str, str]:
     """Devuelve los nombres oficiales o responde 422 diciendo cuál no está en el catálogo."""
     c = catalogo()

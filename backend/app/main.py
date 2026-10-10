@@ -24,6 +24,7 @@ from app.routers import (
     habilitacion,
     health,
     imagenes,
+    legalidad,
     mi,
     parcelas,
     plataforma,
@@ -37,6 +38,7 @@ from app.routers import (
     usuarios,
 )
 from app.services import imagenes as servicio_imagenes
+from app.services.capas_legales import registro as registro_capas
 from app.services.fuentes import Fuente, registro
 from app.storage import ClienteStorage, crear_storage
 
@@ -65,6 +67,7 @@ def crear_app(
     storage: ClienteStorage | None = None,
     fuentes: dict[str, Fuente] | None = None,
     imagenes_proveedores: servicio_imagenes.Proveedores | None = None,
+    capas_legales: registro_capas.Capas | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     con_docs = not settings.es_produccion
@@ -76,7 +79,7 @@ def crear_app(
         if settings.analisis_en_segundo_plano and app.state.storage is not None:
             from app.trabajador import Trabajador
 
-            trabajador = Trabajador(app.state.fuentes, app.state.storage)
+            trabajador = Trabajador(app.state.fuentes, app.state.storage, registro_capas.actuales())
             trabajador.start()
         elif settings.analisis_en_segundo_plano:
             log.warning("Sin Storage configurado: el análisis de cobertura no se procesa")
@@ -103,6 +106,8 @@ def crear_app(
     registro.fijar(app.state.fuentes)
     # Adenda 2 de la Parte 4: Sentinel-2 (Copernicus) y Esri Wayback. Las pruebas fijan los suyos, simulados.
     servicio_imagenes.fijar(imagenes_proveedores or servicio_imagenes.construir(settings))
+    # Adenda 4: las capas oficiales del perfil legal. Las pruebas fijan las suyas, con HTTP simulado.
+    registro_capas.fijar(capas_legales or registro_capas.construir(settings))
     app.state.limite_publico = LimitePorIp()
 
     app.add_middleware(
@@ -157,6 +162,7 @@ def crear_app(
         auditoria,
         ubigeos,
         habilitacion,
+        legalidad,
         imagenes,
         recepcion,
         proceso,

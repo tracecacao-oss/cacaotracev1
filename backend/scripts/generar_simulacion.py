@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.catalogos import perfil_legal  # noqa: E402
 from app.demo import simulacion as sim  # noqa: E402
 from app.demo.simulacion_pdf import MARCA, documento  # noqa: E402
 from app.fechas import LIMA, hoy_lima  # noqa: E402
@@ -78,6 +79,9 @@ def geometria_de(p: sim.Parcela) -> str:
 COPIAR, TECLEAR, ELEGIR, MARCAR, ARCHIVO, CONFIRMAR = (
     "copiar", "teclear", "elegir", "marcar", "archivo", "confirmar"
 )
+# Adenda 4: las preguntas del perfil legal que declara el operador, como se ven en la pestaña Legalidad.
+ETIQUETA_PERFIL = {v.codigo: v.pregunta for v in perfil_legal.VARIABLES}
+VALOR_PERFIL = {"propietario": "Propietario", "no": "No", "si": "Sí"}
 AYUDA_MODO = {
     COPIAR: "Copia y pega",
     TECLEAR: "Escríbelo",
@@ -402,18 +406,28 @@ def _cooperativa(g: Guion, k: int, c: sim.Cooperativa) -> None:
                 "Número (partida, constancia o contrato)",
             )
 
-    # --- Administrador: no aplica y habilitación ---
+    # --- Operador: perfil legal (adenda 4) ---
     for p in c.parcelas:
-        for _tipo, nombre, motivo in p.exenciones:
-            g.paso(
-                f"{p.codigo}: {nombre} no aplica",
-                admin,
-                f"Parcela {p.codigo} › pestaña Expediente › fila «{nombre}» › Declarar que no aplica",
-                [
-                    ("Por qué no aplica (mínimo 30 caracteres)", motivo, COPIAR),
-                ],
-                "Declarar que no aplica",
-            )
+        g.paso(
+            f"{p.codigo}: perfil legal",
+            operador,
+            f"Parcela {p.codigo} › pestaña Legalidad › bloque Perfil",
+            [
+                (
+                    "Antes",
+                    "Espera a que el cruce con las capas oficiales responda las cinco preguntas de los "
+                    "mapas; si alguna queda sin respuesta, declárala «No»",
+                    CONFIRMAR,
+                ),
+                *(
+                    (ETIQUETA_PERFIL[variable], VALOR_PERFIL.get(valor, valor), ELEGIR)
+                    for variable, valor in p.perfil
+                ),
+            ],
+            "Guardar cada respuesta",
+        )
+
+    # --- Administrador: habilitación ---
     g.paso(
         "Habilitar las 9 parcelas",
         admin,
@@ -647,9 +661,9 @@ def _resultado(c: sim.Cooperativa) -> str:
         + ", ".join(p.codigo for p in c.parcelas)
         + "), 9 tandas validadas con su DOP.</li>"
         "<li>Lote cerrado con su DEX vigente.</li>"
-        "<li>En el informe de hallazgos se verán, sin bloquear nada: las exenciones declaradas (CUSAF y "
-        "autorización forestal de cada parcela), documentos sin cotejar, coordenadas no recorridas en "
-        "campo, etapas confirmadas con la plantilla y el vínculo físico no comprobado.</li></ul>"
+        "<li>En el informe de hallazgos se verán, sin bloquear nada: documentos sin cotejar, coordenadas no "
+        "recorridas en campo, etapas confirmadas con la plantilla y el vínculo físico no comprobado.</li>"
+        "</ul>"
         "<p class='titulo-tabla'>Stock (Lotes y proceso › Stock) después de confirmar el lote</p>"
         "<table><thead><tr><th>Corrida</th><th>Entrada en baba (kg)</th><th>Tanda final (kg)</th>"
         "<th>Rendimiento</th><th>Tomado por el lote (kg)</th><th>Saldo (kg)</th></tr></thead>"
@@ -757,12 +771,9 @@ def leeme(simulacion: sim.Simulacion) -> str:
             "  02-productores/              La copia del DNI de cada uno de los 3 productores (PDF).",
             (
                 "  03-parcelas/                 Una carpeta por parcela (9): su geometría en GeoJSON y en "
-                "KML, y los 4"
+                "KML, y su"
             ),
-            (
-                "                               documentos de su expediente (título SUNARP, SUNAFIL, SUNAT "
-                "y zonificación)."
-            ),
+            "                               título de propiedad inscrito en SUNARP (PDF).",
             "  04-tandas/                   La liquidación de compra de cada una de las 9 tandas (PDF).",
             "  05-embarque/                 Factura comercial, Lista de empaque, Certificado de origen y",
             "                               Certificado fitosanitario del lote (PDF).",
@@ -773,11 +784,8 @@ def leeme(simulacion: sim.Simulacion) -> str:
         "- Las dos cooperativas se crean como de demostración: sus DOP, DPP y DEX llevan la marca de agua.",
         "- Cada cooperativa tiene un administrador y un operador: el operador registra las tandas y el",
         "  administrador las valida.",
-        (
-            "- Las parcelas son de propiedad titulada: el CUSAF y la autorización forestal se declaran "
-            "\"no aplica\""
-        ),
-        "  con su motivo, que aparece en el informe de hallazgos.",
+        "- Las parcelas son de propiedad titulada: se carga su título y el operador declara su perfil legal;",
+        "  las preguntas de los mapas las responde el cruce con las capas oficiales.",
         (
             "- Solo camino feliz: sin documentos vencidos, sin superposiciones, con rendimientos dentro de "
             "la banda"

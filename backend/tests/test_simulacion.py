@@ -160,8 +160,10 @@ def test_el_paquete_trae_todos_los_archivos(tmp_path, generador):
         pdfs = [zip_.read(n) for n in nombres if n.endswith(".pdf")]
     # Por cooperativa: 6 de la cooperativa, 3 DNI, 9 parcelas x (2 geometrías + 4 documentos),
     # 9 liquidaciones y 4 de embarque. Más el guion y el LEEME.
-    assert len(nombres) == 2 * (6 + 3 + 9 * 6 + 9 + 4) + 2
-    assert len(pdfs) == 2 * (6 + 3 + 9 * 4 + 9 + 4) and all(p.startswith(b"%PDF") for p in pdfs)
+    # Adenda 4: cada parcela trae su GeoJSON, su KML y su título (ya no los documentos laborales,
+    # tributarios ni de zonificación).
+    assert len(nombres) == 2 * (6 + 3 + 9 * 3 + 9 + 4) + 2
+    assert len(pdfs) == 2 * (6 + 3 + 9 * 1 + 9 + 4) and all(p.startswith(b"%PDF") for p in pdfs)
     assert sum(n.endswith(".geojson") for n in nombres) == sum(n.endswith(".kml") for n in nombres) == 18
     # Nombres de archivos y carpetas sin tildes ni eñes.
     assert all(n.isascii() for n in nombres)

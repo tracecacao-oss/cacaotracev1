@@ -369,9 +369,14 @@ PROHIBIDAS = re.compile(
 )
 
 
-# La Parte 8 nombra dos documentos de embarque que emiten terceros; son nombres de documentos, no una
-# afirmación del sistema, y solo se admiten con este texto exacto.
-DOCUMENTOS_CON_NOMBRE_PROPIO = ("Certificado de origen", "Certificado fitosanitario")
+# La Parte 8 nombra dos documentos de embarque que emiten terceros, y la adenda 4 dos documentos de la
+# parcela; son nombres de documentos, no una afirmación del sistema, y solo se admiten con este texto exacto.
+DOCUMENTOS_CON_NOMBRE_PROPIO = (
+    "Certificado de origen",
+    "Certificado fitosanitario",
+    "Certificado de información catastral",
+    "certificado de la organización de usuarios",
+)
 
 
 def _sin_leyenda_del_dop(texto: str) -> str:

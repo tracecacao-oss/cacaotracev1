@@ -64,6 +64,10 @@ from app.models.imagenes import (  # noqa: E402
     ImagenParcela,
     RevisionImagenes,
 )
+from app.models.legalidad import (  # noqa: E402
+    ParcelaIncidencia,
+    ParcelaVariable,
+)
 from app.models.padron import (  # noqa: E402
     ESTADOS_HABILITACION,
     ESTADOS_MIDAGRI,
@@ -111,6 +115,8 @@ __all__ = [
     "TandaFinal",
     "ConsumoImagenes",
     "ImagenParcela",
+    "ParcelaIncidencia",
+    "ParcelaVariable",
     "RevisionImagenes",
     "ConfiguracionCooperativa",
     "Correlativo",

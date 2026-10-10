@@ -9,7 +9,8 @@
     "7": "Información de sistemas de certificación o de verificación por terceros (art. 10.2, letra n)",
     "8": "Pueblos indígenas, derechos humanos y conflictos armados (art. 10.2, letras c, d y h)",
     "9": "Reclamaciones, preocupaciones justificadas e historial de incumplimiento (art. 10.2, letras e y l)",
-    "10": "Conclusiones de los grupos de expertos de la Comisión (art. 10.2, letra k)"
+    "10": "Conclusiones de los grupos de expertos de la Comisión (art. 10.2, letra k)",
+    "11": "Otra información sobre la legalidad de la producción (art. 10.2, letra m)"
   },
   "criterios_cortos": {
     "1": "bosques y deforestación",
@@ -21,7 +22,8 @@
     "7": "certificación de terceros",
     "8": "pueblos indígenas, derechos humanos y conflictos armados",
     "9": "reclamaciones e historial de incumplimiento",
-    "10": "conclusiones de los grupos de expertos"
+    "10": "conclusiones de los grupos de expertos",
+    "11": "otra información sobre la legalidad"
   },
   "citas": {
     "sin_resultado": "{fuente}: sin resultado",
@@ -95,7 +97,19 @@
     "desviacion_fifo": "La selección de stock del lote {lote} se apartó del orden FIFO.",
     "vinculo_fisico_no_comprobado": "El sistema no comprueba el vínculo físico entre el grano y la parcela.",
     "historial_regional_no_cubierto": "El sistema no incluye el historial de deforestación de la región.",
-    "criterio_no_cubierto": "El sistema no cubre el criterio «{criterio}»: corresponde al operador."
+    "criterio_no_cubierto": "El sistema no cubre el criterio «{criterio}»: corresponde al operador.",
+    "tenencia_sin_documento_formal": "La tenencia de {parcela} se sustenta solo con una declaración jurada del productor, firmada el {fecha}. Orientador, requisitos {referencias}.",
+    "perfil_declarado_sin_cruce": "En {parcela}, {variables}: lo declaró una persona y no el cruce con la capa oficial.",
+    "en_area_de_conservacion": "{parcela} se superpone con {areas}, {cita}.",
+    "tierra_forestal_por_excepcion": "{parcela} está en tierra de aptitud forestal o de protección, {cita}, y se sustenta por la excepción de la Ley N.º 31973 con {documento}. Mantiene con bosque al menos 30 % del área: {reserva}. Orientador, requisitos {referencias}.",
+    "zonificacion_forestal_desconocida": "La capa de zonificación forestal no clasifica el departamento de {parcela}, {cita}: no se sabe si está en tierra de aptitud forestal o de protección.",
+    "en_area_protegida": "{parcela} {situacion}, {cita}. El orientador pide no afectar especies amenazadas ni la biodiversidad (requisito 2.13).",
+    "comunidad_no_inscrita": "{parcela} está en tierra de la comunidad {comunidad}, que {inscrita}. Orientador, requisitos {referencias}.",
+    "riego_sin_licencia": "El cultivo de {parcela} se riega y {estado} la licencia o el permiso de uso de agua. Orientador, requisito {referencias}.",
+    "instrumento_ambiental_sin_sustento": "{parcela} tiene {area} ha y {estado} {instrumento}. Orientador, requisitos {referencias}.",
+    "junto_a_cuerpo_de_agua": "{parcela} colinda con un río, quebrada, lago o laguna{agua}, {cita}. {nota} Orientador, requisito {referencias}.",
+    "en_patrimonio_cultural": "{parcela} se superpone con un sitio arqueológico o de patrimonio cultural{sitio}, {cita}. {nota} Orientador, requisito {referencias}.",
+    "incidencia_registrada": "{parcela} tiene una incidencia {tipo} {estado}, registrada el {fecha}. Fuente: {fuente}."
   },
   "mensaje": {
     "analisis_requiere_revision": "El análisis de cobertura forestal de {sujetos}, que {aporta} {peso} % del lote, devolvió {citas}.",
@@ -135,7 +149,19 @@
     "desviacion_fifo": "La selección de stock del lote se apartó del orden FIFO.",
     "vinculo_fisico_no_comprobado": "El sistema no comprueba el vínculo físico entre el grano y la parcela.",
     "historial_regional_no_cubierto": "El sistema no incluye el historial de deforestación de la región.",
-    "criterio_no_cubierto": "Los criterios {sujetos} no están cubiertos por el sistema y corresponden al operador."
+    "criterio_no_cubierto": "Los criterios {sujetos} no están cubiertos por el sistema y corresponden al operador.",
+    "tenencia_sin_documento_formal": "La tenencia de {sujetos}, que {aporta} {peso} % del lote, se sustenta solo con una declaración jurada del productor.",
+    "perfil_declarado_sin_cruce": "Datos del perfil legal declarados por una persona y no por el cruce con la capa oficial, en {sujetos}, que {aporta} {peso} % del lote.",
+    "en_area_de_conservacion": "Parcelas que se superponen con un área de conservación regional o privada: {sujetos}, que {aporta} {peso} % del lote.",
+    "tierra_forestal_por_excepcion": "Parcelas en tierra forestal sustentadas por la excepción de la Ley N.º 31973: {sujetos}, que {aporta} {peso} % del lote.",
+    "zonificacion_forestal_desconocida": "Parcelas en departamentos que la capa de zonificación forestal no clasifica: {sujetos}, que {aporta} {peso} % del lote.",
+    "en_area_protegida": "Parcelas dentro de un área natural protegida o en su zona de amortiguamiento: {sujetos}, que {aporta} {peso} % del lote.",
+    "comunidad_no_inscrita": "Parcelas en tierra de una comunidad no inscrita en Registros Públicos, o sin ese dato: {sujetos}, que {aporta} {peso} % del lote.",
+    "riego_sin_licencia": "Parcelas que se riegan sin licencia o permiso de uso de agua cargados: {sujetos}, que {aporta} {peso} % del lote.",
+    "instrumento_ambiental_sin_sustento": "Parcelas de 10 ha o más sin el instrumento de gestión ambiental cargado: {sujetos}, que {aporta} {peso} % del lote.",
+    "junto_a_cuerpo_de_agua": "Parcelas que colindan con un río, quebrada, lago o laguna: {sujetos}, que {aporta} {peso} % del lote.",
+    "en_patrimonio_cultural": "Parcelas que se superponen con un sitio de patrimonio cultural: {sujetos}, que {aporta} {peso} % del lote.",
+    "incidencia_registrada": "Incidencias registradas ({n}), en {sujetos}, que {aporta} {peso} % del lote."
   },
   "comun": {
     "aporta_uno": "aporta",
@@ -181,7 +207,28 @@
     "criterio_citado": "«{criterio}»",
     "proporcion_conjuntos": "{parcela} ({n} de {total} conjuntos de datos)",
     "registra_uno": "registra",
-    "registra_varios": "registran"
+    "registra_varios": "registran",
+    "cita_capa": "según la capa «{capas}», consultada el {fecha}",
+    "cita_declarado": "según lo declaró una persona el {fecha}",
+    "anp_dentro": "está dentro de {area} y se sustenta con {sustento}",
+    "anp_dentro_sin_sustento": "está dentro de {area} y no tiene un acuerdo de conservación cargado",
+    "anp_amortiguamiento": "está en la zona de amortiguamiento de {area}",
+    "sin_nombre": "sin nombre en la capa",
+    "sin_nota": "No tiene una nota registrada.",
+    "con_nota": "Tiene una nota registrada.",
+    "agua_cerca": " ({nombre}, a {distancia} m del lindero)",
+    "sitio": " ({nombre})",
+    "documento_emitido": "{documento}, emitida el {fecha}",
+    "no_tiene": "no tiene cargado",
+    "tiene_vencido": "solo tiene vencido",
+    "comunidad_no_inscrita": "no está inscrita en Registros Públicos",
+    "comunidad_no_se_sabe": "no se sabe si está inscrita en Registros Públicos",
+    "comunidad_sin_nombre": "sin nombre registrado",
+    "ficha_tecnica": "la Ficha Técnica Ambiental",
+    "instrumento_mayor": "la DIA, el EIA-sd, el EIA-d o el PAMA",
+    "incidencia_abierta": "abierta",
+    "incidencia_cerrada": "cerrada el {fecha}",
+    "reserva_sin_dato": "sin respuesta"
   },
   "clasificaciones": {
     "bajo": "bajo",
@@ -207,7 +254,12 @@
     "vencido": "vencido",
     "faltante": "faltante",
     "no_aplica": "no aplica",
-    "no_requerida": "no requerida"
+    "no_requerida": "no requerida",
+    "sin_dato": "falta el dato",
+    "sustentado": "sustentado",
+    "sin_sustento": "sin sustento",
+    "abierta": "abierta",
+    "cerrada": "cerrada"
   },
   "niveles": {
     "declarado": "Declarado",
@@ -220,7 +272,11 @@
     "analisis_vigente": "análisis de cobertura vigente",
     "revision_atendida": "revisión de imágenes atendida",
     "expediente_completo": "expediente legal completo",
-    "productor_listo": "productor con DNI y consentimiento"
+    "productor_listo": "productor con DNI y consentimiento",
+    "perfil_legal_completo": "perfil legal completo",
+    "tenencia_sustentada": "tenencia con sustento",
+    "permisos_obligatorios": "permisos obligatorios con sustento",
+    "sin_conflicto_de_tenencia": "sin incidencias de tenencia abiertas"
   },
   "comprobaciones": {
     "parcelas_habilitadas": "Parcelas habilitadas",
@@ -271,7 +327,19 @@
     "certificado_fitosanitario": "Certificado fitosanitario",
     "guia_remision": "Guía de remisión",
     "liquidacion_compra": "Liquidación de compra",
-    "certificacion": "Certificación"
+    "certificacion": "Certificación",
+    "titulo_no_inscrito": "Título de propiedad no inscrito",
+    "certificado_catastral": "Certificado de información catastral",
+    "contrato_de_uso": "Contrato de arrendamiento, comodato o cesión en uso",
+    "declaracion_jurada_tenencia": "Declaración jurada de tenencia",
+    "constancia_comunal": "Constancia de la comunidad sobre el uso de su tierra",
+    "acta_comunal": "Acta de asamblea comunal que autoriza el uso",
+    "acuerdo_conservacion": "Acuerdo de conservación con la jefatura del área protegida",
+    "autorizacion_cambio_uso": "Autorización de cambio de uso o de desbosque",
+    "constancia_saneamiento_31145": "Constancia de saneamiento del predio por la Ley N.º 31145",
+    "licencia_agua": "Licencia o permiso de uso de agua",
+    "ficha_tecnica_ambiental": "Ficha Técnica Ambiental",
+    "instrumento_ambiental": "Instrumento ambiental: DIA, EIA-sd, EIA-d o PAMA"
   },
   "datos_lote": {
     "orden": "Orden",
@@ -350,7 +418,7 @@
     "punto": "Punto",
     "poligono": "Polígono",
     "respaldo": "Respaldo por parcela",
-    "respaldo_sub": "Sus DOP, su habilitación, lo que dijo cada fuente de análisis y su expediente legal.",
+    "respaldo_sub": "Sus DOP, su habilitación, lo que dijo cada fuente de análisis y su legalidad por requisito.",
     "dops": "DOP",
     "habilitacion": "Habilitación",
     "decidio": "Decidió",
@@ -400,12 +468,12 @@
     "con_observaciones": "Con observaciones",
     "informe": "Informe de hallazgos",
     "sujeto": "Sujeto",
-    "criterio": "Criterio",
+    "criterio": "Tema",
     "peso": "Peso en el lote",
     "hecho": "Hecho",
     "explicacion": "Explicación",
     "etapa": "Etapa",
-    "criterios_titulo": "Los diez criterios del artículo 10, apartado 2, del Reglamento (UE) 2023/1115",
+    "criterios_titulo": "Los 14 criterios del artículo 10, apartado 2, agrupados en 11 temas",
     "evidencia": "Documentos de evidencia",
     "evidencia_sub": "No van en el paquete. La cooperativa entrega copias si el importador las pide.",
     "de": "De",
@@ -419,7 +487,28 @@
     "tenencia_cubierta": "No requerida: la tenencia está cubierta por {documento}",
     "uso_suelo": "Uso del suelo por año (ha), según MapBiomas Perú",
     "uso_suelo_nota": "Hectáreas de cada clase de la leyenda de MapBiomas Perú (Colección 3) dentro de la parcela, año por año. Píxeles de 30 m en la parcela: {pixeles}. Ninguna clase de la leyenda corresponde solo al cacao.",
-    "clase": "Clase"
+    "clase": "Clase",
+    "legalidad": "Legalidad de la parcela por requisito",
+    "orientador": "Marco: Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco del EUDR (MIDAGRI, MINCETUR y ADEX; European Forest Institute, 2026). El propio documento dice que no es jurídicamente vinculante ni asesoría legal. El cuadro dice qué requisitos le aplican a la parcela y con qué se sustentan.",
+    "dato": "Dato del perfil legal",
+    "valor": "Valor",
+    "origen": "Origen y fecha",
+    "aproximacion": "aproximación: la parcela es un punto y se cruzó como círculo",
+    "capas": "Capas oficiales consultadas",
+    "capa": "Capa",
+    "capa_fallo": "El servicio no respondió",
+    "capa_pendiente": "Sin cruzar todavía",
+    "capa_sin_zonificacion": "La capa no clasifica el departamento de la parcela",
+    "capa_no_figura": "La parcela no figura en la capa",
+    "capa_otras": "también toca: {categorias}",
+    "requisitos_legales": "Requisitos legales",
+    "requisito": "Requisito (referencia del orientador)",
+    "nivel_diligencia": "Implementación y diligencia",
+    "sustento": "Sustento",
+    "por_excepcion": "por la excepción de la Ley N.º 31973",
+    "incidencias": "Incidencias",
+    "tipo": "Tipo",
+    "descripcion_incidencia": "Qué se encontró, fuente y cierre"
   },
   "anexo": {
     "nota_general": "Ayuda para el importador con los campos de la declaración de diligencia debida que salen de este flujo, en el orden del Anexo II del Reglamento (UE) 2023/1115 (texto consolidado del 18/09/2026). No es un envío a TRACES ni usa su interfaz.",
@@ -456,5 +545,86 @@
     "Para verificar el expediente, abra la dirección de verificación pública: muestra el código, el estado, la fecha, la huella y la cooperativa.",
     "",
     "Este expediente no es una Declaración de Diligencia Debida, no evalúa el nivel de riesgo y no lleva firma."
-  ]
+  ],
+  "incidencias": {
+    "tenencia": "de tenencia",
+    "ambiental": "ambiental",
+    "otra": "de otro tipo"
+  },
+  "reserva_bosque_30": {
+    "si": "sí",
+    "no": "no",
+    "sin_bosque": "no tiene bosque"
+  },
+  "variables": {
+    "tenencia_tipo": "el derecho sobre la tierra",
+    "en_anp": "el área natural protegida",
+    "en_tierra_forestal": "la tierra forestal",
+    "en_tierra_comunal": "la tierra comunal",
+    "junto_a_cuerpo_de_agua": "la cercanía a un río o un lago",
+    "en_patrimonio_cultural": "el patrimonio cultural",
+    "usa_riego": "el riego",
+    "anio_instalacion_cultivo": "el año de instalación del cultivo",
+    "reserva_bosque_30": "la reserva de 30 % de bosque"
+  },
+  "perfil": {
+    "tenencia_tipo": "Derecho sobre la tierra",
+    "en_anp": "Área natural protegida",
+    "en_tierra_forestal": "Tierra de aptitud forestal o de protección",
+    "en_tierra_comunal": "Tierra de una comunidad",
+    "junto_a_cuerpo_de_agua": "Colinda con un río, quebrada, lago o laguna",
+    "en_patrimonio_cultural": "Sitio arqueológico o de patrimonio cultural",
+    "usa_riego": "Riego",
+    "anio_instalacion_cultivo": "Año de instalación del cacao",
+    "reserva_bosque_30": "Mantiene con bosque al menos 30 % del área"
+  },
+  "valores_perfil": {
+    "propietario": "Propietario",
+    "poseedor": "Poseedor",
+    "uso_por_acuerdo": "Usa la tierra de otro por acuerdo",
+    "comunal_miembro": "Miembro de la comunidad dueña de la tierra",
+    "comunal_tercero": "Usa tierra de una comunidad sin ser miembro",
+    "titulo_habilitante": "Tierra pública con cesión en uso o acuerdo de conservación",
+    "no": "No",
+    "si": "Sí",
+    "dentro": "Dentro",
+    "zona_de_amortiguamiento": "En zona de amortiguamiento",
+    "sin_zonificacion": "Sin zonificación forestal en la capa",
+    "sin_bosque": "No tiene bosque"
+  },
+  "origenes": {
+    "cruce": "Cruce con la capa oficial",
+    "declarado": "Declarado por una persona"
+  },
+  "capas": {
+    "sernanp_anp": "Áreas naturales protegidas de administración nacional y zonas reservadas",
+    "sernanp_amortiguamiento": "Zonas de amortiguamiento",
+    "serfor_zonificacion": "Zonificación forestal",
+    "idep_comunidades": "Comunidades nativas y campesinas",
+    "ign_hidrografia": "Hidrografía de la carta nacional 1:100 000",
+    "sigda_monumentos": "Monumentos arqueológicos prehispánicos delimitados"
+  },
+  "requisitos_legales": {
+    "tenencia": "Tenencia de la tierra",
+    "acuerdo_comunal": "Acuerdo con la comunidad",
+    "area_protegida": "Acuerdo de conservación en el área protegida",
+    "tierra_forestal": "Título habilitante en tierra forestal o de protección",
+    "agua_de_riego": "Licencia de agua para riego",
+    "instrumento_ambiental": "Instrumento de gestión ambiental",
+    "faja_marginal": "Faja marginal de ríos y lagos",
+    "patrimonio_cultural": "Patrimonio cultural"
+  },
+  "niveles_orientador": {
+    "alto": "Alto",
+    "bajo": "Bajo"
+  },
+  "diligencias": {
+    "aligerada": "Aligerada",
+    "estandar": "Estándar"
+  },
+  "tipos_incidencia": {
+    "tenencia": "Tenencia",
+    "ambiental": "Ambiental",
+    "otra": "Otra"
+  }
 }

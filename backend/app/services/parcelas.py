@@ -29,7 +29,7 @@ from app.schemas.parcelas import (
     SuperposicionDeParcela,
     SuperposicionPrevista,
 )
-from app.services import analisis, documentos, geometria, habilitacion, limites, superposiciones
+from app.services import analisis, cruce, documentos, geometria, habilitacion, limites, superposiciones
 from app.services.auditoria import aplicar_cambios, registrar_auditoria
 from app.services.documentos import Archivo
 from app.services.expediente import no_excluida
@@ -512,8 +512,10 @@ def crear(
         sesion.add(parcela)
         sesion.flush()
         superposiciones.recalcular(sesion, parcela, solapes, motivo=None)
-        # Parte 4: el análisis de cobertura se lanza solo al crear la parcela.
+        # Parte 4: el análisis de cobertura se lanza solo al crear la parcela. Adenda 4: también el cruce con
+        # las capas oficiales del perfil legal.
         analisis.solicitar(sesion, registro.actuales(), parcela)
+        cruce.solicitar(sesion, parcela)
         registrar_auditoria(
             contexto,
             "parcela.crear",
@@ -608,8 +610,15 @@ def editar(contexto: Contexto, parcela_id: uuid.UUID, datos: ParcelaCambios) -> 
         parcela.geometria_actualizada_en = ahora()
         sesion.flush()
         superposiciones.recalcular(sesion, parcela, solapes, motivo="Se corrigió la geometría.")
-        # Parte 4: los análisis previos quedan obsoletos y se solicita uno nuevo.
+        # Parte 4: los análisis previos quedan obsoletos y se solicita uno nuevo. Adenda 4: el cruce también.
         analisis.solicitar(sesion, registro.actuales(), parcela)
+        cruce.solicitar(sesion, parcela, geometria_nueva=True)
+    elif parcela.tipo_geometria == "punto" and "area_declarada_ha" in cambios:
+        # Un punto se cruza como círculo con su área declarada: otro círculo, otro cruce.
+        cruce.solicitar(sesion, parcela, geometria_nueva=True)
+    elif "departamento" in cambios:
+        # La zonificación forestal se decide por departamento.
+        cruce.solicitar(sesion, parcela)
     if cambios:
         registrar_auditoria(contexto, "parcela.editar", "parcela", parcela.id, cambios)
     sesion.commit()

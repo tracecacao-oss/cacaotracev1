@@ -11,7 +11,8 @@ from typing import Any
 from app import textos
 
 GRUPOS = ("impide_cierre", "requiere_atencion", "no_verificado")
-CRITERIOS = tuple(range(1, 11))
+# Adenda 4: el tema 11, "Otra información sobre la legalidad de la producción (art. 10.2, letra m)".
+CRITERIOS = tuple(range(1, 12))
 # Criterios que el sistema no cubre: se nombran para que el operador sepa qué le queda por cubrir.
 NO_CUBIERTOS = (8, 9, 10)
 
@@ -26,14 +27,31 @@ class Entrada:
 CATALOGO: dict[str, Entrada] = {
     # Etapa 1, parcela
     "analisis_requiere_revision": Entrada("requiere_atencion", 1, 1),
+    # Ya no se genera (adenda 4): lo reemplaza instrumento_ambiental_sin_sustento. Queda para los DEX
+    # emitidos.
     "diez_hectareas_o_mas": Entrada("requiere_atencion", 1, 1),
     "area_discrepante": Entrada("requiere_atencion", 1, 3),
     "superposicion_aceptada": Entrada("requiere_atencion", 1, 3),
     "superposicion_con_excluida": Entrada("requiere_atencion", 1, 3),
     "tenencia_solo_posesion": Entrada("requiere_atencion", 1, 4),
-    # Pedido del equipo del 2026-10-07: una declaración de la cooperativa sin documento que la respalde.
+    # Pedido del equipo del 2026-10-07: una declaración de la cooperativa sin documento que la respalde. Ya no
+    # se genera (adenda 4): queda para los DEX emitidos.
     "exencion_declarada": Entrada("no_verificado", 1, 4),
     "documento_por_vencer": Entrada("requiere_atencion", 1, 4),
+    # Adenda 4, sección 12: un requisito sin sustento va a Requiere atención si su diligencia es estándar y a
+    # No verificado si es aligerada; un hecho que el orientador pide mirar con atención, a Requiere atención.
+    "en_area_protegida": Entrada("requiere_atencion", 1, 1),
+    "en_area_de_conservacion": Entrada("requiere_atencion", 1, 1),
+    "tierra_forestal_por_excepcion": Entrada("requiere_atencion", 1, 4),
+    "en_patrimonio_cultural": Entrada("requiere_atencion", 1, 4),
+    "junto_a_cuerpo_de_agua": Entrada("requiere_atencion", 1, 11),
+    "incidencia_registrada": Entrada("requiere_atencion", 1, None),
+    "tenencia_sin_documento_formal": Entrada("no_verificado", 1, 4),
+    "comunidad_no_inscrita": Entrada("no_verificado", 1, 4),
+    "zonificacion_forestal_desconocida": Entrada("no_verificado", 1, 4),
+    "perfil_declarado_sin_cruce": Entrada("no_verificado", 1, 5),
+    "riego_sin_licencia": Entrada("no_verificado", 1, 11),
+    "instrumento_ambiental_sin_sustento": Entrada("no_verificado", 1, 11),
     # Adenda de la Parte 4, sección 8
     "conjuntos_registran_bosque_2020": Entrada("requiere_atencion", 1, 1),
     "conjuntos_registran_cambio_posterior": Entrada("requiere_atencion", 1, 1),
@@ -88,7 +106,15 @@ CRITERIO_COMPROBACION = {
     "documentos_embarque_completos": 3,
 }
 # Requisitos de habilitación que tocan la tenencia y la legalidad (criterio 4); los demás, criterio 1.
-REQUISITOS_CRITERIO_4 = ("expediente_completo", "productor_listo")
+# expediente_completo queda para las decisiones anteriores a la adenda 4.
+REQUISITOS_CRITERIO_4 = (
+    "expediente_completo",
+    "perfil_legal_completo",
+    "tenencia_sustentada",
+    "permisos_obligatorios",
+    "sin_conflicto_de_tenencia",
+    "productor_listo",
+)
 
 
 @dataclass

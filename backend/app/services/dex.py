@@ -44,6 +44,7 @@ from app.services import (
     dops,
     geometria,
     hallazgos,
+    legalidad,
     recomprobacion,
     sello,
 )
@@ -53,7 +54,8 @@ from app.services.lotes import lote_visible
 from app.services.parcelas import _area_total
 from app.storage import ClienteStorage, ErrorStorage
 
-VERSION_CONTENIDO = 1
+# 2: adenda 4, el respaldo de cada parcela trae su legalidad por requisito en lugar de las siete casillas.
+VERSION_CONTENIDO = 2
 REFERENCIA_ANEXO = (
     "Reglamento (UE) 2023/1115, anexo II; texto consolidado del 18/09/2026 (CELEX 02023R1115-20260918)"
 )
@@ -235,7 +237,8 @@ def _bloque_respaldo(contexto: Contexto, d: hallazgos.DatosLote) -> list[dict[st
             },
             "cobertura": cobertura,
             "convergencia": convergencia,
-            "expediente": dops._bloque_expediente(contexto, p),
+            # Adenda 4: la legalidad por requisito en lugar de las siete casillas.
+            "legalidad": legalidad.bloque(contexto.sesion, p),
         }
         imagenes = (d.imagenes.get(p.id) or (None, {}))[0]
         if imagenes:
@@ -297,11 +300,12 @@ def _evidencia(contenido: dict[str, Any], d: hallazgos.DatosLote, certificacione
                 }
             )
     for r in contenido["respaldo"]:
-        for casilla in r["expediente"]["casillas"]:
-            if casilla.get("documento"):
-                lista.append(
-                    {"tipo": casilla["codigo"], "de": r["parcela"], **_resumen_doc(casilla["documento"])}
-                )
+        vistos = set()
+        for requisito in r["legalidad"]["requisitos"]:
+            doc = requisito.get("documento")
+            if doc and doc["sha256"] not in vistos:
+                vistos.add(doc["sha256"])
+                lista.append({"tipo": doc["tipo"], "de": r["parcela"], **_resumen_doc(doc)})
     for t in sorted(d.tandas.values(), key=lambda t: t.codigo):
         bloque = (d.dop_de_tanda[t.id].contenido or {}).get("tanda") or {}
         doc = bloque.get("documento_entrega") or bloque.get("guia_remision")

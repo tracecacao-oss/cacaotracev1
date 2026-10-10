@@ -43,6 +43,13 @@ export const ALERTAS = {
   documento_vencido: "Un documento legal está vencido",
   tenencia_solo_posesion: "La tenencia se apoya solo en una constancia de posesión",
   superposicion_con_excluida: "Se superpone con una parcela excluida",
+  // Adenda 4: legalidad por requisito.
+  tenencia_sin_documento_formal: "La tenencia se sustenta solo con una declaración jurada",
+  tierra_forestal_por_excepcion: "En tierra forestal, sustentada por la excepción de la Ley N.º 31973",
+  zonificacion_forestal_desconocida: "La capa de zonificación forestal no clasifica su departamento",
+  en_zona_de_amortiguamiento: "Está en la zona de amortiguamiento de un área protegida",
+  requisito_sin_sustento: "Un requisito legal que no bloquea está sin sustento o vencido",
+  incidencia_abierta: "Tiene una incidencia abierta",
 };
 const ALERTAS_GRAVES = new Set(["superposicion", "superposicion_con_excluida", "documento_vencido", "analisis_con_error"]);
 
@@ -65,7 +72,12 @@ export const REQUISITOS = {
   sin_superposiciones_abiertas: "Sin superposiciones abiertas",
   analisis_vigente: "Análisis de cobertura vigente",
   revision_atendida: "Revisión de imágenes atendida",
+  // Antes de la adenda 4; queda para las decisiones ya registradas.
   expediente_completo: "Expediente legal completo",
+  perfil_legal_completo: "Perfil legal completo",
+  tenencia_sustentada: "Tenencia con sustento",
+  permisos_obligatorios: "Permisos obligatorios con sustento",
+  sin_conflicto_de_tenencia: "Sin incidencias de tenencia abiertas",
   productor_listo: "Productor con DNI documentado y consentimiento",
 };
 
@@ -76,7 +88,21 @@ export const REQUISITOS_PRODUCTOR = {
   analisis_vigente: "Falta el análisis de bosque, que hace la cooperativa",
   revision_atendida: "Falta que la cooperativa revise imágenes satelitales de tu parcela",
   expediente_completo: "Faltan documentos de tu parcela, como el título o la constancia de posesión",
+  perfil_legal_completo: "Faltan datos de tu parcela que la cooperativa registra en la pestaña Legalidad",
+  tenencia_sustentada: "Falta el documento de tu derecho sobre la tierra, o la declaración jurada firmada",
+  permisos_obligatorios: "Falta un permiso de tu parcela: acuerdo con la comunidad, acuerdo de conservación o contrato forestal",
+  sin_conflicto_de_tenencia: "Hay un reclamo sobre tu tierra que la cooperativa está revisando",
   productor_listo: "Falta la foto de tu DNI o aceptar el uso de tus datos",
+};
+
+// Adenda 4: estados de un requisito legal. Dicen con qué se sustenta, nunca que se cumple.
+export const ESTADOS_REQUISITO = {
+  sustentado: ["ok", "Sustentado"],
+  sin_sustento: ["bad", "Sin sustento"],
+  no_aplica: ["info", "No aplica"],
+  por_vencer: ["warn", "Por vencer"],
+  vencido: ["bad", "Vencido"],
+  sin_dato: ["", "Falta el dato"],
 };
 
 export const ESTADOS_CASILLA = {

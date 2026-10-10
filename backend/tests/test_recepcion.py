@@ -33,8 +33,8 @@ from tests.factorias import crear_parcela, rectangulo
 from tests.habilitacion_util import (
     PDF,
     documento_legal,
-    expediente_completo,
     fuentes_configuradas,
+    legalidad_completa,
     productor_listo,
 )
 from tests.habilitacion_util import analisis_completado as analisis_hecho
@@ -97,7 +97,7 @@ def _parcela(api, sesion, operador, productor, nombre="Parcela de Recepción", e
 
 def _habilitada(api, sesion, admin, operador, productor, **kw) -> Parcela:
     parcela = _parcela(api, sesion, operador, productor, **kw)
-    expediente_completo(sesion, parcela, operador)
+    legalidad_completa(sesion, parcela, operador)
     productor_listo(sesion, productor, operador)
     analisis_hecho(sesion, parcela, "whisp")
     analisis_hecho(sesion, parcela, "gfw")
@@ -387,23 +387,25 @@ def test_validar_emite_el_dop(api, sesion, coop, cancha, operador, productor, pa
         "habilitacion",
         "cobertura",
         "convergencia",
-        "expediente",
+        "legalidad",
         "tanda",
         "alertas",
         "no_verificado",
     }
     assert bloques <= dop.contenido.keys()
+    # Adenda 4: el DOP versión 5 sella la legalidad por requisito en lugar del expediente.
+    assert dop.contenido["version"] == 5 and "expediente" not in dop.contenido
     assert dop.contenido["tanda"]["codigo"] == tanda["codigo"]
     assert dop.contenido["identificacion"]["misma_persona"] is True
     assert dop.contenido["habilitacion"]["decision"]["nota"] == NOTA_HABILITAR
-    assert len(dop.contenido["expediente"]["casillas"]) == 7
-    # Versión 4: la casilla de tenencia que no se requiere dice qué documento la cubre.
-    assert dop.contenido["version"] == 4
-    por_codigo = {c["codigo"]: c for c in dop.contenido["expediente"]["casillas"]}
-    assert por_codigo["titulo_sunarp"]["estado"] == "vigente"
-    assert por_codigo["constancia_posesion"]["estado"] == "no_requerida"
-    constancia = por_codigo["constancia_posesion"]
-    assert constancia["cubierta_por_nombre"] == "Título de propiedad inscrito en SUNARP"
+    legalidad = dop.contenido["legalidad"]
+    por_codigo = {r["codigo"]: r for r in legalidad["requisitos"]}
+    assert len(por_codigo) == 8
+    tenencia = por_codigo["tenencia"]
+    assert (tenencia["estado"], tenencia["documento"]["tipo"]) == ("sustentado", "titulo_sunarp")
+    assert por_codigo["tierra_forestal"]["estado"] == "no_aplica"
+    assert {v["codigo"] for v in legalidad["perfil"]} >= {"tenencia_tipo", "en_anp", "usa_riego"}
+    assert len(legalidad["capas"]) == 6
     assert {c["fuente"] for c in dop.contenido["cobertura"]} == {"whisp", "gfw"}
     acciones = [
         a.accion
@@ -546,6 +548,48 @@ def test_el_pdf_no_usa_frases_prohibidas(api, sesion, cancha, operador, producto
     assert not PROHIBIDAS.search(escrito.replace(LEYENDA, ""))
 
 
+def test_un_dop_anterior_a_la_adenda_4_se_lee_igual(api, sesion, cancha, operador, productor, parcela):
+    """Adenda 4, sección 13: los DOP emitidos antes de la migración conservan su expediente y su huella, y su
+    PDF se sigue armando con las siete casillas."""
+    from app.pdf import dop as pdf_dop
+    from app.services.dops import url_verificacion
+
+    _, dop = _validada(api, sesion, operador, productor, parcela, cancha)
+    anterior = {k: v for k, v in dop.contenido.items() if k != "legalidad"} | {
+        "version": 4,
+        "expediente": {
+            "estado": "completo",
+            "faltan": [],
+            "casillas": [
+                {
+                    "codigo": "titulo_sunarp",
+                    "nombre": "Título de propiedad inscrito en SUNARP",
+                    "estado": "vigente",
+                    "cubierta_por": None,
+                    "cubierta_por_nombre": None,
+                    "nivel": "documentado",
+                    "registro_consultable": True,
+                    "documento": {
+                        "numero": "P-1",
+                        "entidad_emisora": "SUNARP",
+                        "fecha_emision": "2019-01-01",
+                        "fecha_vencimiento": None,
+                        "cotejado_en": None,
+                        "sha256": "ab" * 32,
+                    },
+                    "exencion": None,
+                }
+            ],
+        },
+    }
+    huella = sello.huella(anterior)
+    documento = pdf_dop.documento(anterior, huella, url_verificacion(dop.codigo))
+    documento.output()
+    escrito = "\n".join(documento.textos)
+    assert "Expediente legal" in escrito and "Legalidad de la parcela" not in escrito
+    assert sello.huella(anterior) == huella
+
+
 def test_el_pdf_de_demostracion_lleva_la_marca(api, sesion, cancha, operador, productor, parcela):
     from app.pdf import dop as pdf_dop
     from app.pdf.base import TEXTO_DEMO
@@ -560,7 +604,9 @@ def test_el_pdf_de_demostracion_lleva_la_marca(api, sesion, cancha, operador, pr
     demo = pdf_dop.documento(dop.contenido | {"es_demo": True}, dop.contenido_sha256, url)
     demo.output()
     # Una vez por página (pasa dos veces por normalize_text: ancho y texto), más el aviso del encabezado.
-    assert demo.textos.count(TEXTO_DEMO) == 2 * demo.pages_count + 1
+    # Puede pasar más veces: antes de un salto de página, fpdf2 ensaya en borrador si una fila de tabla
+    # cabe, y ese ensayo también pasa por el encabezado.
+    assert demo.textos.count(TEXTO_DEMO) >= 2 * demo.pages_count + 1
 
 
 # ---------- Adenda 3: documento de entrega ----------

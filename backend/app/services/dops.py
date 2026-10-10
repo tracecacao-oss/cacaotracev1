@@ -24,8 +24,8 @@ from app.services import (
     analisis,
     correlativos,
     documentos,
-    expediente,
     habilitacion,
+    legalidad,
     parcelas,
     productores,
     sello,
@@ -38,7 +38,9 @@ from app.storage import ClienteStorage, ErrorStorage
 # 2: adenda 2 de la Parte 4, las imágenes y la revisión de las parcelas con alerta de análisis.
 # 3: adenda 3 de la Parte 5, el documento de entrega con su tipo en lugar de la guía de remisión. Los DOP
 # anteriores conservan su bloque "guia_remision": su contenido está sellado.
-VERSION_CONTENIDO = 4
+# 5: adenda 4, el bloque "legalidad" (perfil, requisitos, incidencias y capas consultadas) en lugar del
+# "expediente". Los DOP anteriores conservan su expediente y se leen como antes.
+VERSION_CONTENIDO = 5
 NIVEL = {
     "declarado": "Declarado",
     "documentado": "Documentado",
@@ -165,40 +167,6 @@ def _bloque_cobertura(contexto: Contexto, parcela: Parcela) -> tuple[list[dict[s
     return cobertura, convergencia
 
 
-def _bloque_expediente(contexto: Contexto, parcela: Parcela) -> dict[str, Any]:
-    salida = expediente.salida(contexto.sesion, parcela)
-    contadas = expediente.expediente(contexto.sesion, parcela.id).casillas
-    casillas = []
-    for c in salida.casillas:
-        doc = contadas[c.codigo].documento
-        casillas.append(
-            {
-                "codigo": c.codigo,
-                "nombre": c.nombre,
-                "estado": c.estado,
-                # Versión 4: la casilla de tenencia que no se requiere dice qué documento la cubre.
-                "cubierta_por": c.cubierta_por,
-                "cubierta_por_nombre": c.cubierta_por_nombre,
-                "nivel": c.nivel,
-                "registro_consultable": c.registro_consultable,
-                "documento": {
-                    "numero": doc.numero,
-                    "entidad_emisora": doc.entidad_emisora,
-                    "fecha_emision": doc.fecha_emision,
-                    "fecha_vencimiento": doc.fecha_vencimiento,
-                    "cotejado_en": doc.cotejado_en,
-                    "sha256": doc.sha256,
-                }
-                if doc
-                else None,
-                "exencion": {"motivo": c.exencion.motivo, "declarada_en": c.exencion.declarada_en}
-                if c.exencion and not c.exencion.retirada_en
-                else None,
-            }
-        )
-    return {"estado": salida.estado, "faltan": salida.faltan, "casillas": casillas}
-
-
 def _bloque_tanda(sesion, tanda: Tanda, evaluacion: dict[str, Any]) -> dict[str, Any]:
     lugar = sesion.get(Lugar, tanda.lugar_id)
     documento = evaluacion["documento"]
@@ -241,13 +209,25 @@ def _no_verificado(contenido: dict[str, Any]) -> list[str]:
         lista.append("Las coordenadas de la parcela no fueron recorridas en campo por un técnico.")
     if contenido["productor"]["dni"]["nivel"] == "declarado":
         lista.append("La identidad del productor está declarada, sin copia del DNI.")
-    for casilla in contenido["expediente"]["casillas"]:
-        if not casilla["documento"]:
+    leg = contenido["legalidad"]
+    vistos = set()
+    for r in leg["requisitos"]:
+        doc = r["documento"]
+        if not doc or doc["sha256"] in vistos:
             continue
-        if not casilla["registro_consultable"]:
-            lista.append(f"{casilla['nombre']}: no tiene registro público contra el cual cotejarse.")
-        elif casilla["nivel"] != "verificado_en_fuente":
-            lista.append(f"{casilla['nombre']}: no se cotejó en su registro.")
+        vistos.add(doc["sha256"])
+        if doc["tipo"] == "declaracion_jurada_tenencia":
+            lista.append(f"{doc['nombre']}: es la palabra del productor; su nivel es declarado.")
+        elif not doc["registro_consultable"]:
+            lista.append(f"{doc['nombre']}: no tiene registro público contra el cual cotejarse.")
+        elif not doc["cotejado_en"]:
+            lista.append(f"{doc['nombre']}: no se cotejó en su registro.")
+    for v in leg["perfil"]:
+        if v["declarado_sin_cruce"]:
+            lista.append(f"{v['pregunta']} Lo declaró una persona, no el cruce con la capa oficial.")
+    for capa in leg["capas"]:
+        if capa["estado"] != "hecho":
+            lista.append(f"{capa['nombre']} ({capa['entidad']}): la parcela no se pudo cruzar con esta capa.")
     for fuente in contenido["cobertura"]:
         if fuente["es_aproximacion"]:
             lista.append(
@@ -306,7 +286,7 @@ def construir_contenido(
         "cobertura": cobertura,
         "convergencia": convergencia,
         **({"imagenes": imagenes} if imagenes else {}),
-        "expediente": _bloque_expediente(contexto, parcela),
+        "legalidad": legalidad.bloque(sesion, parcela),
         "tanda": _bloque_tanda(sesion, tanda, evaluacion),
         "alertas": {
             "tanda": evaluacion["alertas"],

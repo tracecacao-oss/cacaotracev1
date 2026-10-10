@@ -8,15 +8,12 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.contexto import Contexto, requiere_rol
 from app.routers.comun import leer_archivo
-from app.routers.parcelas import TipoDocumentoParcela, cargar_documento_de_parcela
+from app.routers.legalidad import Plantilla, pdf
+from app.routers.parcelas import ClaseTitulo, TipoDocumentoParcela, cargar_documento_de_parcela
 from app.routers.productores import crear_parcela_desde_formulario
-from app.schemas.habilitacion import (
-    AnalisisSalida,
-    ConvergenciaSalida,
-    ExpedienteSalida,
-    HabilitacionSalida,
-)
+from app.schemas.habilitacion import AnalisisSalida, ConvergenciaSalida, HabilitacionSalida
 from app.schemas.imagenes import ImagenesSalida, RevisionSalida
+from app.schemas.legalidad import LegalidadSalida
 from app.schemas.parcelas import DocumentoSalida, ParcelaCambios, ParcelaDetalle, ParcelaSalida, UrlDescarga
 from app.schemas.productores import MisCambios, ProductorDetalle
 from app.schemas.recepcion import DopDetalle, DopSalida, TandaSalida
@@ -24,9 +21,9 @@ from app.services import (
     analisis,
     documentos,
     dops,
-    expediente,
     habilitacion,
     imagenes,
+    legalidad,
     parcelas,
     revisiones_imagenes,
     tandas,
@@ -109,10 +106,20 @@ def cargar_mi_documento_de_parcela(
     entidad_emisora: Annotated[str | None, Form()] = None,
     fecha_emision: Annotated[date | None, Form()] = None,
     fecha_vencimiento: Annotated[date | None, Form()] = None,
+    clase: Annotated[ClaseTitulo | None, Form()] = None,
 ):
     parcela = parcelas.parcela_visible(contexto, parcela_id)
     return cargar_documento_de_parcela(
-        contexto, storage, parcela, tipo, archivo, numero, entidad_emisora, fecha_emision, fecha_vencimiento
+        contexto,
+        storage,
+        parcela,
+        tipo,
+        archivo,
+        numero,
+        entidad_emisora,
+        fecha_emision,
+        fecha_vencimiento,
+        clase,
     )
 
 
@@ -144,9 +151,15 @@ def revisiones_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
     return revisiones_imagenes.listar(contexto.sesion, parcelas.parcela_visible(contexto, parcela_id))
 
 
-@router.get("/parcelas/{parcela_id}/expediente", response_model=ExpedienteSalida)
-def expediente_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
-    return expediente.salida(contexto.sesion, parcelas.parcela_visible(contexto, parcela_id))
+@router.get("/parcelas/{parcela_id}/legalidad", response_model=LegalidadSalida)
+def legalidad_de_mi_parcela(parcela_id: uuid.UUID, contexto: Productor):
+    """Adenda 4: el productor ve su perfil, sus requisitos y sus incidencias; no los edita."""
+    return legalidad.salida(contexto.sesion, parcelas.parcela_visible(contexto, parcela_id))
+
+
+@router.get("/parcelas/{parcela_id}/plantillas/{nombre}")
+def plantilla_de_mi_parcela(parcela_id: uuid.UUID, nombre: Plantilla, contexto: Productor):
+    return pdf(*legalidad.plantilla(contexto.sesion, parcelas.parcela_visible(contexto, parcela_id), nombre))
 
 
 @router.get("/parcelas/{parcela_id}/habilitacion", response_model=HabilitacionSalida)

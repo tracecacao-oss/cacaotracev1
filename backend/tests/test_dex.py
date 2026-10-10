@@ -16,7 +16,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 
 from app import textos
-from app.catalogos import documentos_legales
+from app.catalogos import capas_legales, documentos_legales, perfil_legal
 from app.fechas import ahora, hoy_lima
 from app.models import (
     AnalisisCobertura,
@@ -25,7 +25,6 @@ from app.models import (
     DecisionTanda,
     Dex,
     Documento,
-    ExencionDocumento,
     Lote,
     OrdenCompra,
     Parcela,
@@ -44,9 +43,13 @@ from tests.exportacion_util import tanda_final
 from tests.factorias import crear_parcela, rectangulo
 from tests.habilitacion_util import (
     PDF,
+    PERFIL_BASE,
     analisis_completado,
+    cruce,
+    declarar,
     documento_legal,
     fuentes_configuradas,
+    incidencia,
     productor_listo,
 )
 from tests.imagenes_util import imagen, png, revision
@@ -55,6 +58,7 @@ from tests.test_analisis import DOCUMENTOS_CON_NOMBRE_PROPIO, PROHIBIDAS
 from tests.test_recomprobacion import documento_cooperativa, documento_embarque
 
 NOTA = "Se habilita: expediente completo y análisis de las tres fuentes revisados por la cooperativa."
+NOTA_PATRIMONIO = "Hay un muro de piedra antiguo al borde de la parcela; el cultivo no se acerca a él."
 NOTA_TANDA = "Liquidación emitida por error a un productor con RUC; se anuló y se reemplazó el mismo día."
 EXPLICACION_DPP = "Grano bien fermentado; la balanza se calibró ese mismo día antes de pesar."
 MAPBIOMAS = {
@@ -138,7 +142,7 @@ def _parcela(
     gfw=None,
     mapbiomas=None,
     posesion=False,
-    sin=(),
+    perfil=None,
     vence=None,
     cotejados=False,
     preparar=None,
@@ -149,14 +153,24 @@ def _parcela(
     )
     assert respuesta.status_code == 201, respuesta.text
     parcela = sesion.get(Parcela, uuid.UUID(respuesta.json()["id"]))
+    # Adenda 4: el perfil legal (solo aplica la tenencia, salvo `perfil`) y el documento de tenencia.
     tenencia = "constancia_posesion" if posesion else "titulo_sunarp"
-    for tipo in (tenencia, "cusaf", "autorizacion_serfor", "sunafil", "sunat", "zonificacion"):
-        if tipo in sin:
-            continue
-        consultable = documentos_legales.POR_CODIGO[tipo].registro_consultable
-        documento_legal(
-            sesion, parcela, tipo, operador, vence=(vence or {}).get(tipo), cotejado=cotejados and consultable
-        )
+    valores = PERFIL_BASE | {"tenencia_tipo": "poseedor" if posesion else "propietario"} | (perfil or {})
+    declarar(sesion, parcela, operador, **valores)
+    # El cruce con las capas oficiales respondió lo mismo que se declaró.
+    for variable in perfil_legal.CRUZABLES:
+        capas = [c.codigo for c in capas_legales.CAPAS if c.variable == variable]
+        cruce(sesion, parcela, variable, valores[variable], {"capas": capas})
+    consultable = documentos_legales.POR_CODIGO[tenencia].registro_consultable
+    documento_legal(
+        sesion,
+        parcela,
+        tenencia,
+        operador,
+        vence=(vence or {}).get(tenencia),
+        cotejado=cotejados and consultable,
+        emitido=date(2019, 3, 1),
+    )
     productor_listo(sesion, productor, operador)
     analisis_completado(sesion, parcela, "whisp", resultado=whisp)
     analisis_completado(
@@ -270,6 +284,36 @@ def con_todo(api, sesion, coop, admin, operador, productor, expediente_cooperati
             doc = sesion.get(Documento, fila.documento_natural_id)
             storage_falso.archivos[doc.ruta] = png()
         revision(sesion, p, admin, observacion_cambio="cambio_visible")
+        # Adenda 4: lo que el cruce encontró y lo que declaró una persona.
+        cruce(
+            sesion,
+            p,
+            "en_anp",
+            "zona_de_amortiguamiento",
+            {
+                "capas": ["sernanp_anp", "sernanp_amortiguamiento"],
+                "zonas_de_amortiguamiento": [{"nombre": "Parque de Prueba", "capa": 8}],
+                "areas_de_conservacion": [
+                    {"nombre": "ACR de Prueba", "categoria": "Área de conservación regional", "capa": 3}
+                ],
+            },
+        )
+        cruce(
+            sesion,
+            p,
+            "junto_a_cuerpo_de_agua",
+            "si",
+            {"capas": ["ign_hidrografia"], "nombre": "Quebrada de Prueba", "distancia_m": 35.0},
+        )
+        cruce(sesion, p, "en_patrimonio_cultural", "no", {"capas": ["sigda_monumentos"], "monumentos": []})
+        declarar(
+            sesion,
+            p,
+            operador,
+            en_patrimonio_cultural=("si", {"nota": NOTA_PATRIMONIO}),
+            en_tierra_comunal=("si", {"comunidad_nombre": "Comunidad de Prueba", "inscrita": "no_se_sabe"}),
+        )
+        documento_legal(sesion, p, "constancia_comunal", operador, vence=hoy + timedelta(days=10))
 
     p1 = _parcela(
         api,
@@ -285,20 +329,22 @@ def con_todo(api, sesion, coop, admin, operador, productor, expediente_cooperati
             "bosque_natural_2020_ha": 0.5,
             "alertas_dist_desde_2021": 0,
         },
-        vence={"sunat": hoy + timedelta(days=10)},
+        perfil={
+            "en_anp": "no",
+            "en_tierra_forestal": "sin_zonificacion",
+            "usa_riego": "si",
+            "junto_a_cuerpo_de_agua": "no",
+            "en_patrimonio_cultural": "no",
+        },
         preparar=preparar_p1,
     )
     excluida = _parcela(api, sesion, admin, operador, productor, 3000)
 
     def preparar_p2(p):
-        sesion.add(
-            ExencionDocumento(
-                parcela_id=p.id,
-                tipo="autorizacion_serfor",
-                motivo="La parcela no tiene cobertura forestal que requiera autorización de SERFOR.",
-                declarada_por=admin.id,
-            )
-        )
+        # Adenda 4: tierra forestal sustentada por la excepción de la Ley N.º 31973 (constancia de 2019),
+        # e incidencia ambiental abierta.
+        declarar(sesion, p, operador, reserva_bosque_30="si")
+        incidencia(sesion, p, operador, tipo="ambiental")
         gfw = sesion.scalar(
             select(AnalisisCobertura).where(
                 AnalisisCobertura.parcela_id == p.id,
@@ -333,7 +379,7 @@ def con_todo(api, sesion, coop, admin, operador, productor, expediente_cooperati
         ancho=400,
         alto=300,
         posesion=True,
-        sin=("autorizacion_serfor",),
+        perfil={"en_tierra_forestal": "si"},
         mapbiomas=MAPBIOMAS | {"pixeles": 6, "pocos_pixeles": True},
         preparar=preparar_p2,
     )
@@ -423,12 +469,10 @@ def con_todo(api, sesion, coop, admin, operador, productor, expediente_cooperati
 
 ESPERADOS_CON_TODO = {
     "analisis_requiere_revision",
-    "diez_hectareas_o_mas",
     "area_discrepante",
     "superposicion_aceptada",
     "superposicion_con_excluida",
     "tenencia_solo_posesion",
-    "exencion_declarada",
     "documento_por_vencer",
     "conjuntos_registran_bosque_2020",
     "conjuntos_registran_cambio_posterior",
@@ -458,6 +502,18 @@ ESPERADOS_CON_TODO = {
     "vinculo_fisico_no_comprobado",
     "historial_regional_no_cubierto",
     "criterio_no_cubierto",
+    # Adenda 4 (tenencia_sin_documento_formal se prueba aparte: pide una tenencia solo declarada).
+    "perfil_declarado_sin_cruce",
+    "en_area_de_conservacion",
+    "tierra_forestal_por_excepcion",
+    "zonificacion_forestal_desconocida",
+    "en_area_protegida",
+    "comunidad_no_inscrita",
+    "riego_sin_licencia",
+    "instrumento_ambiental_sin_sustento",
+    "junto_a_cuerpo_de_agua",
+    "en_patrimonio_cultural",
+    "incidencia_registrada",
 }
 SIEMPRE = {"vinculo_fisico_no_comprobado", "historial_regional_no_cubierto", "criterio_no_cubierto"}
 
@@ -493,8 +549,17 @@ def test_cada_regla_genera_su_hallazgo_con_grupo_etapa_y_criterio(api, operador,
     # Las comprobaciones que fallan: un hallazgo por caso (faltan los cuatro documentos de embarque).
     assert len(por_codigo["comprobacion_fallida"]) == 4
     assert informe["preliminar"] is True and informe["grupos"]["impide_cierre"]["cantidad"] == 4
-    # Pedido del 2026-10-07. La exención no se puede comprobar: va en No verificado.
-    assert {h["grupo"] for h in por_codigo["exencion_declarada"]} == {"no_verificado"}
+    # Adenda 4: las exenciones y las 10 ha ya no generan hallazgos; los de requisito citan al orientador.
+    assert "exencion_declarada" not in por_codigo and "diez_hectareas_o_mas" not in por_codigo
+    riego = por_codigo["riego_sin_licencia"][0]
+    assert (riego["datos"]["referencias"], riego["datos"]["diligencia"]) == ("2.4", "aligerada")
+    assert riego["criterio"] == 11
+    assert {h["criterio"] for h in por_codigo["incidencia_registrada"]} == {11}
+    excepcion = por_codigo["tierra_forestal_por_excepcion"][0]
+    assert excepcion["sujeto"]["codigo"] == p2.codigo and "sí" in excepcion["hecho"]["es"]
+    agua = por_codigo["junto_a_cuerpo_de_agua"][0]["hecho"]["es"]
+    assert "Quebrada de Prueba" in agua and "según la capa" in agua
+    assert por_codigo["en_patrimonio_cultural"][0]["explicacion"] == NOTA_PATRIMONIO
     # Ya no hay un hallazgo por conjuntos que responden distinto.
     assert "conjuntos_discrepan" not in por_codigo
     # Siempre la proporción, nunca "algún conjunto".
@@ -518,36 +583,28 @@ def test_las_reglas_no_se_disparan_en_un_lote_sin_novedades(
         visita(sesion, p, operador)
 
     parcelas = [
-        _parcela(
-            api,
-            sesion,
-            admin,
-            operador,
-            productor,
-            este,
-            sin=("autorizacion_serfor",),
-            cotejados=True,
-            preparar=lambda p: (
-                visitar(p),
-                sesion.add(
-                    ExencionDocumento(
-                        parcela_id=p.id,
-                        tipo="autorizacion_serfor",
-                        motivo="La parcela no tiene cobertura forestal que requiera autorización de SERFOR.",
-                        declarada_por=admin.id,
-                    )
-                ),
-                sesion.flush(),
-            ),
-        )
+        _parcela(api, sesion, admin, operador, productor, este, cotejados=True, preparar=visitar)
         for este in (0, 600)
     ]
     datos = _lote(api, sesion, coop, operador, parcelas)
     lote = _listo(api, sesion, datos, operador)
     informe = _informe(api, lote)
     presentes = set(_codigos(informe))
-    assert presentes == SIEMPRE | {"exencion_declarada", "mapbiomas_sin_cobertura_reciente"}
+    assert presentes == SIEMPRE | {"mapbiomas_sin_cobertura_reciente"}
     assert informe["grupos"]["impide_cierre"]["cantidad"] == 0
+
+
+def test_tenencia_sin_documento_formal(api, sesion, coop, admin, operador, productor, expediente_cooperativa):
+    def solo_declaracion(p):
+        sesion.query(Documento).filter_by(entidad_id=p.id, tipo="constancia_posesion").delete()
+        documento_legal(sesion, p, "declaracion_jurada_tenencia", operador, emitido=hoy_lima())
+
+    parcela = _parcela(api, sesion, admin, operador, productor, 0, posesion=True, preparar=solo_declaracion)
+    datos = _lote(api, sesion, coop, operador, [parcela])
+    hallazgo = _codigos(_informe(api, datos["lote"]))["tenencia_sin_documento_formal"][0]
+    assert (hallazgo["grupo"], hallazgo["criterio"]) == ("no_verificado", 4)
+    assert hallazgo["datos"]["referencias"] == "1.1, 1.2"
+    assert "declaración jurada" in hallazgo["hecho"]["es"] and "sworn statement" in hallazgo["hecho"]["en"]
 
 
 def test_reglas_de_rendimiento_bajo_banda_y_peso_final(api, sesion, operador, basico):
@@ -642,7 +699,8 @@ def test_mensaje_final_y_secciones(api, operador, basico):
     assert {"orden", "masa", "cobertura_pedido", "conjuntos_por_parcela", "tandas_por_documento"} <= set(
         claves
     )
-    assert sorted(informe["criterios"]) == sorted(str(n) for n in range(1, 11))
+    # Adenda 4: el tema 11, otra información sobre la legalidad de la producción.
+    assert sorted(informe["criterios"]) == sorted(str(n) for n in range(1, 12))
 
 
 def test_lote_bloqueado_muestra_el_caso_exacto(api, sesion, operador, basico):
@@ -712,12 +770,16 @@ def test_emision_completa(api, sesion, admin, operador, basico, storage_falso):
     # Seis archivos y el paquete guardados.
     archivos = {a["clave"] for a in dex["archivos"]}
     assert archivos == {"pdf_es", "pdf_en", "geojson", "anexo_ii", "hallazgos", "leeme", "paquete"}
-    # Con el título vigente, la constancia de posesión no se requiere y dice qué la cubre (2026-10-07).
+    # Adenda 4: el respaldo de cada parcela trae su legalidad por requisito, con las seis capas consultadas.
     sellado = sesion.get(Dex, uuid.UUID(dex["id"])).contenido
+    assert sellado["version"] == 2
     for respaldo in sellado["respaldo"]:
-        casillas = respaldo["expediente"]["casillas"]
-        constancia = next(c for c in casillas if c["codigo"] == "constancia_posesion")
-        assert (constancia["estado"], constancia["cubierta_por"]) == ("no_requerida", "titulo_sunarp")
+        leg = respaldo["legalidad"]
+        tenencia = next(r for r in leg["requisitos"] if r["codigo"] == "tenencia")
+        assert (tenencia["estado"], tenencia["documento"]["tipo"]) == ("sustentado", "titulo_sunarp")
+        assert tenencia["referencias"] == ["1.1", "1.2"]
+        assert len(leg["capas"]) == 6 and "no es jurídicamente vinculante" in leg["aviso_orientador"]
+        assert "expediente" not in respaldo
     docs = list(sesion.scalars(select(Documento).where(Documento.entidad == "dex")))
     assert len(docs) == 7 and all(d.ruta in storage_falso.archivos for d in docs)
     paquete = next(d for d in docs if d.tipo == "dex_paquete")

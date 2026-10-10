@@ -462,30 +462,133 @@ def _respaldo(pdf: Pdf, c: dict[str, Any], png: dict[str, dict[str, bytes]]) -> 
         _uso_suelo(pdf, r["cobertura"])
         if r.get("imagenes"):
             _imagenes(pdf, r["imagenes"], png.get(r["parcela"], {}))
-        pdf.subtitulo(pdf.L("casillas"))
-        filas = []
-        for casilla in r["expediente"]["casillas"]:
-            doc, exencion = casilla.get("documento"), casilla.get("exencion")
-            if doc:
-                detalle = _detalle_documento(pdf, doc)
-            elif exencion:
-                detalle = pdf.L("exencion", motivo=pdf.original(exencion["motivo"]))
-            elif casilla.get("cubierta_por"):
-                detalle = pdf.L("tenencia_cubierta", documento=pdf.documento(casilla["cubierta_por"]))
-            else:
-                detalle = ""
-            filas.append(
-                [
-                    pdf.documento(casilla["codigo"]),
-                    pdf.estado(casilla["estado"]),
-                    pdf.nivel(casilla.get("nivel")),
-                    detalle,
-                ]
-            )
+        if r.get("legalidad"):
+            _legalidad(pdf, r["legalidad"])
+        else:
+            _casillas(pdf, r["expediente"])
+
+
+def _casillas(pdf: Pdf, expediente: dict[str, Any]) -> None:
+    """Las siete casillas de los DEX anteriores a la adenda 4."""
+    pdf.subtitulo(pdf.L("casillas"))
+    filas = []
+    for casilla in expediente["casillas"]:
+        doc, exencion = casilla.get("documento"), casilla.get("exencion")
+        if doc:
+            detalle = _detalle_documento(pdf, doc)
+        elif exencion:
+            detalle = pdf.L("exencion", motivo=pdf.original(exencion["motivo"]))
+        elif casilla.get("cubierta_por"):
+            detalle = pdf.L("tenencia_cubierta", documento=pdf.documento(casilla["cubierta_por"]))
+        else:
+            detalle = ""
+        filas.append(
+            [
+                pdf.documento(casilla["codigo"]),
+                pdf.estado(casilla["estado"]),
+                pdf.nivel(casilla.get("nivel")),
+                detalle,
+            ]
+        )
+    pdf.tabla(
+        [pdf.L("casilla"), pdf.L("estado"), pdf.L("nivel"), pdf.L("documento")],
+        filas,
+        [56, 20, 26, pdf.ancho - 102],
+        tamano=6.5,
+    )
+
+
+def _legalidad(pdf: Pdf, leg: dict[str, Any]) -> None:
+    """Adenda 4: el perfil con el origen de cada variable, las capas consultadas, los requisitos con su
+    referencia del orientador y las incidencias."""
+    t = lambda ruta: textos.obtener(pdf.idioma, ruta)  # noqa: E731
+    pdf.subtitulo(pdf.L("legalidad"))
+    pdf.parrafo(pdf.L("orientador"), tamano=7.5)
+    pdf.tabla(
+        [pdf.L("dato"), pdf.L("valor"), pdf.L("origen")],
+        [
+            [
+                t(f"perfil.{v['codigo']}"),
+                (t("valores_perfil").get(v["valor"], v["valor"]) if v["valor"] else t("estados.sin_dato"))
+                + (f" · {pdf.L('aproximacion')}" if v.get("aproximacion") else ""),
+                (t(f"origenes.{v['origen']}") + f" · {pdf.fecha(v.get('registrada_en'))}")
+                if v["origen"]
+                else "—",
+            ]
+            for v in leg["perfil"]
+        ],
+        [54, 50, pdf.ancho - 104],
+        tamano=6.5,
+    )
+    pdf.subtitulo(pdf.L("capas"))
+    filas = []
+    for capa in leg["capas"]:
+        if capa["estado"] == "fallo":
+            resultado = pdf.L("capa_fallo")
+        elif capa["estado"] != "hecho":
+            resultado = pdf.L("capa_pendiente")
+        elif capa.get("sin_zonificacion"):
+            resultado = pdf.L("capa_sin_zonificacion")
+        elif capa["encontrados"]:
+            resultado = "; ".join(capa["encontrados"])
+        else:
+            resultado = pdf.L("capa_no_figura")
+        if capa.get("otras"):
+            resultado += " · " + pdf.L("capa_otras", categorias="; ".join(capa["otras"]))
+        filas.append(
+            [
+                f"{t('capas.' + capa['codigo'])} ({capa['entidad']})",
+                pdf.fecha(capa.get("consultada_en")),
+                resultado,
+            ]
+        )
+    pdf.tabla(
+        [pdf.L("capa"), pdf.L("fecha"), pdf.L("resultado")], filas, [62, 24, pdf.ancho - 86], tamano=6.5
+    )
+    pdf.subtitulo(pdf.L("requisitos_legales"))
+    filas = []
+    for r in leg["requisitos"]:
+        doc = r.get("documento")
+        if doc:
+            sustento = f"{pdf.documento(doc['tipo'])}: {_detalle_documento(pdf, doc)}"
+            if r.get("por_excepcion"):
+                sustento += f" · {pdf.L('por_excepcion')}"
+        elif r.get("nota"):
+            sustento = pdf.original(r["nota"])
+        else:
+            sustento = ""
+        filas.append(
+            [
+                f"{t('requisitos_legales.' + r['codigo'])} ({', '.join(r['referencias'])})",
+                f"{t('niveles_orientador.' + r['nivel_orientador'])} · {t('diligencias.' + r['diligencia'])}",
+                pdf.estado(r["estado"]),
+                pdf.nivel(r.get("nivel")),
+                sustento,
+            ]
+        )
+    pdf.tabla(
+        [pdf.L("requisito"), pdf.L("nivel_diligencia"), pdf.L("estado"), pdf.L("nivel"), pdf.L("sustento")],
+        filas,
+        [48, 28, 18, 22, pdf.ancho - 116],
+        tamano=6.3,
+    )
+    if leg["incidencias"]:
+        pdf.subtitulo(pdf.L("incidencias"))
         pdf.tabla(
-            [pdf.L("casilla"), pdf.L("estado"), pdf.L("nivel"), pdf.L("documento")],
-            filas,
-            [56, 20, 26, pdf.ancho - 102],
+            [pdf.L("tipo"), pdf.L("estado"), pdf.L("fecha"), pdf.L("descripcion_incidencia")],
+            [
+                [
+                    t(f"tipos_incidencia.{i['tipo']}"),
+                    pdf.estado(i["estado"]),
+                    pdf.fecha(i.get("registrada_en")),
+                    pdf.original(
+                        f"{i['descripcion']} ({i['fuente']})"
+                        + (f" / {i['cierre_nota']}" if i.get("cierre_nota") else "")
+                    ),
+                ]
+                for i in leg["incidencias"]
+            ],
+            [22, 18, 24, pdf.ancho - 64],
             tamano=6.5,
         )
 

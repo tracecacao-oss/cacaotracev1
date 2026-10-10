@@ -23,6 +23,11 @@ Adaptaciones a la especificación:
   alerta, el escenario se detiene y lo explica, en vez de registrar una visita.
 - Geometrías: la especificación las toma de backend/tests/datos/, pero app/ no lee tests/. Se arman aquí, en
   el mismo lugar de San Martín que usan las pruebas, con las áreas de la tabla de parcelas.
+- Adenda 4: cada parcela carga solo su documento de tenencia y el operador declara su perfil legal. Las
+  variables que responde el cruce con las capas oficiales se declaran "no" solo si el cruce todavía no
+  respondió; el cruce corre después en el trabajador y, si dice algo más exigente, manda lo que diga.
+  PA-00008 queda con el perfil incompleto (antes: con el expediente incompleto) y el documento que se anula
+  al final es el título de PA-00007 (antes: su sustento laboral, que ya no se carga).
 - Las cuentas nuevas actúan con su contraseña temporal: el cambio obligatorio lo exige la API a las personas
   (app/contexto.py), y cada usuario de demostración la cambia al entrar por primera vez.
 - No registra la clasificación del país: es un dato regulatorio de toda la plataforma y lo fija el equipo.
@@ -44,7 +49,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.auth_admin import ClienteAuthAdmin
-from app.catalogos import documentos_embarque, documentos_legales, etapas_proceso
+from app.catalogos import documentos_embarque, documentos_legales, etapas_proceso, perfil_legal
 from app.contexto import Contexto
 from app.fechas import ahora, dia_lima, hoy_lima
 from app.models import Perfil
@@ -52,7 +57,8 @@ from app.pdf.base import FUENTES
 from app.schemas.cooperativa import CooperativaCambios
 from app.schemas.dex import EmisionDex
 from app.schemas.exportacion import Asignacion, Confirmacion, ImportadorNuevo, OrdenNueva, Seleccion
-from app.schemas.habilitacion import CotejoNuevo, ExcluirEntrada, ExencionNueva, HabilitarEntrada
+from app.schemas.habilitacion import CotejoNuevo, ExcluirEntrada, HabilitarEntrada
+from app.schemas.legalidad import DeclaracionNueva
 from app.schemas.parcelas import Anulacion, ParcelaDatos
 from app.schemas.plataforma import CooperativaNueva
 from app.schemas.proceso import (
@@ -85,6 +91,7 @@ from app.services import (
     embarque,
     expediente,
     habilitacion,
+    legalidad,
     lotes,
     lugares,
     ordenes,
@@ -133,9 +140,9 @@ ESPERA_MAXIMA = timedelta(minutes=15)
 PERIODO_COLA = 5  # segundos entre vueltas mientras la cola de análisis espera un reintento
 
 NOTA_COTEJO = "Cotejo de demostración: datos ficticios, sin consulta real al registro de SUNARP."
-MOTIVO_EXENCION = (
-    "Exención de demostración: la parcela ficticia no tiene cobertura forestal que pida esta autorización."
-)
+# Adenda 4: lo que el operador declara del perfil legal de cada parcela de demostración.
+TENENCIA_TIPO = {"titulo_sunarp": "propietario", "constancia_posesion": "poseedor"}
+PERFIL_DECLARADO = {"usa_riego": "no", "anio_instalacion_cultivo": "2015"}
 NOTA_SUPERPOSICION = (
     "Lindero compartido entre dos productores de demostración: la cooperativa acepta la superposición."
 )
@@ -175,9 +182,10 @@ class ParcelaDemo:
     cultivada_ha: str
     declarada_ha: str | None = None
     tenencia: str = "titulo_sunarp"
-    exencion: str | None = None
-    # Casillas del expediente que se cargan; None: el expediente completo.
+    # Documentos legales que se cargan; None: solo el de tenencia.
     casillas: tuple[str, ...] | None = None
+    # Adenda 4: sin el riego ni el año de instalación, el perfil queda incompleto.
+    perfil_completo: bool = True
 
 
 PARCELAS = (
@@ -186,9 +194,9 @@ PARCELAS = (
     ParcelaDemo("PA-00003", "Dos", 600, 0, 100, 50, "0.2", tenencia="constancia_posesion"),
     ParcelaDemo("PA-00004", "Tres", 0, 300, 100, 100, "0.9"),
     ParcelaDemo("PA-00005", "Cuatro", 350, 350, None, None, "1.5", declarada_ha="1.8"),
-    ParcelaDemo("PA-00006", "Cinco", 600, 300, 120, 100, "1.1", exencion="autorizacion_serfor"),
+    ParcelaDemo("PA-00006", "Cinco", 600, 300, 120, 100, "1.1"),
     ParcelaDemo("PA-00007", "Seis", 700, 300, 100, 100, "0.9"),  # 0.2 ha en común con PA-00006
-    ParcelaDemo("PA-00008", "Siete", 0, 600, 100, 100, "0.9", casillas=("titulo_sunarp",)),
+    ParcelaDemo("PA-00008", "Siete", 0, 600, 100, 100, "0.9", perfil_completo=False),
     ParcelaDemo("PA-00009", "Siete", 300, 600, 100, 100, "0.9", casillas=()),
 )
 POR_CODIGO = {p.codigo: p for p in PARCELAS}
@@ -197,7 +205,7 @@ EXCLUIDA = "PA-00009"
 SUPERPUESTAS = {"PA-00006", "PA-00007"}
 COTEJADA = ("PA-00001", "titulo_sunarp")
 # Al final se anula este documento: la parcela pasa a observada y bloquea el lote 2.
-ANULADO = ("PA-00007", "sunafil")
+ANULADO = ("PA-00007", "titulo_sunarp")
 
 
 def _metros_por_grado(lat: float) -> tuple[float, float]:
@@ -479,7 +487,7 @@ class _Siembra:
         self._expediente_de_la_cooperativa()
         self._productores()
         self._parcelas()
-        self._expedientes_y_habilitacion()
+        self._legalidad_y_habilitacion()
         for corrida in CORRIDAS:
             self._corrida(corrida)
         self._tandas_detenidas()
@@ -684,11 +692,9 @@ class _Siembra:
                 + ".",
             )
 
-    def _expedientes_y_habilitacion(self) -> None:
+    def _legalidad_y_habilitacion(self) -> None:
         for p in PARCELAS:
-            casillas = p.casillas
-            if casillas is None:
-                casillas = (p.tenencia, *(c for c in documentos_legales.CON_EXENCION if c != p.exencion))
+            casillas = p.casillas if p.casillas is not None else (p.tenencia,)
             for numero, tipo in enumerate(casillas, start=1):
                 nombre = documentos_legales.POR_CODIGO[tipo].nombre
                 with _paso(f"Cargar «{nombre}» de {p.codigo}"):
@@ -712,11 +718,8 @@ class _Siembra:
                         datos_legales=datos_legales,
                     )
                 self.documentos_parcela.setdefault(p.codigo, {})[tipo] = documento.id
-            if p.exencion:
-                with _paso(f"Declarar la exención de {p.codigo}"):
-                    parcela = parcelas.parcela_visible(self.admin, self.resultado.parcelas[p.codigo])
-                    datos = ExencionNueva(tipo=p.exencion, motivo=MOTIVO_EXENCION)
-                    expediente.declarar_exencion(self.admin, parcela, datos.tipo, datos.motivo)
+            if p.codigo != EXCLUIDA:
+                self._perfil(p)
         codigo, tipo = COTEJADA
         with _paso(f"Cotejar el título de {codigo}"):
             documento = documentos.documento_visible(self.operador, self.documentos_parcela[codigo][tipo])
@@ -725,6 +728,19 @@ class _Siembra:
         for codigo in HABILITADAS:
             self._habilitar(codigo)
         self._excluir(EXCLUIDA)
+
+    def _perfil(self, p: ParcelaDemo) -> None:
+        """Lo mismo que el endpoint POST /parcelas/{id}/perfil, una variable a la vez."""
+        with _paso(f"Declarar el perfil legal de {p.codigo}"):
+            parcela = parcelas.parcela_visible(self.operador, self.resultado.parcelas[p.codigo])
+            actual = legalidad.legalidad(self.sesion, parcela)
+            respuestas = {"tenencia_tipo": TENENCIA_TIPO[p.tenencia]}
+            if p.perfil_completo:
+                respuestas |= PERFIL_DECLARADO
+                respuestas |= {c: "no" for c in perfil_legal.CRUZABLES if actual.valor(c) is None}
+            for variable, valor in respuestas.items():
+                datos = DeclaracionNueva(variable=variable, valor=valor)
+                legalidad.declarar(self.operador, parcela, datos.variable, datos.valor)
 
     def _aceptar_superposicion(self) -> None:
         paso = f"Aceptar la superposición entre {' y '.join(sorted(SUPERPUESTAS))}"

@@ -20,8 +20,8 @@ from tests.factorias import crear_parcela, rectangulo
 from tests.habilitacion_util import (
     PDF,
     documento_legal,
-    expediente_completo,
     fuentes_configuradas,
+    legalidad_completa,
     productor_listo,
 )
 from tests.habilitacion_util import analisis_completado as analisis_hecho
@@ -118,7 +118,7 @@ def _habilitada(api, sesion, admin, operador, productor, este) -> Parcela:
     )
     assert respuesta.status_code == 201, respuesta.text
     parcela = sesion.get(Parcela, uuid.UUID(respuesta.json()["id"]))
-    expediente_completo(sesion, parcela, operador)
+    legalidad_completa(sesion, parcela, operador)
     productor_listo(sesion, productor, operador)
     analisis_hecho(sesion, parcela, "whisp")
     analisis_hecho(sesion, parcela, "gfw")
