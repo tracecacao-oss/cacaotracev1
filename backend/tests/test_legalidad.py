@@ -289,6 +289,12 @@ def test_zona_de_amortiguamiento_no_pide_documento(api, sesion, operador, parcel
     leg = _leg(api.como(operador), parcela)
     assert _req(leg, "area_protegida")["estado"] == "no_aplica"
     assert "en_zona_de_amortiguamiento" in leg["alertas"]
+    habilitacion = api.get(f"/parcelas/{parcela.id}/habilitacion").json()
+    [detalle] = [d for d in habilitacion["detalle_alertas"] if d["codigo"] == "en_zona_de_amortiguamiento"]
+    assert detalle["pestana"] == "legalidad"
+    assert detalle["lineas"] == [
+        "La parcela está en la zona de amortiguamiento de un área protegida: no pide documento."
+    ]
 
 
 def test_tierra_forestal_con_ccusaf_vigente(api, sesion, operador, parcela):

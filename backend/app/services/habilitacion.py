@@ -10,6 +10,8 @@ a la vista. La exclusión es definitiva y ningún endpoint la revierte.
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, aliased
@@ -17,7 +19,7 @@ from sqlalchemy.orm import Session, aliased
 from app.catalogos import documentos_legales as catalogo
 from app.contexto import Contexto
 from app.errores import error_api
-from app.fechas import ahora
+from app.fechas import ahora, dia_lima
 from app.models import (
     Afiliacion,
     AnalisisCobertura,
@@ -32,6 +34,7 @@ from app.models import (
 )
 from app.schemas.habilitacion import (
     DecisionSalida,
+    DetalleAlerta,
     ExcluirEntrada,
     HabilitacionSalida,
     PorVencerSalida,
@@ -62,6 +65,9 @@ class Evaluacion:
     revision: RevisionImagenes | None = None
     observada_ahora: bool = False
     faltan: list[str] = field(default_factory=list)
+    # Para explicar las alertas: el estado del análisis y la declaración del productor (adenda 5).
+    estado_analisis: dict = field(default_factory=dict)
+    declaracion: object | None = None
 
 
 def _lista(nombres: list[str]) -> str:
@@ -280,6 +286,8 @@ def evaluar(
             procedencia=servicio_visitas.procedencia(parcela, todas_visitas[parcela.id]),
             revision=revision_vigente,
             faltan=[r.codigo for r in requisitos if not r.cumple],
+            estado_analisis=estado_analisis,
+            declaracion=declaracion,
         )
         if parcela.habilitacion_estado == "habilitada" and evaluacion.faltan:
             _observar(sesion, parcela, evaluacion)
@@ -475,6 +483,162 @@ def decisiones(sesion: Session, parcela_id: uuid.UUID) -> list[DecisionSalida]:
     ]
 
 
+INCIDENCIA = {"tenencia": "de tenencia", "ambiental": "ambiental", "otra": "de otro tipo"}
+ESTADO_MIDAGRI = {"sin_observacion": "Sin observación", "en_revision": "En revisión", "validado": "Validado"}
+
+
+def _fecha(valor) -> str:
+    if valor is None:
+        return "—"
+    dia = dia_lima(valor) if isinstance(valor, datetime) else valor
+    return dia.strftime("%d/%m/%Y")
+
+
+def _ha(valor) -> str:
+    return f"{Decimal(valor):.2f}".replace(".", ",") + " ha" if valor is not None else "—"
+
+
+def _superpuestas(sesion: Session, parcela: Parcela, *, solo_excluidas: bool) -> list[str]:
+    """Las otras parcelas con las que se superpone: las abiertas o, si no, las que están excluidas."""
+    otra = aliased(Parcela)
+    consulta = (
+        select(otra.codigo, otra.nombre, Superposicion.area_ha)
+        .join(otra, or_(otra.id == Superposicion.parcela_a_id, otra.id == Superposicion.parcela_b_id))
+        .where(
+            or_(Superposicion.parcela_a_id == parcela.id, Superposicion.parcela_b_id == parcela.id),
+            otra.id != parcela.id,
+        )
+        .order_by(otra.codigo)
+    )
+    if solo_excluidas:
+        consulta = consulta.where(otra.habilitacion_estado == "excluida")
+    else:
+        consulta = consulta.where(Superposicion.estado == "abierta")
+    sufijo = ", excluida" if solo_excluidas else ""
+    return [f"Con {c} ({n}{sufijo}): {_ha(area)} en común." for c, n, area in sesion.execute(consulta)]
+
+
+def detalle_alertas(
+    sesion: Session, parcela: Parcela, evaluacion: Evaluacion, alertas: list[str]
+) -> list[DetalleAlerta]:
+    """Pedido del equipo del 2026-10-10: cada alerta dice qué hay detrás, en concreto, y dónde se atiende.
+    Solo lee lo que ya calcularon las Partes 3 y 4, la legalidad (adenda 4) y la declaración del productor
+    (adenda 5): no cambia cuándo salta una alerta."""
+    salida = []
+    declaracion = evaluacion.declaracion
+    requisitos_productor = list(declaracion.requisitos.values()) if declaracion is not None else []
+    ficha_productor = f"#/productores/{parcela.productor_id}/declaracion"
+    leg = evaluacion.legalidad
+    analisis = evaluacion.estado_analisis
+    requisito = {r.codigo: r for r in evaluacion.requisitos}
+    for codigo in alertas:
+        lineas: list[str] = []
+        pestana = enlace = None
+        if codigo == "area_discrepante":
+            pestana = "general"
+            calculada, declarada = parcela.area_calculada_ha, parcela.area_declarada_ha
+            diferencia = abs(declarada - calculada) / calculada * 100
+            lineas = [
+                f"Área declarada {_ha(declarada)} y calculada del polígono {_ha(calculada)}: difieren "
+                f"{diferencia:.0f} %. Corrige el área declarada o la geometría."
+            ]
+        elif codigo == "diez_hectareas_o_mas":
+            pestana = "general"
+            total = (
+                parcela.area_calculada_ha
+                if parcela.tipo_geometria == "poligono"
+                else parcela.area_declarada_ha
+            )
+            lineas = [f"La parcela tiene {_ha(total)}."]
+        elif codigo == "superposicion":
+            pestana = "general"
+            lineas = _superpuestas(sesion, parcela, solo_excluidas=False)
+        elif codigo == "superposicion_con_excluida":
+            pestana = "general"
+            lineas = _superpuestas(sesion, parcela, solo_excluidas=True)
+        elif codigo == "sin_sustento_midagri":
+            pestana = "general"
+            estado = ESTADO_MIDAGRI.get(parcela.midagri_estado, parcela.midagri_estado)
+            codigo_midagri = f", código {parcela.midagri_codigo}" if parcela.midagri_codigo else ""
+            lineas = [
+                f"En MIDAGRI figura como «{estado}»{codigo_midagri}, y falta cargar el documento "
+                "«Sustento de MIDAGRI» en Documentos."
+            ]
+        elif codigo == "sin_analisis_vigente":
+            pestana = "cobertura"
+            fuentes = [NOMBRE_FUENTE.get(c, c) for c in analisis["sin_vigente"]]
+            lineas = [f"Falta un análisis vigente de: {_lista(fuentes)}."]
+        elif codigo == "analisis_con_error":
+            pestana = "cobertura"
+            fuentes = [NOMBRE_FUENTE.get(c, c) for c in analisis["con_error"]]
+            lineas = [f"Falló el último análisis de: {_lista(fuentes)}. Vuelve a pedirlo."]
+        elif codigo == "analisis_requiere_revision":
+            pestana = "imagenes"
+            lineas = [requisito["revision_atendida"].detalle]
+        elif codigo == "tenencia_sin_documento_formal":
+            pestana = "legalidad"
+            lineas = ["El único sustento de la tenencia es la declaración jurada de tenencia."]
+        elif codigo == "tenencia_solo_posesion":
+            pestana = "legalidad"
+            lineas = ["El único sustento de la tenencia es una constancia de posesión."]
+        elif codigo in ("tierra_forestal_por_excepcion", "zonificacion_forestal_desconocida"):
+            pestana = "legalidad"
+            lineas = [leg.requisitos["tierra_forestal"].motivo]
+        elif codigo == "en_zona_de_amortiguamiento":
+            pestana = "legalidad"
+            fila = leg.perfil["en_anp"].manda
+            zonas = ((fila.detalle or {}) if fila is not None else {}).get("zonas_de_amortiguamiento") or []
+            lineas = [
+                f"Zona de amortiguamiento de {z.get('nombre') or 'un área protegida'}: "
+                f"{_ha(z.get('area_comun_ha'))} en común. No pide documento."
+                for z in zonas
+            ] or [leg.requisitos["area_protegida"].motivo]
+        elif codigo == "productor_por_atender":
+            enlace = ficha_productor
+            for r in requisitos_productor:
+                if r.estado != "por_atender":
+                    continue
+                hechos = [f"{h.texto} {h.etiqueta}" for h in r.hechos]
+                hechos += [f"{p.nombre}: no figura en el registro de SENASA" for p in r.no_figuran]
+                lineas.append(f"{r.requisito.nombre}: " + ("; ".join(hechos) if hechos else r.motivo))
+        elif codigo == "productor_sin_sustento":
+            enlace = ficha_productor
+            lineas = [
+                f"{r.requisito.nombre}: {r.siguiente or r.motivo}"
+                for r in requisitos_productor
+                if r.estado == "sin_sustento"
+            ]
+        elif codigo == "requisito_sin_sustento":
+            pestana = "legalidad"
+            lineas = [
+                f"{r.requisito.nombre}: {'vencido' if r.estado == 'vencido' else 'sin sustento'}. {r.motivo}"
+                for r in leg.requisitos.values()
+                if r.estado in ("sin_sustento", "vencido") and not r.requisito.bloquea
+            ]
+        elif codigo in ("documento_por_vencer", "documento_vencido"):
+            pestana = "legalidad"
+            estado = "por_vencer" if codigo == "documento_por_vencer" else "vencido"
+            for r in leg.requisitos.values():
+                if r.estado != estado:
+                    continue
+                doc = r.sustento if estado == "por_vencer" else r.vencido
+                vence = _fecha(doc.fecha_vencimiento) if doc is not None else "—"
+                lineas.append(
+                    f"{r.requisito.nombre}: {'vence' if estado == 'por_vencer' else 'venció'} el {vence}"
+                )
+        elif codigo == "incidencia_abierta":
+            pestana = "legalidad"
+            lineas = [
+                f"Incidencia {INCIDENCIA.get(i.tipo, i.tipo)} registrada el {_fecha(i.registrada_en)}: "
+                f"{i.descripcion}"
+                for i in leg.incidencias
+                if i.estado == "abierta"
+            ]
+        if lineas:
+            salida.append(DetalleAlerta(codigo=codigo, lineas=lineas, pestana=pestana, enlace=enlace))
+    return salida
+
+
 def obtener(contexto: Contexto, parcela: Parcela) -> HabilitacionSalida:
     evaluacion = evaluar(contexto.sesion, [parcela])[parcela.id]
     alertas = _alertas_completas(contexto, parcela)
@@ -486,6 +650,7 @@ def obtener(contexto: Contexto, parcela: Parcela) -> HabilitacionSalida:
         alertas=alertas,
         nota_obligatoria=nota_obligatoria(evaluacion, alertas),
         decisiones=decisiones(contexto.sesion, parcela.id),
+        detalle_alertas=detalle_alertas(contexto.sesion, parcela, evaluacion, alertas),
     )
 
 

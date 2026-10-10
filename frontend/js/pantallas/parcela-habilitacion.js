@@ -698,6 +698,61 @@ async function abrirExcluir(ctx) {
 
 const DECISION = { habilitar: "Habilitó la parcela", observar: "La pasó a observada (sistema)", excluir: "Excluyó la parcela" };
 
+/**
+ * Pedido del equipo del 2026-10-10: decir arriba, en una frase, por qué la parcela está como está y qué falta
+ * hacer. Una parcela observada que ya cumple todo no vuelve sola a habilitada: lo decide un administrador.
+ */
+function avisoEstado(hab, faltan, admin) {
+  const nombres = faltan.map((r) => REQUISITOS[r.codigo] ?? r.codigo).join(", ");
+  const observada = [...hab.decisiones].find((d) => d.decision === "observar");
+  const quien = admin ? "Revisa las alertas de abajo y pulsa «Habilitar»." : "Lo decide un administrador de la cooperativa.";
+  if (hab.estado === "observada") {
+    const desde = observada ? `el ${fecha(observada.decidida_en)}` : "antes";
+    return hab.puede_habilitar
+      ? h("p", { class: "alerta warn" }, h("b", {}, "Ya cumple todos los requisitos. "), `Sigue observada porque el sistema la pasó a observada ${desde}, cuando le faltaba lo que dice el historial de abajo, y volver a habilitarla no es automático. ${quien}`)
+      : h("p", { class: "alerta bad" }, h("b", {}, "Está observada y no se puede habilitar. "), `Le falta: ${nombres}. Lo que falta en cada uno está marcado con una cruz.`);
+  }
+  if (hab.estado === "pendiente") {
+    return hab.puede_habilitar
+      ? h("p", { class: "alerta info" }, h("b", {}, "Cumple todos los requisitos. "), `Falta que un administrador la habilite. ${admin ? "Revisa las alertas de abajo y pulsa «Habilitar»." : ""}`)
+      : h("p", { class: "alerta warn" }, h("b", {}, "Todavía no se puede habilitar. "), `Le falta: ${nombres}.`);
+  }
+  return null;
+}
+
+const PESTANA_DE_ALERTA = { general: "General", cobertura: "Cobertura forestal", imagenes: "Imágenes", legalidad: "Legalidad" };
+
+/** Cada alerta con lo que hay detrás, en concreto, y a dónde ir para atenderla: otra pestaña de la parcela o la
+ * declaración del productor. Las alertas no impiden habilitar: piden una nota al hacerlo. */
+function bloqueAlertas(hab, ctx) {
+  const detalle = Object.fromEntries((hab.detalle_alertas ?? []).map((d) => [d.codigo, d]));
+  return h(
+    "div",
+    { class: "alertas-detalle" },
+    h("h4", { class: "dex-sub" }, `Alertas (${hab.alertas.length})`),
+    h("p", { class: "panel-sub" }, "No impiden habilitar: al habilitar, la nota debe decir por qué se acepta la parcela a pesar de ellas."),
+    h(
+      "ul",
+      { class: "casillas" },
+      hab.alertas.map((a) => {
+        const d = detalle[a];
+        return h(
+          "li",
+          { class: "casilla" },
+          h(
+            "div",
+            { class: "casilla-h" },
+            insigniaAlerta(a),
+            d?.pestana && h("button", { class: "btn btn-ghost btn-sm", type: "button", onclick: () => ctx.irA(d.pestana) }, `Ir a ${PESTANA_DE_ALERTA[d.pestana]}`),
+            d?.enlace && h("a", { href: d.enlace }, "Ir a la declaración del productor"),
+          ),
+          d && h("ul", { class: "lista-simple" }, d.lineas.map((x) => h("li", {}, x))),
+        );
+      }),
+    ),
+  );
+}
+
 export async function pestanaHabilitacion(ctx) {
   const hab = await llamarApi(`${ctx.base}/habilitacion`);
   const puedo = permisos(ctx);
@@ -734,8 +789,9 @@ export async function pestanaHabilitacion(ctx) {
     sub: ctx.delProductor ? "Lo que le falta a tu parcela para recibir tu cacao." : "Solo un administrador decide. Habilitar o excluir queda registrado con los requisitos y las alertas del momento.",
     acciones: [insigniaHabilitacion(hab.estado), botonHabilitar, botonExcluir],
     contenido: [
+      !ctx.delProductor && avisoEstado(hab, faltan, puedo.admin),
       lista,
-      !ctx.delProductor && hab.alertas.length > 0 && h("div", { class: "fila-acciones" }, hab.alertas.map((a) => insigniaAlerta(a))),
+      !ctx.delProductor && hab.alertas.length > 0 && bloqueAlertas(hab, ctx),
       hab.decisiones.length > 0 &&
         h(
           "ol",
@@ -746,7 +802,8 @@ export async function pestanaHabilitacion(ctx) {
               {},
               h("b", {}, DECISION[d.decision] ?? d.decision),
               h("span", { class: "sec" }, [fecha(d.decidida_en, { hora: true }), d.decidida_por_nombre].filter(Boolean).join(" · ")),
-              d.nota && h("span", { class: "sec" }, d.nota),
+              // La nota del sistema dice lo que faltaba en ese momento, no lo que falta hoy.
+              d.nota && h("span", { class: "sec" }, d.decision === "observar" ? `En ese momento. ${d.nota}` : d.nota),
             ),
           ),
         ),
