@@ -6,8 +6,8 @@
 import { descargarArchivo, llamarApi } from "../api.js";
 import {
   ESTADO_DECLARACION,
-  PAPELES,
   ayudaPregunta,
+  casillasPapeles,
   conNegritas,
   contextoDe,
   controlPregunta,
@@ -17,7 +17,6 @@ import {
   leerControl,
   mostradas,
 } from "../declaracion.js";
-import { formularioCarga, listaDocumentos } from "../documentos.js";
 import { nombreCooperativa } from "../estado.js";
 import { cabeceraFicha, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
 
@@ -49,11 +48,7 @@ export default async function miDeclaracion({ recargar }) {
       por_vencer: `Tu declaración vence el ${fecha(d.vigente?.vigente_hasta)}. Puedes renovarla desde ya.`,
     };
     const responder = h("button", { class: "btn btn-primary", type: "button", onclick: () => irA(visibles()[0].codigo) }, valida ? "Responder de nuevo" : "Responder ahora");
-    const r = d.vigente ? Object.fromEntries(d.vigente.respuestas.map((x) => [x.codigo, x.valor])) : {};
-    const pedidos = [
-      r.quien_trabaja === "permanentes" && ["relacion_trabajadores", PAPELES.relacion_trabajadores],
-      r.ventas_superan_75_uit && r.ventas_superan_75_uit !== "no" && ["declaracion_renta", PAPELES.declaracion_renta],
-    ].filter(Boolean);
+    const papeles = valida ? casillasPapeles(d.vigente, { ruta: "/mi/declaracion/documentos", puedeCargar: true, alCambiar: recargar, textoBoton: "Subir" }) : null;
     return h(
       "section",
       { class: "panel inspector" },
@@ -66,7 +61,8 @@ export default async function miDeclaracion({ recargar }) {
       seccion({
         titulo: valida ? "Tu declaración" : "Lo que falta",
         contenido: [
-          h("p", { class: `alerta ${valida ? "info" : "warn"}` }, mensajes[d.estado]),
+          // Sin declaración vigente, la organización no recibe cacao de sus parcelas: rojo suave.
+          h("p", { class: `alerta ${d.estado === "vigente" ? "info" : d.estado === "por_vencer" ? "warn" : "bad"}` }, mensajes[d.estado]),
           d.aviso_area && h("p", { class: "alerta warn" }, "El área de tus parcelas cambió desde que declaraste: conviene responder de nuevo."),
           h(
             "div",
@@ -102,15 +98,11 @@ export default async function miDeclaracion({ recargar }) {
           sub: `Declarada el ${fecha(d.vigente.declarada_en)}${d.vigente.origen === "productor" ? " desde tu cuenta" : " con tu firma"}.`,
           contenido: rejilla(d.vigente.respuestas.map((x) => ({ etiqueta: x.pregunta, valor: x.etiqueta }))),
         }),
-      valida &&
-        pedidos.length > 0 &&
+      papeles &&
         seccion({
           titulo: "Papeles que piden tus respuestas",
-          sub: `${pedidos.map(([, texto]) => texto).join(". ")}. Toma una foto clara o sube un PDF.`,
-          contenido: [
-            h("div", { class: "tbl-box" }, listaDocumentos(d.vigente.documentos.filter((x) => x.tipo !== "hoja_declaracion_productor"), { alCambiar: recargar })),
-            formularioCarga({ tipos: pedidos, ruta: "/mi/declaracion/documentos", alCargar: recargar, textoBoton: "Subir" }),
-          ],
+          sub: "En amarillo, lo que falta subir; en verde, lo que ya subiste. Toma una foto clara o sube un PDF.",
+          contenido: papeles,
         }),
       !valida &&
         seccion({

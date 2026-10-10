@@ -8,8 +8,8 @@ import {
   ESTADO_DECLARACION,
   ESTADO_REQUISITO_PRODUCTOR,
   NIVEL_ORIENTADOR,
-  PAPELES,
   ayudaPregunta,
+  casillasPapeles,
   contextoDe,
   controlPregunta,
   cuestionario,
@@ -18,11 +18,11 @@ import {
   leerControl,
   mostradas,
 } from "../declaracion.js";
-import { formularioCarga, listaDocumentos } from "../documentos.js";
+import { listaDocumentos } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
 import { hoyLima } from "../fechas.js";
 import { insigniaNivel } from "../textos.js";
-import { abrirModal, campo, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
+import { abrirModal, campo, claseTono, enviarCon, fecha, h, icono, leyendaTonos, ordenarPorTono, rejilla, seccion, toast } from "../ui.js";
 
 const kilos = (valor) => `${Number(valor ?? 0).toLocaleString("es-PE", { maximumFractionDigits: 2 })} kg`;
 const ha = (valor) => `${Number(valor ?? 0).toLocaleString("es-PE", { maximumFractionDigits: 2 })} ha`;
@@ -223,7 +223,8 @@ function estadoArriba(p, d, puedo, cuest, recargar) {
       puedo.registro && h("button", { class: "btn btn-sm btn-primary", type: "button", onclick: () => abrirRegistro(p, d, cuest, recargar) }, icono("mas"), d.estado === "sin_declaracion" ? "Registrar declaración" : "Registrar otra"),
     ],
     contenido: [
-      h("p", { class: `alerta ${valida ? "info" : "warn"}` }, textos[d.estado]),
+      // Sin declaración vigente, sus parcelas no se habilitan: rojo suave.
+      h("p", { class: `alerta ${d.estado === "vigente" ? "info" : d.estado === "por_vencer" ? "warn" : "bad"}` }, textos[d.estado]),
       valida && vigente && h("p", { class: "panel-sub" }, `Declarada el ${fecha(vigente.declarada_en)} ${vigente.origen === "productor" ? "por el productor desde su cuenta" : `con hoja firmada; la registró ${vigente.registrada_por_nombre ?? "el personal"}`}.`),
       d.aviso_area && h("p", { class: "alerta warn" }, d.aviso_area),
       d.por_firmar &&
@@ -262,10 +263,18 @@ function bloqueRespuestas(d) {
   });
 }
 
+/** Ninguno impide habilitar: amarillo si queda algo por atender o sin sustento, verde si está declarado o
+ * sustentado. Sin declaración vigente, sin color: lo que falta es la declaración, arriba en rojo. */
+function tonoRequisito(r) {
+  if (["por_atender", "sin_sustento"].includes(r.estado)) return "falta";
+  if (["declarado", "sustentado"].includes(r.estado)) return "listo";
+  return null;
+}
+
 function filaRequisito(r) {
   return h(
     "li",
-    { class: `casilla requisito-legal estado-${r.estado}` },
+    { class: `${claseTono(tonoRequisito(r))} requisito-legal estado-${r.estado}` },
     h(
       "div",
       { class: "casilla-h" },
@@ -280,7 +289,10 @@ function filaRequisito(r) {
 }
 
 function bloqueRequisitos(d) {
-  const aplican = d.requisitos.filter((r) => r.estado !== "no_aplica");
+  const aplican = ordenarPorTono(
+    d.requisitos.filter((r) => r.estado !== "no_aplica"),
+    tonoRequisito,
+  );
   const noAplican = d.requisitos.filter((r) => r.estado === "no_aplica");
   const sub = "Lo que el orientador pide al productor. Ninguno impide habilitar: lo que queda por atender pide una nota al habilitar y llega al informe de hallazgos.";
   // Sin declaración vigente, los siete quedan sin dato: una línea basta y la lista va plegada.
@@ -298,6 +310,7 @@ function bloqueRequisitos(d) {
     titulo: "Requisitos",
     sub,
     contenido: [
+      leyendaTonos({ bloquea: null, falta: "por atender o sin sustento, no impide", listo: "declarado o sustentado" }),
       h("ul", { class: "casillas" }, aplican.map(filaRequisito)),
       noAplican.length > 0 && h("details", { class: "no-aplican" }, h("summary", {}, `No aplican (${noAplican.length})`), h("ul", { class: "casillas" }, noAplican.map(filaRequisito))),
     ],
@@ -307,11 +320,8 @@ function bloqueRequisitos(d) {
 function bloquePapeles(p, d, cuest, puedo, recargar) {
   const decl = d.vigente ?? d.por_firmar;
   if (!decl) return null;
-  const r = Object.fromEntries(decl.respuestas.map((x) => [x.codigo, x.valor]));
-  const pedidos = [
-    r.quien_trabaja === "permanentes" && ["relacion_trabajadores", PAPELES.relacion_trabajadores],
-    r.ventas_superan_75_uit && r.ventas_superan_75_uit !== "no" && ["declaracion_renta", PAPELES.declaracion_renta],
-  ].filter(Boolean);
+  const tonoProducto = (x) => (x.revision === "figura" ? "listo" : "falta");
+  const otros = decl.documentos.filter((doc) => !["relacion_trabajadores", "declaracion_renta"].includes(doc.tipo));
   const productos =
     decl.productos.length > 0 &&
     h(
@@ -328,10 +338,10 @@ function bloquePapeles(p, d, cuest, puedo, recargar) {
       h(
         "ul",
         { class: "casillas" },
-        decl.productos.map((x) =>
+        ordenarPorTono(decl.productos, tonoProducto).map((x) =>
           h(
             "li",
-            { class: "casilla" },
+            { class: claseTono(tonoProducto(x)) },
             h(
               "div",
               { class: "casilla-h" },
@@ -355,10 +365,15 @@ function bloquePapeles(p, d, cuest, puedo, recargar) {
     sub: "Los papeles pertenecen a esta declaración: al renovarla se piden otra vez si la respuesta los vuelve a pedir.",
     contenido: [
       productos,
-      h("h4", { class: "subtitulo-bloque" }, "Documentos"),
-      h("p", { class: "panel-sub" }, pedidos.length ? `Sus respuestas piden: ${pedidos.map(([, texto]) => texto.charAt(0).toLowerCase() + texto.slice(1)).join("; ")}.` : "Sus respuestas no piden ningún papel."),
-      (decl.documentos.length > 0 || pedidos.length > 0) && h("div", { class: "tbl-box" }, listaDocumentos(decl.documentos, { puedeAnular: puedo.registro, alCambiar: recargar })),
-      puedo.registro && pedidos.length > 0 && formularioCarga({ tipos: pedidos, ruta: `/productores/${p.id}/declaraciones/${decl.id}/documentos`, alCargar: recargar }),
+      h("h4", { class: "subtitulo-bloque" }, "Documentos que piden sus respuestas"),
+      casillasPapeles(decl, {
+        ruta: `/productores/${p.id}/declaraciones/${decl.id}/documentos`,
+        puedeCargar: puedo.registro,
+        puedeAnular: puedo.registro,
+        alCambiar: recargar,
+      }) ?? h("p", { class: "panel-sub" }, "Sus respuestas no piden ningún papel."),
+      otros.length > 0 && h("h4", { class: "subtitulo-bloque" }, "Otros documentos"),
+      otros.length > 0 && h("div", { class: "tbl-box" }, listaDocumentos(otros, { puedeAnular: puedo.registro, alCambiar: recargar })),
     ],
   });
 }

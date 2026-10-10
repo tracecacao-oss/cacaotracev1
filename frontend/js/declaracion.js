@@ -4,7 +4,8 @@
 // texto dice que un productor "cumple": dice qué declaró y qué falta.
 
 import { llamarApi } from "./api.js";
-import { campo, h } from "./ui.js";
+import { anularDocumento, formularioCarga, verDocumento } from "./documentos.js";
+import { campo, claseTono, fecha, h, icono, ordenarPorTono } from "./ui.js";
 
 let cuestionarioCargado = null;
 
@@ -194,6 +195,50 @@ export function leerControl(p, control) {
   }
   const texto = (control.matches?.("input") ? control : control.querySelector("input")).value;
   return texto === "" ? null : Number(texto);
+}
+
+// ---------- Papeles que piden las respuestas (sección 3.3) ----------
+
+/** [[tipo, nombre]] de los papeles que piden las respuestas de una declaración. */
+export function papelesPedidos(declaracion) {
+  const r = Object.fromEntries(declaracion.respuestas.map((x) => [x.codigo, x.valor]));
+  return [
+    r.quien_trabaja === "permanentes" && ["relacion_trabajadores", PAPELES.relacion_trabajadores],
+    r.ventas_superan_75_uit && r.ventas_superan_75_uit !== "no" && ["declaracion_renta", PAPELES.declaracion_renta],
+  ].filter(Boolean);
+}
+
+/** Una casilla por papel pedido: amarilla mientras falta (no impide habilitar) y verde cuando está cargado. */
+export function casillasPapeles(declaracion, { ruta, puedeCargar, puedeAnular = false, alCambiar, textoBoton = "Cargar documento" }) {
+  const pedidos = papelesPedidos(declaracion);
+  if (!pedidos.length) return null;
+  const vigentes = (tipo) => declaracion.documentos.filter((d) => d.tipo === tipo && d.vigente);
+  const tono = ([tipo]) => (vigentes(tipo).length ? "listo" : "falta");
+  return h(
+    "ul",
+    { class: "casillas" },
+    ordenarPorTono(pedidos, tono).map(([tipo, nombre]) =>
+      h(
+        "li",
+        { class: claseTono(tono([tipo])) },
+        h("div", { class: "casilla-h" }, h("b", {}, nombre), insignia(vigentes(tipo).length ? ["ok", "Cargado"] : ["warn", "Falta"])),
+        vigentes(tipo).map((d) =>
+          h(
+            "div",
+            { class: "casilla-doc" },
+            h("span", {}, `${d.nombre_original} · cargado el ${fecha(d.creado_en)}`),
+            h(
+              "span",
+              { class: "fila-acciones" },
+              h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => verDocumento(d) }, icono("eye"), "Ver"),
+              puedeAnular && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => anularDocumento(d, alCambiar) }, "Anular"),
+            ),
+          ),
+        ),
+        puedeCargar && formularioCarga({ tipos: [[tipo, nombre]], ruta, alCargar: alCambiar, textoBoton }),
+      ),
+    ),
+  );
 }
 
 // ---------- Bloques de lectura ----------

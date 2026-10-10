@@ -344,6 +344,34 @@ export function seccion({ titulo, sub, acciones, contenido, clase = "" }) {
   );
 }
 
+// ---------- Tono de una casilla (pedido del equipo del 2026-10-09) ----------
+// Para ubicar de un vistazo lo que falta: rojo suave si impide avanzar (habilitar la parcela o dejar listo un
+// lote), amarillo si falta o vence pronto pero no impide, verde si ya está y sin color si es opcional o no
+// aplica. Las listas van en ese orden; lo que no aplica sigue plegado al final, como dicen las adendas 4 y 5.
+
+export const TONOS = ["bloquea", "falta", "listo", "opcional"];
+
+/** La clase de una casilla con su tono. Sin tono (no aplica), la casilla de siempre. */
+export function claseTono(tono, base = "casilla") {
+  return tono && tono !== "opcional" ? `${base} tono-${tono}` : base;
+}
+
+/** Ordena por tono: primero lo que impide avanzar, luego lo que falta, lo que ya está y lo opcional. El orden
+ * dentro de cada tono no cambia. */
+export function ordenarPorTono(items, tonoDe) {
+  const lugar = (x) => {
+    const i = TONOS.indexOf(tonoDe(x));
+    return i === -1 ? TONOS.length : i;
+  };
+  return items.map((x, i) => [x, i]).sort((a, b) => lugar(a[0]) - lugar(b[0]) || a[1] - b[1]).map(([x]) => x);
+}
+
+/** La leyenda de los colores, con lo que impide en cada pantalla ("impide habilitar la parcela"). */
+export function leyendaTonos({ bloquea, falta = "falta, no impide", listo = "listo", opcional = null }) {
+  const item = (tono, texto) => texto && h("span", { class: `leyenda-tono tono-${tono}` }, h("span", { class: "muestra", "aria-hidden": "true" }), texto);
+  return h("p", { class: "leyenda-tonos" }, item("bloquea", bloquea), item("falta", falta), item("listo", listo), item("opcional", opcional));
+}
+
 /** Rejilla de datos con bordes del diseño. items: { etiqueta, valor, mono, extra }. */
 /**
  * Datos de una ficha (decisión del equipo del 2026-10-09): filas etiqueta–valor, como la lista `.kv` del diseño,

@@ -8,6 +8,9 @@ import { PENDIENTES_PRODUCTOR, insigniaNivel } from "../textos.js";
 import { avatar, cabeceraFicha, campo, enviarCon, h, rejilla, seccion, toast } from "../ui.js";
 import { formularioClave } from "./formulario-clave.js";
 
+// Lo que impide que la organización reciba su cacao va en rojo suave; lo demás, en amarillo.
+const IMPIDEN_ENTREGAR = new Set(["sin_documento_dni", "sin_consentimiento", "sin_declaracion_anual", "declaracion_por_firmar"]);
+
 // Lo que falta y dónde se atiende. Adenda 5: la declaración anual, con "Responder ahora".
 const ENLACES_PENDIENTE = {
   sin_parcelas: ["#/mis-parcelas/nueva", "Registrar ahora"],
@@ -61,7 +64,7 @@ async function perfilProductor({ recargarUsuario, recargar }) {
             "div",
             { class: "form" },
             f.pendientes.map((p) =>
-              h("p", { class: "alerta warn" }, PENDIENTES_PRODUCTOR[p], ENLACES_PENDIENTE[p] ? h("a", { href: ENLACES_PENDIENTE[p][0], class: "enlace-accion" }, ` ${ENLACES_PENDIENTE[p][1]}`) : null),
+              h("p", { class: `alerta ${IMPIDEN_ENTREGAR.has(p) ? "bad" : "warn"}` }, PENDIENTES_PRODUCTOR[p], ENLACES_PENDIENTE[p] ? h("a", { href: ENLACES_PENDIENTE[p][0], class: "enlace-accion" }, ` ${ENLACES_PENDIENTE[p][1]}`) : null),
             ),
           )
         : h("p", { class: "alerta info" }, "Tu ficha está completa."),

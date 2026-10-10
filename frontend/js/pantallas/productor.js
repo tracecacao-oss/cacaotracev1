@@ -12,12 +12,15 @@ import {
   avatar,
   cabeceraFicha,
   campo,
+  claseTono,
   confirmar,
   enviarCon,
   fecha,
   h,
   icono,
+  leyendaTonos,
   mostrarClaveTemporal,
+  ordenarPorTono,
   rejilla,
   seccion,
   toast,
@@ -211,12 +214,64 @@ async function pestanaParcelas(p, { navegar }) {
   });
 }
 
-function pestanaDocumentos(p, { recargar }) {
+/** Lo que la habilitación pide al productor (adenda 5, sección 3.1), con el tono de cada casilla. */
+function casillasBase(p, navegar) {
+  const declaracion = {
+    vigente: ["listo", `Vigente hasta el ${fecha(p.declaracion_vigente_hasta)}.`],
+    por_vencer: ["falta", `Vence el ${fecha(p.declaracion_vigente_hasta)}: conviene registrar la siguiente.`],
+    por_firmar: ["bloquea", "Registrada, falta la hoja firmada."],
+    vencida: ["bloquea", `Venció el ${fecha(p.declaracion_vigente_hasta)}.`],
+    sin_declaracion: ["bloquea", "Sin declaración anual."],
+  }[p.declaracion];
+  const filas = [
+    { nombre: "Copia del DNI", tono: p.nivel_identidad === "documentado" ? "listo" : "bloquea", texto: p.nivel_identidad === "documentado" ? "Cargada." : "Falta cargarla abajo." },
+    {
+      nombre: "Consentimiento de datos",
+      tono: p.consentimiento_datos_en ? "listo" : "bloquea",
+      texto: p.consentimiento_datos_en ? `Registrado el ${fecha(p.consentimiento_datos_en)}.` : "Falta registrarlo.",
+    },
+    {
+      nombre: "Declaración anual",
+      tono: declaracion[0],
+      texto: declaracion[1],
+      accion: h("button", { class: "btn btn-sm", type: "button", onclick: () => navegar(`#/productores/${p.id}/declaracion`) }, "Ver la declaración"),
+    },
+    {
+      nombre: "Constancia del PPA",
+      tono: p.nivel_ppa === "documentado" ? "listo" : "opcional",
+      texto: p.nivel_ppa === "documentado" ? "Cargada." : "Opcional: el orientador no la pide y no impide habilitar.",
+    },
+  ];
+  const insignias = { bloquea: ["bad", "Impide habilitar"], falta: ["warn", "Vence pronto"], listo: ["ok", "Listo"], opcional: ["", "Opcional"] };
+  return [
+    leyendaTonos({ bloquea: "impide habilitar sus parcelas", falta: "vence pronto", listo: "listo", opcional: "opcional" }),
+    h(
+      "ul",
+      { class: "casillas" },
+      ordenarPorTono(filas, (f) => f.tono).map((f) =>
+        h(
+          "li",
+          { class: claseTono(f.tono) },
+          h(
+            "div",
+            { class: "casilla-h" },
+            h("div", {}, h("b", {}, f.nombre), h("span", { class: "sec" }, f.texto)),
+            h("span", { class: "fila-acciones" }, h("span", { class: `badge ${insignias[f.tono][0]}` }, h("span", { class: "dot" }), insignias[f.tono][1]), f.accion),
+          ),
+        ),
+      ),
+    ),
+  ];
+}
+
+function pestanaDocumentos(p, { recargar, navegar }) {
   const gestiona = puede("registrarProductores");
   return seccion({
     titulo: "Documentos",
-    sub: "Respaldo de la identidad y del registro en el PPA.",
+    sub: "Lo que la habilitación de sus parcelas pide al productor, y los archivos que respaldan su identidad y su registro en el PPA.",
     contenido: [
+      casillasBase(p, navegar),
+      h("h4", { class: "subtitulo-bloque" }, "Archivos cargados"),
       h("div", { class: "tbl-box" }, listaDocumentos(p.documentos, { puedeAnular: gestiona, alCambiar: recargar })),
       gestiona &&
         formularioCarga({

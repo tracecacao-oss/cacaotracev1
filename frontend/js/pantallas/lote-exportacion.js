@@ -13,7 +13,7 @@ import { hoyLima as hoy } from "../fechas.js";
 import { mensajeFinal, vistaInforme } from "../informe.js";
 import { codigoQr, huella } from "../tandas.js";
 import { kilos } from "../textos.js";
-import { abrirModal, cabeceraFicha, campo, cargando, enviarCon, errorDeCarga, fecha, h, icono, reemplazar, rejilla, seccion, toast } from "../ui.js";
+import { abrirModal, cabeceraFicha, campo, cargando, claseTono, enviarCon, errorDeCarga, fecha, h, icono, leyendaTonos, ordenarPorTono, reemplazar, rejilla, seccion, toast } from "../ui.js";
 
 const PESTANAS = [
   ["seleccion", "Selección"],
@@ -157,20 +157,22 @@ function pestanaEmbarque(l, opera, recargar) {
     .then((e) =>
       reemplazar(
         caja,
-        e.faltan.length > 0 && h("p", { class: "alerta warn" }, `Falta: ${e.faltan.join(", ")}.`),
+        e.faltan.length > 0 && h("p", { class: "alerta bad" }, `Falta: ${e.faltan.join(", ")}.`),
+        // Los cuatro impiden que el lote quede listo: rojo mientras falta, verde cargado.
+        leyendaTonos({ bloquea: "falta: el lote no queda listo", falta: null, listo: "cargado" }),
         h(
           "ul",
           { class: "casillas" },
-          e.tipos.map((t) => {
+          ordenarPorTono(e.tipos, (t) => (t.cargado ? "listo" : "bloquea")).map((t) => {
             const vigentes = t.documentos.filter((d) => d.vigente);
             return h(
               "li",
-              { class: "casilla" },
+              { class: claseTono(t.cargado ? "listo" : "bloquea") },
               h(
                 "div",
                 { class: "casilla-h" },
                 h("div", {}, h("b", {}, t.nombre), h("span", { class: "sec" }, `Emisor habitual: ${t.emisor_habitual}`)),
-                insignia(t.cargado ? ["ok", "Cargado"] : ["warn", "Falta"]),
+                insignia(t.cargado ? ["ok", "Cargado"] : ["bad", "Falta"]),
               ),
               vigentes.map((d) =>
                 h(
