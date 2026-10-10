@@ -320,6 +320,15 @@ def test_documentos_de_embarque(api, sesion, admin, operador, armado):
         assert respuesta.status_code == 201, respuesta.text
     embarque = api.get(f"/lotes/{lote['id']}/documentos").json()
     assert embarque["completo"] is True and embarque["faltan"] == []
+    # Pedido del equipo del 2026-10-10: cada tipo dice qué es, quién lo emite y dónde se tramita.
+    tipos = {t["codigo"]: t for t in embarque["tipos"]}
+    assert all(t["que_es"] and t["quien_lo_emite"] for t in tipos.values())
+    origen = tipos["certificado_origen"]
+    assert "MINCETUR" in origen["quien_lo_emite"] and "Unión Europea" in origen["nota"]
+    assert {c["url"] for c in origen["tramite"]} == {
+        "https://www.vuce.gob.pe/",
+        "https://www.vuce.gob.pe/archivos_entidades/origen/Entidades_Delegadas.pdf",
+    }
     assert _recomprobar(api, lote)["estado_lote"] == "listo"
     factura = next(t for t in embarque["tipos"] if t["codigo"] == "factura_comercial")["documentos"][0]
     assert (

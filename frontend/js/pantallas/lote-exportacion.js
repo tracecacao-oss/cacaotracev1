@@ -258,9 +258,14 @@ function filaEmbarque(l, t, opera, recargar, declaracion) {
     h(
       "div",
       { class: "casilla-h" },
-      h("div", {}, h("b", {}, t.nombre), h("span", { class: "sec" }, `Emisor habitual: ${t.emisor_habitual}`)),
+      h("b", {}, t.nombre),
       h("span", { class: "fila-acciones" }, insignia(t.cargado ? ["ok", "Cargado"] : t.obligatorio ? ["bad", "Falta"] : ["", "No frena el lote"]), (vigentes.some((d) => d.cotejado_en) || declaracion?.documento?.cotejado_en) && insigniaNivel("verificado_en_fuente")),
     ),
+    // Pedido del equipo del 2026-10-10: qué es, quién lo emite, lo que conviene saber y dónde se tramita.
+    h("p", { class: "panel-sub" }, t.que_es || `Emisor habitual: ${t.emisor_habitual}`),
+    t.quien_lo_emite && h("p", { class: "panel-sub" }, h("b", {}, "Quién lo emite: "), t.quien_lo_emite),
+    t.nota && h("p", { class: "panel-sub" }, t.nota),
+    t.tramite?.length > 0 && h("p", { class: "panel-sub fila-acciones" }, "Dónde se tramita: ", t.tramite.map((c) => h("a", { href: c.url, target: "_blank", rel: "noopener" }, c.nombre))),
     dam && declaracion && bloqueDeclaracion(l, t, declaracion, recargar),
     !t.obligatorio && consultas.length > 0 && h("p", { class: "panel-sub fila-acciones" }, "Consulta pública: ", consultas.map(([url, nombre]) => h("a", { href: url, target: "_blank", rel: "noopener" }, nombre))),
     vigentes.map((d) =>
