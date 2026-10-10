@@ -3,8 +3,20 @@ de plataforma con la clasificación de riesgo del país."""
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -96,5 +108,10 @@ class ConfiguracionPlataforma(Base):
     clasificacion_pais: Mapped[str | None] = mapped_column(Text)
     clasificacion_fecha: Mapped[date | None] = mapped_column(Date)
     clasificacion_referencia: Mapped[str | None] = mapped_column(Text)
+    # Adenda 5, sección 9: valores de referencia de la declaración del productor. Vacíos, no se asumen.
+    uit_soles: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    uit_anio: Mapped[int | None] = mapped_column(Integer)
+    jornal_minimo_referencia: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    jornal_referencia_nota: Mapped[str | None] = mapped_column(Text)
     actualizado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     actualizado_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("perfiles.id"))

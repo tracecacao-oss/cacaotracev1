@@ -14,12 +14,12 @@ from app.contexto import Contexto
 from app.errores import error_api
 from app.models import Lote
 from app.services import imagenes, recomprobacion, revisiones_imagenes
-from app.services.hallazgos import acopio, lote, parcela
+from app.services.hallazgos import acopio, lote, parcela, productor
 from app.services.hallazgos.catalogo import CATALOGO, GRUPOS, Hallazgo
 from app.services.hallazgos.datos import DatosLote, cargar
 from app.services.hallazgos.informe import armar
 
-REGLAS = (*parcela.REGLAS, *acopio.REGLAS, *lote.REGLAS)
+REGLAS = (*parcela.REGLAS, *productor.REGLAS, *acopio.REGLAS, *lote.REGLAS)
 CON_INFORME = ("armado", "bloqueado", "listo")
 
 __all__ = ["CATALOGO", "GRUPOS", "REGLAS", "DatosLote", "Hallazgo", "calcular", "preliminar", "reunir"]

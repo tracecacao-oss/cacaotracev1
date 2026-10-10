@@ -4068,3 +4068,96 @@ button.tira-item:hover {
 .contenido-pestana > .hz {
   border-top: 1px solid var(--line);
 }
+/* Adenda 5: la declaración anual del productor. */
+.pregunta-declaracion .pregunta-texto {
+  font-weight: 600;
+  color: var(--ink);
+}
+.editor-productos {
+  display: grid;
+  gap: 8px;
+}
+.productos-lista {
+  display: grid;
+  gap: 8px;
+}
+.producto-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+@media (max-width: 560px) {
+  .producto-fila {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .producto-fila .input {
+    grid-column: 1 / -1;
+  }
+}
+.editor-productos > .btn {
+  justify-self: start;
+}
+.pregunta-grande {
+  max-width: 560px;
+}
+.pregunta-titulo {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.opciones-grandes {
+  display: grid;
+  gap: 10px;
+}
+.opcion-grande {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 15px;
+  cursor: pointer;
+}
+.opcion-grande:has(input:checked) {
+  border-color: var(--emerald);
+  background: var(--emerald-tint);
+}
+.opcion-grande input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--emerald);
+}
+.input-grande {
+  max-width: 220px;
+  font-size: 18px;
+  padding: 12px 14px;
+}
+.anexo-texto {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.anexo-texto p {
+  margin: 0;
+}
+.anexo-texto .anexo-literal {
+  padding-left: 14px;
+}
+.hechos {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}

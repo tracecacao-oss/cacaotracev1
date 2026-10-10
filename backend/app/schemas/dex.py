@@ -134,11 +134,16 @@ class CertificacionSalida(BaseModel):
 class ConfiguracionPlataformaEntrada(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    clasificacion_pais: ClasificacionPais | None
+    clasificacion_pais: ClasificacionPais | None = None
     clasificacion_fecha: date | None = None
     clasificacion_referencia: str | None = Field(default=None, max_length=1000)
+    # Adenda 5, sección 9: valores de referencia de la declaración del productor.
+    uit_soles: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    uit_anio: int | None = Field(default=None, ge=2000, le=2100)
+    jornal_minimo_referencia: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    jornal_referencia_nota: str | None = Field(default=None, max_length=1000)
 
-    @field_validator("clasificacion_referencia")
+    @field_validator("clasificacion_referencia", "jornal_referencia_nota")
     @classmethod
     def _limpia(cls, valor: str | None) -> str | None:
         return _texto(valor)
@@ -150,6 +155,10 @@ class ConfiguracionPlataformaEntrada(BaseModel):
                 "La clasificación del país va con su fecha y con la referencia de la publicación de la "
                 "Comisión Europea de donde sale."
             )
+        if (self.uit_soles is None) != (self.uit_anio is None):
+            raise ValueError("El valor de la UIT va con su año.")
+        if (self.jornal_minimo_referencia is None) != (self.jornal_referencia_nota is None):
+            raise ValueError("El jornal de referencia va con la nota de dónde sale.")
         return self
 
 
@@ -157,5 +166,9 @@ class ConfiguracionPlataformaSalida(BaseModel):
     clasificacion_pais: str | None
     clasificacion_fecha: date | None
     clasificacion_referencia: str | None
+    uit_soles: Decimal | None = None
+    uit_anio: int | None = None
+    jornal_minimo_referencia: Decimal | None = None
+    jornal_referencia_nota: str | None = None
     actualizado_en: datetime | None
     actualizado_por_nombre: str | None

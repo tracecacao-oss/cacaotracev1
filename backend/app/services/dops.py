@@ -23,6 +23,7 @@ from app.schemas.recepcion import DopDetalle, DopPublico, DopSalida, ProductorDe
 from app.services import (
     analisis,
     correlativos,
+    declaracion_productor,
     documentos,
     habilitacion,
     legalidad,
@@ -40,7 +41,9 @@ from app.storage import ClienteStorage, ErrorStorage
 # anteriores conservan su bloque "guia_remision": su contenido está sellado.
 # 5: adenda 4, el bloque "legalidad" (perfil, requisitos, incidencias y capas consultadas) en lugar del
 # "expediente". Los DOP anteriores conservan su expediente y se leen como antes.
-VERSION_CONTENIDO = 5
+# 6: adenda 5, el bloque "productor" suma "declaracion": la declaración anual con sus respuestas y sus siete
+# requisitos. Los DOP anteriores no la tienen y se leen como antes.
+VERSION_CONTENIDO = 6
 NIVEL = {
     "declarado": "Declarado",
     "documentado": "Documentado",
@@ -94,6 +97,7 @@ def _bloque_productor(contexto: Contexto, productor_id: uuid.UUID) -> dict[str, 
         "ppa": {"registrado": p.ppa_registrado, "codigo": p.ppa_codigo, "nivel": p.nivel_ppa},
         "codigo_agrodigital": p.codigo_agrodigital,
         "codigo_socio": p.codigo_socio,
+        "declaracion": declaracion_productor.bloque(contexto.sesion, productor_id, contexto.cooperativa_id),
     }
 
 
@@ -209,6 +213,10 @@ def _no_verificado(contenido: dict[str, Any]) -> list[str]:
         lista.append("Las coordenadas de la parcela no fueron recorridas en campo por un técnico.")
     if contenido["productor"]["dni"]["nivel"] == "declarado":
         lista.append("La identidad del productor está declarada, sin copia del DNI.")
+    if (contenido["productor"].get("declaracion") or {}).get("declarada_en"):
+        lista.append(
+            "La declaración anual es la palabra del productor: la organización no la comprobó en campo."
+        )
     leg = contenido["legalidad"]
     vistos = set()
     for r in leg["requisitos"]:

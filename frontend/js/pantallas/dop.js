@@ -7,12 +7,57 @@ import { ALERTAS, ALERTAS_TANDA, ESTADOS_CASILLA, ESTADOS_HABILITACION, ESTADOS_
 import { codigoQr, descargarPdf, huella } from "../tandas.js";
 import { lugares } from "../ubigeo.js";
 import { abrirModal, cabeceraFicha, enviarCon, fecha, h, icono, rejilla, seccion, toast } from "../ui.js";
+import { ESTADO_REQUISITO_PRODUCTOR, insignia as insigniaRequisito } from "../declaracion.js";
 import { historialMapbiomas } from "./parcela-habilitacion.js";
 
 /** Desde la versión 4 del DOP, la pérdida de bosque y la alteración de la vegetación van por separado. */
 function marcasCambio(fila) {
   if (!("registra_perdida" in fila)) return fila.registra_cambio ? ["Registra cambios"] : [];
   return [fila.registra_perdida && "Registra pérdida de bosque", fila.registra_alteracion && "Registra alteración de la vegetación"].filter(Boolean);
+}
+
+/** Versión 6 (adenda 5): la declaración anual del productor, sus productos y sus siete requisitos. */
+function bloqueDeclaracion(dcl) {
+  const sub = "Lo que el productor declaró: la organización no lo comprobó en campo. Según el Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco del EUDR.";
+  if (!dcl.declarada_en) return seccion({ titulo: "Declaración anual del productor", sub, contenido: h("p", { class: "alerta warn" }, "El productor no tenía una declaración anual vigente al emitirse el DOP.") });
+  const revision = (x) =>
+    x.revision === "sin_revisar"
+      ? "Sin revisar en el registro de SENASA"
+      : `${x.revision === "figura" ? "Figura" : "No figura"} en el registro de SENASA consultado el ${fecha(x.revisado_en)}${x.registro ? ` (registro ${x.registro})` : ""}`;
+  return seccion({
+    titulo: "Declaración anual del productor",
+    sub,
+    contenido: [
+      rejilla([
+        { etiqueta: "Declarada el", valor: fecha(dcl.declarada_en) },
+        { etiqueta: "Quién la registró", valor: dcl.origen === "productor" ? "El productor, desde su cuenta" : "El personal, con la hoja firmada por el productor" },
+        { etiqueta: "Vale hasta", valor: fecha(dcl.vigente_hasta) },
+        { etiqueta: "Versiones", valor: `Cuestionario ${dcl.version_cuestionario} · texto ${dcl.version_texto}` },
+        { grupo: "Respuestas" },
+        ...dcl.respuestas.map((r) => ({ etiqueta: r.pregunta, valor: r.etiqueta })),
+        dcl.productos.length > 0 && { grupo: "Productos declarados" },
+        ...dcl.productos.map((x) => ({ etiqueta: x.nombre, valor: revision(x) })),
+      ]),
+      h(
+        "ul",
+        { class: "casillas" },
+        dcl.requisitos.map((r) =>
+          h(
+            "li",
+            { class: "casilla" },
+            h(
+              "div",
+              { class: "casilla-h" },
+              h("div", {}, h("b", {}, r.nombre), h("span", { class: "sec" }, `Orientador, ref. ${r.referencias.join(", ")}`)),
+              h("span", { class: "fila-acciones" }, insigniaRequisito(ESTADO_REQUISITO_PRODUCTOR[r.estado] ?? ["", r.etiqueta]), r.nivel_verificacion === "documentado" && insigniaNivel(r.nivel_verificacion)),
+            ),
+            r.hechos.length > 0 && h("ul", { class: "hechos" }, r.hechos.map((x) => h("li", {}, h("span", { class: "sec" }, x.texto), " ", h("b", {}, x.valor)))),
+            r.falta.length > 0 && h("p", { class: "sec" }, `Falta ${r.falta.length > 1 ? `${r.falta.slice(0, -1).join(", ")} y ${r.falta.at(-1)}` : r.falta[0]}.`),
+          ),
+        ),
+      ),
+    ],
+  });
 }
 
 /** Antes de la versión 5: las 7 casillas, con su documento o su exención. */
@@ -340,6 +385,8 @@ export default async function dop({ parametros: [id], recargar }) {
         { etiqueta: "Registro en el PPA", valor: p.ppa.registrado ? p.ppa.codigo || "Registrado" : "No registrado", extra: p.ppa.registrado && insigniaNivel(p.ppa.nivel) },
       ]),
     }),
+    // Desde la versión 6 (adenda 5); los DOP anteriores no la traen.
+    p.declaracion && bloqueDeclaracion(p.declaracion),
     seccion({
       titulo: "Parcela",
       sub: "Croquis dibujado desde la geometría sellada, sin mapa de fondo.",

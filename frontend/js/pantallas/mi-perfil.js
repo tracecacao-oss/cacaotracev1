@@ -8,6 +8,14 @@ import { PENDIENTES_PRODUCTOR, insigniaNivel } from "../textos.js";
 import { avatar, cabeceraFicha, campo, enviarCon, h, rejilla, seccion, toast } from "../ui.js";
 import { formularioClave } from "./formulario-clave.js";
 
+// Lo que falta y dónde se atiende. Adenda 5: la declaración anual, con "Responder ahora".
+const ENLACES_PENDIENTE = {
+  sin_parcelas: ["#/mis-parcelas/nueva", "Registrar ahora"],
+  sin_declaracion_anual: ["#/mi-declaracion", "Responder ahora"],
+  declaracion_por_firmar: ["#/mi-declaracion", "Responder ahora"],
+  declaracion_por_vencer: ["#/mi-declaracion", "Renovar ahora"],
+};
+
 function seccionClave(recargarUsuario, recargar) {
   return seccion({
     titulo: "Cambiar contraseña",
@@ -53,7 +61,7 @@ async function perfilProductor({ recargarUsuario, recargar }) {
             "div",
             { class: "form" },
             f.pendientes.map((p) =>
-              h("p", { class: "alerta warn" }, PENDIENTES_PRODUCTOR[p], p === "sin_parcelas" ? h("a", { href: "#/mis-parcelas/nueva", class: "enlace-accion" }, " Registrar ahora") : null),
+              h("p", { class: "alerta warn" }, PENDIENTES_PRODUCTOR[p], ENLACES_PENDIENTE[p] ? h("a", { href: ENLACES_PENDIENTE[p][0], class: "enlace-accion" }, ` ${ENLACES_PENDIENTE[p][1]}`) : null),
             ),
           )
         : h("p", { class: "alerta info" }, "Tu ficha está completa."),

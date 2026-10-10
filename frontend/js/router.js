@@ -19,7 +19,7 @@ const RUTAS = [
   { patron: /^#\/productores\/mapa$/, roles: PERSONAL, cargar: () => import("./pantallas/mapa-parcelas.js") },
   { patron: /^#\/productores\/superposiciones$/, roles: PERSONAL, cargar: () => import("./pantallas/superposiciones.js") },
   { patron: /^#\/productores\/habilitacion$/, roles: PERSONAL, cargar: () => import("./pantallas/habilitacion.js") },
-  { patron: /^#\/productores\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/productor.js") },
+  { patron: /^#\/productores\/([0-9a-f-]{36})(?:\/(declaracion))?$/, roles: PERSONAL, cargar: () => import("./pantallas/productor.js") },
   { patron: /^#\/productores\/([0-9a-f-]{36})\/parcelas\/nueva$/, roles: ["admin_cooperativa", "operador"], cargar: () => import("./pantallas/parcela-nueva.js") },
   { patron: /^#\/parcelas\/([0-9a-f-]{36})$/, roles: PERSONAL, cargar: () => import("./pantallas/parcela.js") },
   { patron: /^#\/lotes(\/recepcion)?$/, roles: PERSONAL, cargar: () => import("./pantallas/recepcion.js") },
@@ -60,6 +60,7 @@ const RUTAS = [
   { patron: /^#\/mis-parcelas\/nueva$/, roles: ["productor"], cargar: () => import("./pantallas/parcela-nueva.js") },
   { patron: /^#\/mis-parcelas\/([0-9a-f-]{36})$/, roles: ["productor"], cargar: () => import("./pantallas/parcela.js") },
   { patron: /^#\/mis-entregas$/, roles: ["productor"], cargar: () => import("./pantallas/mis-entregas.js") },
+  { patron: /^#\/mi-declaracion$/, roles: ["productor"], cargar: () => import("./pantallas/mi-declaracion.js") },
 ];
 
 // Verificación pública del DOP, del DPP y del DEX: no pide sesión, no lleva barra lateral y no enlaza al resto.

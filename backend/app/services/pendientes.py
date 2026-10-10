@@ -11,14 +11,16 @@ from sqlalchemy import select
 from app.catalogos import documentos_legales
 from app.contexto import Contexto, cooperativa_del_contexto
 from app.fechas import LIMA, hoy_lima
-from app.models import Lote, OrdenCompra, Parcela, Tanda
+from app.models import Afiliacion, Lote, OrdenCompra, Parcela, Productor, Tanda
 from app.schemas.cooperativa import GrupoPendientes, Pendiente, PendientesSalida
 from app.services import cooperativa as servicio_cooperativa
 from app.services import legalidad as servicio_legalidad
+from app.services import productores as servicio_productores
 from app.services import recomprobacion
 
 DIAS_ANTES_DE_LA_ENTREGA = 15
 MAXIMO_POR_GRUPO = 50
+ORDEN_PRIORIDAD = {"vencido": 0, "por_vencer": 1, "otro": 2}
 
 
 def _fecha(d) -> str:
@@ -29,6 +31,44 @@ def _grupo(clave: str, titulo: str, prioridad: str, items: list[Pendiente]) -> G
     return GrupoPendientes(
         clave=clave, titulo=titulo, prioridad=prioridad, cantidad=len(items), items=items[:MAXIMO_POR_GRUPO]
     )
+
+
+def _declaraciones(contexto: Contexto, cooperativa_id) -> GrupoPendientes:
+    """Adenda 5, sección 10: vencidas, por vencer, por firmar y sin declaración, en ese orden. Un productor
+    con una declaración por firmar cuenta solo como por firmar, como en sus pendientes."""
+    filas = contexto.sesion.execute(
+        select(
+            Productor,
+            servicio_productores._declaracion_hasta(cooperativa_id),
+            servicio_productores._declaracion_por_firmar(cooperativa_id),
+        )
+        .join(Afiliacion, Afiliacion.productor_id == Productor.id)
+        .where(Afiliacion.cooperativa_id == cooperativa_id, Afiliacion.estado == "activa")
+        .order_by(Productor.apellidos, Productor.nombres)
+    ).all()
+    casos: dict[str, list[Pendiente]] = {"vencida": [], "por_vencer": [], "por_firmar": [], "sin": []}
+    for productor, hasta, por_firmar in filas:
+        titulo = f"{productor.nombres} {productor.apellidos}"
+        enlace = f"#/productores/{productor.id}/declaracion"
+        estado = servicio_productores.estado_declaracion(hasta, por_firmar)
+        if por_firmar:
+            detalle = "Falta la hoja firmada"
+            casos["por_firmar"].append(Pendiente(titulo=titulo, detalle=detalle, enlace=enlace))
+        elif estado == "vencida":
+            detalle = f"Venció el {_fecha(hasta)}"
+            casos["vencida"].append(Pendiente(titulo=titulo, detalle=detalle, enlace=enlace, fecha=hasta))
+        elif estado == "por_vencer":
+            detalle = f"Vence el {_fecha(hasta)}"
+            casos["por_vencer"].append(Pendiente(titulo=titulo, detalle=detalle, enlace=enlace, fecha=hasta))
+        elif estado == "sin_declaracion":
+            casos["sin"].append(Pendiente(titulo=titulo, detalle="Sin declaración anual", enlace=enlace))
+    por_fecha = [
+        *sorted(casos["vencida"], key=lambda x: x.fecha),
+        *sorted(casos["por_vencer"], key=lambda x: x.fecha),
+    ]
+    items = por_fecha + casos["por_firmar"] + casos["sin"]
+    prioridad = "vencido" if casos["vencida"] else "por_vencer" if casos["por_vencer"] else "otro"
+    return _grupo("declaraciones_productores", "Declaraciones de productores", prioridad, items)
 
 
 def pendientes(contexto: Contexto) -> PendientesSalida:
@@ -166,6 +206,8 @@ def pendientes(contexto: Contexto) -> PendientesSalida:
         _grupo("exclusion_posterior_al_cierre", "Exclusiones después de cerrar un lote", "otro", alertas),
         _grupo("parcelas_observadas", "Parcelas observadas", "otro", observadas),
         _grupo("tandas_sin_validar", "Tandas sin validar", "otro", tandas),
+        _declaraciones(contexto, cooperativa_id),
     ]
-    grupos = [g for g in grupos if g.cantidad]
+    # Primero lo vencido, luego lo que está por vencer y al final lo demás; dentro, el orden de arriba.
+    grupos = sorted((g for g in grupos if g.cantidad), key=lambda g: ORDEN_PRIORIDAD[g.prioridad])
     return PendientesSalida(total=sum(g.cantidad for g in grupos), grupos=grupos)

@@ -66,6 +66,16 @@ CATALOGO: dict[str, Entrada] = {
     "mapbiomas_sin_cobertura_reciente": Entrada("no_verificado", 1, 1),
     "imagen_previa_lejana": Entrada("no_verificado", 1, 1),
     "sin_imagen_de_alta_resolucion_previa": Entrada("no_verificado", 1, 1),
+    # Adenda 5, sección 11: el productor, con el estado de hoy. Un hecho declarado que deja algo por atender
+    # va a Requiere atención; un papel o una revisión que falta, a No verificado. Todos al tema 11.
+    "condiciones_de_trabajo_por_atender": Entrada("requiere_atencion", 1, 11),
+    "menores_en_la_parcela": Entrada("requiere_atencion", 1, 11),
+    "trabajo_no_libre": Entrada("requiere_atencion", 1, 11),
+    "agroquimico_no_figura": Entrada("requiere_atencion", 1, 11),
+    "envases_por_atender": Entrada("requiere_atencion", 1, 11),
+    "agroquimicos_sin_revisar": Entrada("no_verificado", 1, 11),
+    "permanentes_sin_relacion": Entrada("no_verificado", 1, 11),
+    "tributos_sin_sustento": Entrada("no_verificado", 1, 11),
     # Etapa 2, acopio (lo sellado en el DOP de cada tanda)
     "tanda_observada": Entrada("requiere_atencion", 2, 3),
     "volumen_acumulado_excede_tope": Entrada("requiere_atencion", 2, 3),

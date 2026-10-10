@@ -49,6 +49,12 @@ const TEXTO_ACCION = {
   "productor.consentimiento": "Registró el consentimiento de datos",
   "productor.editar": "Editó la ficha de un productor",
   "productor.cerrar_afiliacion": "Cerró la afiliación de un productor",
+  // Adenda 5: la declaración anual del productor.
+  "declaracion_productor.registrar": "Registró la declaración anual de un productor",
+  "declaracion_productor.declarar": "Declaró su declaración anual",
+  "declaracion_productor.hoja_firmada": "Cargó la hoja firmada de una declaración anual",
+  "declaracion_productor.revisar_producto": "Revisó en SENASA un producto declarado",
+  "declaracion_productor.seguimiento": "Escribió una nota de seguimiento",
   "documento.cargar": "Cargó un documento",
   "documento.anular": "Anuló un documento",
   "parcela.crear": "Registró una parcela",

@@ -36,7 +36,7 @@ from app.models import (
     Tanda,
     TandaFinal,
 )
-from app.services import analisis, convergencia, habilitacion
+from app.services import analisis, convergencia, declaracion_productor, habilitacion
 from app.services.fuentes import registro
 
 CIEN = Decimal("100")
@@ -73,6 +73,8 @@ class DatosLote:
     superposiciones: dict[uuid.UUID, list[Superposicion]]
     nombres: dict[uuid.UUID, str]
     hoy: date
+    # Adenda 5: la declaración de cada productor ante la organización del lote, con el estado de hoy.
+    declaraciones: dict[uuid.UUID, declaracion_productor.EstadoProductor] = field(default_factory=dict)
     # Las nueve comprobaciones de la Parte 8 con la fecha de hoy (las llena quien arma el informe).
     comprobaciones: list[dict[str, Any]] = field(default_factory=list)
     # Bloque de imágenes de cada parcela con la alerta de análisis y las rutas de sus dos imágenes.
@@ -90,6 +92,16 @@ class DatosLote:
 
     def corridas_ordenadas(self) -> list[Corrida]:
         return sorted(self.corridas.values(), key=lambda c: c.codigo)
+
+    def productores_ordenados(self) -> list[Productor]:
+        return sorted(self.productores.values(), key=lambda p: (p.apellidos, p.nombres, str(p.id)))
+
+    def peso_productor(self, productor_id: uuid.UUID) -> Decimal:
+        """Adenda 5: el peso de un productor en el lote es la suma de los pesos de sus parcelas."""
+        return sum(
+            (self.peso_parcela[p.id] for p in self.parcelas.values() if p.productor_id == productor_id),
+            Decimal("0"),
+        )
 
     def nota_habilitacion(self, parcela_id: uuid.UUID) -> str | None:
         """La nota de la decisión de habilitar vigente: explica por qué se habilitó con alertas."""
@@ -212,4 +224,10 @@ def cargar(sesion: Session, lote: Lote) -> DatosLote:
         superposiciones=dict(superposiciones),
         nombres=nombres,
         hoy=hoy_lima(),
+        declaraciones={
+            productor_id: estado
+            for (productor_id, _), estado in declaracion_productor.estados(
+                sesion, {(pid, lote.cooperativa_id) for pid in productores}
+            ).items()
+        },
     )

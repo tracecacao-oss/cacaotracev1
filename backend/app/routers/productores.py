@@ -9,6 +9,7 @@ from app.auth_admin import ClienteAuthAdmin, obtener_auth_admin
 from app.contexto import Contexto, requiere_rol
 from app.routers.comun import json_desde_formulario, leer_archivo, modelo_desde_json
 from app.schemas.comunes import ClaveTemporal, Pagina
+from app.schemas.declaracion import FiltroDeclaracion
 from app.schemas.parcelas import DocumentoSalida, ParcelaDatos, ParcelaDetalle, ParcelaSalida
 from app.schemas.productores import (
     CargaMasiva,
@@ -38,8 +39,9 @@ def listar_productores(
     contexto: Lectura,
     paginacion: ParametrosPaginacion,
     q: Annotated[str | None, Query(max_length=100)] = None,
+    declaracion: FiltroDeclaracion | None = None,
 ):
-    items, total = servicio.listar(contexto, q, paginacion)
+    items, total = servicio.listar(contexto, q, paginacion, declaracion)
     return Pagina(items=items, total=total, pagina=paginacion.pagina, por_pagina=paginacion.por_pagina)
 
 

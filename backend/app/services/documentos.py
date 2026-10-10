@@ -64,6 +64,8 @@ TIPOS_POR_ENTIDAD = {
         "dex_leeme",
         "dex_paquete",
     ),
+    # Adenda 5: los papeles de la declaración anual del productor
+    "declaracion_productor": ("hoja_declaracion_productor", "relacion_trabajadores", "declaracion_renta"),
 }
 # Parte 9: archivos que genera el sistema al emitir el DEX. No los sube una persona, así que no pasan por el
 # límite de PDF, JPG o PNG; el tipo sale de su extensión.
@@ -94,6 +96,9 @@ NOMBRES_TIPO = {
     "dex_hallazgos": "informe de hallazgos del DEX",
     "dex_leeme": "LEEME del DEX",
     "dex_paquete": "paquete del DEX",
+    "hoja_declaracion_productor": "hoja firmada de la declaración anual",
+    "relacion_trabajadores": "relación de trabajadores permanentes",
+    "declaracion_renta": "declaración anual del impuesto a la renta",
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS_ANTERIORES},
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS_COOPERATIVA},
@@ -110,6 +115,8 @@ NO_ANULABLES = (
     "imagen_satelital",
     "imagen_externa",
     *TIPOS_POR_ENTIDAD["dex"],
+    # Adenda 5: la hoja firmada hizo vigente su declaración, que no se edita.
+    "hoja_declaracion_productor",
 )
 
 
@@ -293,6 +300,18 @@ def documento_visible(contexto: Contexto, documento_id: uuid.UUID) -> Documento:
         # Partes 8 y 9: los de la cooperativa, los de embarque, las certificaciones y los archivos del DEX
         # los ve el personal de esa cooperativa.
         if contexto.rol == "productor" or documento.cooperativa_id != contexto.cooperativa_id:
+            raise no_encontrado("El documento no existe.")
+        return documento
+    if documento.entidad == "declaracion_productor":
+        # Adenda 5: la declaración es ante una organización. La ve su personal y el productor que declaró.
+        from app.models import DeclaracionProductor  # evita importación circular
+
+        declaracion = contexto.sesion.get(DeclaracionProductor, documento.entidad_id)
+        if contexto.rol == "productor":
+            permitido = declaracion is not None and declaracion.productor_id == contexto.productor_id
+        else:
+            permitido = declaracion is not None and declaracion.cooperativa_id == contexto.cooperativa_id
+        if not permitido:
             raise no_encontrado("El documento no existe.")
         return documento
     productor_id = _productor_del_documento(contexto.sesion, documento)

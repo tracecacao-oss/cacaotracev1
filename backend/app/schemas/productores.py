@@ -46,6 +46,9 @@ class ProductorSalida(Salida):
     nivel_ppa: Literal["declarado", "documentado", "no_registrado"]
     pendientes: list[str]
     parcelas: ResumenParcelas
+    # Adenda 5: el estado de la declaración anual ante la organización.
+    declaracion: Literal["sin_declaracion", "por_firmar", "vigente", "por_vencer", "vencida"]
+    declaracion_vigente_hasta: date | None
 
 
 class ProductorDetalle(ProductorSalida):

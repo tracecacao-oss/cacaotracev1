@@ -40,6 +40,7 @@ from app.schemas.dex import ArchivoDex, DescargaDex, DexDetalle, DexPublico, Dex
 from app.services import cooperativa as servicio_cooperativa
 from app.services import (
     correlativos,
+    declaracion_productor,
     documentos,
     dops,
     geometria,
@@ -55,7 +56,8 @@ from app.services.parcelas import _area_total
 from app.storage import ClienteStorage, ErrorStorage
 
 # 2: adenda 4, el respaldo de cada parcela trae su legalidad por requisito en lugar de las siete casillas.
-VERSION_CONTENIDO = 2
+# 3: adenda 5, el bloque "productores": lo que cada productor declaró, con el estado del día de la emisión.
+VERSION_CONTENIDO = 3
 REFERENCIA_ANEXO = (
     "Reglamento (UE) 2023/1115, anexo II; texto consolidado del 18/09/2026 (CELEX 02023R1115-20260918)"
 )
@@ -247,6 +249,26 @@ def _bloque_respaldo(contexto: Contexto, d: hallazgos.DatosLote) -> list[dict[st
     return bloques
 
 
+def _bloque_productores(d: hallazgos.DatosLote) -> list[dict[str, Any]]:
+    """Adenda 5, sección 11: por cada productor del lote, lo mismo que sella el DOP, con el estado de hoy, más
+    la nota de seguimiento. Nombres y apellidos, nunca DNI, teléfono ni dirección."""
+    bloques = []
+    for p in sorted(d.productores.values(), key=lambda x: (-d.peso_productor(x.id), x.apellidos, x.nombres)):
+        estado = d.declaraciones[p.id]
+        bloque = declaracion_productor.bloque(d.sesion, p.id, d.cooperativa.id)
+        bloque["documentos"] = [{"tipo": x["tipo"], "sha256": x["sha256"]} for x in bloque["documentos"]]
+        bloques.append(
+            {
+                "productor": f"{p.nombres} {p.apellidos}".strip(),
+                "parcelas": sorted(x.codigo for x in d.parcelas.values() if x.productor_id == p.id),
+                "peso_en_lote_pct": d.peso_productor(p.id),
+                **bloque,
+                "seguimiento": estado.vigente.seguimiento_nota if estado.valida else None,
+            }
+        )
+    return bloques
+
+
 def _bloque_proceso(d: hallazgos.DatosLote) -> list[dict[str, Any]]:
     salida = []
     for dpp in sorted(d.dpps.values(), key=lambda x: x.codigo):
@@ -390,6 +412,7 @@ def construir_contenido(
         },
         "genealogia": _bloque_genealogia(d),
         "respaldo": _bloque_respaldo(contexto, d),
+        "productores": _bloque_productores(d),
         "proceso": _bloque_proceso(d),
         "embarque": embarque,
         "recomprobacion": {
