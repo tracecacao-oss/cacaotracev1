@@ -102,6 +102,11 @@ class DocumentoEmbarque(BaseModel):
     codigo: str
     nombre: str
     emisor_habitual: str
+    # Pedido del equipo del 2026-10-10: qué es, quién lo emite, una nota y dónde se tramita.
+    que_es: str = ""
+    quien_lo_emite: str = ""
+    nota: str | None = None
+    tramite: list[ConsultaPublica] = []
     # Adenda 6, sección 7: solo los obligatorios cuentan para documentos_embarque_completos.
     obligatorio: bool = True
     registro_consultable: bool = False

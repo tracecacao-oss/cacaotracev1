@@ -60,13 +60,14 @@ El catálogo `documentos_embarque` suma un tipo y un dato por tipo: si es obliga
 | --- | --- | --- | --- |
 | `factura_comercial` | Factura comercial | La organización | Sí |
 | `packing_list` | Lista de empaque | La organización | Sí |
-| `certificado_origen` | Certificado de origen | La entidad que lo emite para el destino | Sí |
+| `certificado_origen` | Certificado de origen | Una entidad delegada por MINCETUR (pedido del equipo del 2026-10-10; antes, "La entidad que lo emite para el destino") | Sí |
 | `certificado_fitosanitario` | Certificado fitosanitario | SENASA | Sí |
 | `dam` | Declaración Aduanera de Mercancías | SUNAT | No |
 
 1. `documentos_embarque_completos` mira solo los obligatorios. El lote puede quedar listo y el DEX puede emitirse sin `dam`.
 2. El requisito 7.2 del orientador también habla de los permisos previos que se tramitan por la VUCE. De ellos, el sistema ya pide el certificado fitosanitario.
 3. La pestaña Embarque muestra `dam` después de los cuatro obligatorios, con la etiqueta "No frena el lote".
+4. Pedido del equipo del 2026-10-10: cada tipo dice también qué es, quién lo emite y dónde se tramita, con lo que dicen las fuentes oficiales (sección 13). Son textos de ayuda: no cambian qué documento es obligatorio.
 
 ## 4. Declaración aduanera
 
@@ -311,7 +312,7 @@ Son de la etapa 3 y su sujeto es el lote.
 - [ ] Confirmar que la página pública del DEX puede mostrar el número de la declaración aduanera.
 - [ ] Confirmar el 1 % de `DAM_TOLERANCIA_PESO_PCT`.
 - [ ] Confirmar que el cuadro de legalidad se construye ahora, y que va en el DEX.
-- [ ] Preguntar al agente de aduanas si el certificado de origen y el certificado fitosanitario se emiten siempre para el destino de la organización. Si alguno no se emite en todos los embarques, hoy ese lote no podría quedar listo, y conviene que deje de ser obligatorio.
+- [ ] Preguntar al agente de aduanas si el certificado de origen y el certificado fitosanitario se emiten siempre para el destino de la organización. Si alguno no se emite en todos los embarques, hoy ese lote no podría quedar listo, y conviene que deje de ser obligatorio. Lo que se encontró el 2026-10-10 para la Unión Europea está en la sección 13.
 
 ## 12. Construcción (10 de octubre de 2026)
 
@@ -375,3 +376,25 @@ La adenda no las dice.
 1. Al desplegar, el comando de inicio de Render aplica la migración 0019. No cambia ningún lote ni ningún DEX.
 2. Un archivo de declaración aduanera cargado con la adenda 6 antes de este despliegue aparece sin sus cuatro datos: se anula y se carga de nuevo.
 3. Las decisiones pendientes de la sección 11.
+
+## 13. Qué es cada documento de embarque (10 de octubre de 2026)
+
+Pedido del equipo: la pestaña Embarque decía solo el nombre de cada documento y un emisor general. Ahora cada tipo dice qué es, quién lo emite y dónde se tramita. Los textos están en `app/catalogos/documentos_embarque.py` y salen de estas fuentes, consultadas ese día:
+
+| Documento | Quién lo emite | Fuente |
+| --- | --- | --- |
+| Factura comercial | La organización, como exportadora: factura electrónica de SUNAT (en papel solo en contingencia) | Reglamento de Comprobantes de Pago, art. 4, num. 1.1; SUNAT, DESPA-PG.02, VII.A.1.3 |
+| Lista de empaque | La organización. No tiene un formato oficial | Ni DESPA-PG.02 ni la orientación aduanera de SUNAT la nombran |
+| Certificado de origen | Una entidad delegada por MINCETUR (cámaras de comercio, ADEX o SNI), por el Componente Origen de la VUCE | VUCE; DS 007-2022-MINCETUR; lista de entidades delegadas de la VUCE, actualizada el 08/07/2026 (19 entidades) |
+| Certificado fitosanitario | SENASA, a pedido del exportador por la VUCE | SENASA |
+| Declaración Aduanera de Mercancías | La transmite el agente de aduanas con el mandato del exportador, o el exportador como despachador; SUNAT la numera | Ley General de Aduanas, arts. 2 y 19; DESPA-PG.02 |
+
+### Para la decisión pendiente de la sección 11
+
+Lo encontrado para la Unión Europea, que el equipo debe confirmar con su agente de aduanas antes de cambiar qué es obligatorio:
+
+1. **Prueba de origen.** El Acuerdo Comercial con la Unión Europea (Anexo II, arts. 15, 16, 20 y 21) acepta el EUR.1, que emite la entidad delegada, o una declaración en factura. Esta la hace un exportador autorizado por MINCETUR, por cualquier valor, o cualquier exportador si el envío no pasa de 6000 euros. Desde el 01/05/2024 la aduana de la UE vuelve a pedir el EUR.1 original, con firma y sello (Comunicado 01-2024 de MINCETUR en la VUCE). La pantalla lo dice en la nota del certificado de origen.
+2. **El arancel general de la UE para la partida 1801 ya es 0 %** (Access2Markets, consultado el 09/10/2026): la preferencia del acuerdo no le ahorra arancel al importador del cacao en grano. Puede que el comprador no pida la prueba de origen.
+3. **Certificado fitosanitario.** El Reglamento (UE) 2019/2072, en su versión consolidada, no nombra al cacao (ni "Theobroma" ni la partida 1801), y el Reglamento (UE) 2016/2031 (art. 2.1.a) no cuenta como "plantas" las semillas que no son para sembrar. La UE no parecería pedirlo para el cacao en grano, pero es una búsqueda negativa: no se encontró una página oficial que lo diga en positivo. El comprador o el país de destino pueden pedirlo.
+
+Con esto, hoy un lote para la UE no queda listo sin los dos certificados aunque el destino no los exija. No se cambió: decide el equipo.
