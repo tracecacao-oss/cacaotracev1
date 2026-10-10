@@ -1,6 +1,7 @@
 // Verificación pública del DOP, del DPP y del DEX: la página a la que lleva el código QR. No pide sesión, no tiene
 // barra lateral y no enlaza al resto de la aplicación. Muestra solo cinco datos: código, cooperativa, fecha
-// de emisión, estado y huella. Un código que no existe dice solo eso.
+// de emisión, estado y huella. Un código que no existe dice solo eso. Desde la adenda 6, la de un DEX suma
+// aparte la declaración aduanera que se agregó al lote después de emitirlo.
 
 import { llamarApi } from "../api.js";
 import { fecha, h, icono, marca, rejilla } from "../ui.js";
@@ -58,6 +59,19 @@ export default async function verificar({ parametros: [tipo, codigo] }) {
         { etiqueta: "Fecha de emisión", valor: fecha(doc.emitido_en, { hora: true }) },
         { etiqueta: "Huella SHA-256 del contenido", valor: doc.contenido_sha256, mono: true, extra: "Coincide con la impresa en el PDF si el documento no fue alterado." },
       ]),
+      // Adenda 6: la declaración aduanera que se agregó al lote después de emitir el DEX, aparte.
+      doc.agregado?.length > 0 && [
+        h("h2", { class: "verif-sub" }, "Agregado después de la emisión"),
+        h("p", { class: "sub" }, "No forma parte del DEX: su contenido y su huella no cambian."),
+        rejilla(
+          doc.agregado.flatMap((a) => [
+            { etiqueta: a.nombre, valor: a.numero, mono: true },
+            { etiqueta: "Fecha de numeración", valor: fecha(a.fecha_numeracion) },
+            { etiqueta: "Cargada", valor: fecha(a.cargado_en, { hora: true }) },
+            { etiqueta: "Cotejo en fuente", valor: a.cotejado ? `Cotejada el ${fecha(a.cotejado_en)}` : "Sin cotejo" },
+          ]),
+        ),
+      ],
     ];
   } else if (error?.estado === 404) {
     cuerpo = h("div", { class: "verif bad" }, icono("alert"), h("div", {}, h("b", {}, `No existe un ${t.sigla} con ese código`), h("span", { class: "mono" }, texto)));

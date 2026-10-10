@@ -410,6 +410,87 @@ Son de la etapa 3. Su sujeto es la organización, salvo `lote_sin_dam`, que es d
 - [ ] Un asesor legal revisa el texto del Anexo A antes de que una organización real lo firme.
 - [ ] Cada organización define quién atiende su canal de quejas y denuncias antes de publicar el contacto.
 
+## 15. Construcción (10 de octubre de 2026)
+
+Registro de Claude Code. Rama `feat/adenda-6-organizacion`, migración 0018.
+
+### Confirmado antes de construir
+
+Las cinco comprobaciones de la sección 14 y las decisiones del equipo están en el recuadro de "Antes de programar": `rnca` no frena y el cotejo se extiende a la declaración aduanera.
+
+### Decisiones de construcción por confirmar
+
+La adenda no las dice.
+
+1. **Estado de los requisitos con documentos.**
+   - Identidad, tributos y registro de cooperativas se calculan con las casillas de sus documentos.
+   - Un requisito está `sin_sustento` si le falta algún documento, `vencido` si alguno venció, `por_vencer` si alguno vence pronto y `sustentado` si todos están vigentes.
+   - El estado "completo" del expediente, sus faltantes y su insignia miran solo la identidad.
+2. **Declaración de renta.**
+   - Pide número de orden y entidad emisora, como los demás documentos de la organización.
+   - La fecha de presentación va como fecha de emisión. El vencimiento lo pone el sistema: `RENTA_VIGENCIA_MESES` después.
+3. **Registro de cooperativas.**
+   - Una asociación o una empresa que intenta cargarlo recibe 422 (`tipo_no_aplica`).
+   - Si una organización deja de ser cooperativa agraria, su `rnca` cargado pasa a "documentos anteriores".
+4. **Política.**
+   - Se anula la política, no su archivo: anular el archivo por su cuenta responde 400. Una política cuyo archivo estuviera anulado tampoco cuenta.
+   - Al cargarla, una casilla dice si es la plantilla del sistema. Si se marca, guarda la versión vigente del Anexo A; se admite de la 1 a la vigente.
+   - El órgano llega escrito con el que sugiere la plantilla según el tipo de organización.
+   - El tema `canal_denuncias` cubierto por una política, pero sin contacto, dice "falta el contacto del canal".
+5. **Contacto del canal.**
+   - En "Mi perfil" del productor sale el de la organización de su cuenta.
+   - En la hoja de la declaración anual va en un recuadro antes de la firma, solo si la organización lo registró, también en la copia. Su texto vive en `plantillas_legales.json` (clave `canal` de `declaracion_productor`), fuera de los bloques. No es parte de lo declarado: la versión del texto de la declaración sigue siendo 1.
+6. **Actuaciones.**
+   - El lugar va completo (departamento, provincia y distrito) o no va: si falta uno, 422.
+   - Solo se marcan productores con afiliación activa en la organización. Otro productor responde 422.
+   - Cuenta hasta el día en que se cumplen `ACTUACION_VIGENCIA_MESES` desde su fecha, ese día incluido.
+   - La evidencia la cargan el administrador y el operador; la anula solo el administrador, como los documentos de la organización. Una actuación anulada no recibe evidencia: 400.
+   - La contraparte admite hasta 400 caracteres; la descripción y el resultado, hasta 4 000.
+   - La lista trae hasta 500, de la más reciente a la más antigua, con las anuladas marcadas. Con `productor_id`, las que alcanzaron a ese productor: así las muestra su ficha.
+7. **Señales.**
+   - Los productores son los de afiliación activa, con las respuestas de su declaración vigente. Las parcelas son las activas de esos productores.
+   - `tierra_forestal` y `areas_protegidas` miran el valor del perfil que manda (el más exigente entre el cruce y lo declarado, adenda 4).
+   - `agua` cuenta las parcelas con el requisito `agua_de_riego` sin sustento o vencido, o con `junto_a_cuerpo_de_agua = si`.
+   - `tenencia` cuenta las incidencias de tenencia registradas en los últimos 12 meses, abiertas o cerradas.
+   - `derechos_humanos` cuenta los productores con `menores_de_edad` o `trabajo_libre` por atender.
+   - Integridad se espera siempre. Los otros siete, cuando su cuenta es mayor que cero: la regla de cada señal ya dice si basta con estar expuesto o hace falta un caso.
+   - El cuadro y el DEX dicen la cuenta con un texto fijo, en español y en inglés (`organizacion.senales` de `es.json` y `en.json`).
+8. **Lista de productos.**
+   - Un producto es un nombre normalizado (sin tildes, mayúsculas ni espacios de más). Lleva el nombre con que se declaró primero.
+   - Su revisión es la de fecha más reciente entre las declaraciones vigentes; sin ninguna, "sin buscar".
+   - El PDF trae solo los que figuran y los que no figuran. Los que nadie buscó todavía no van.
+9. **Declaración aduanera.**
+   - Si no se escribe la entidad emisora, queda SUNAT.
+   - También se anula con el lote cerrado, como se carga.
+   - "Agregado después de la emisión" son las declaraciones vigentes del lote que no quedaron selladas en el embarque del DEX; se comparan por su huella. De un DEX anulado, solo las cargadas mientras estuvo vigente.
+   - Si el DEX se anula, el lote vuelve a armado como siempre, y la siguiente emisión sella la declaración con los demás documentos.
+   - `lote_sin_dam` aparece también en el informe preliminar: dice hoy lo que diría al emitir.
+10. **DEX, versión 4.**
+    - El exportador lista solo los documentos que aplican a su tipo de organización.
+    - El bloque `organizacion` lleva: los documentos con su estado y su nivel; los requisitos con su estado y los códigos de lo que falta; los cinco temas de la política con su fecha de adopción; si hay contacto del canal; las señales; y las actuaciones vigentes con su nivel.
+    - No lleva la evidencia ni los productores alcanzados.
+    - Un DEX anterior a la adenda se sigue leyendo: su PDF no tiene la sección.
+11. **Hallazgos.**
+    - El sujeto de los de la organización es `organizacion`, con el código de la organización o, si no tiene, su RUC. En la pantalla, `sin_actuaciones_de_diligencia` lleva a Diligencia y los demás al expediente.
+    - Los hechos dicen el estado del documento ("faltante", "vencido").
+    - En los del productor, las actuaciones que lo alcanzaron van en `datos.actuaciones`, con su fecha y su tipo en los dos idiomas. El informe en pantalla y el PDF las muestran debajo de la explicación.
+12. **Recomprobación.** La comprobación conserva su código `expediente_cooperativa_completo`. Se llama "Identidad de la organización" y es sobre "La organización".
+13. **Pantallas.**
+    - "Diligencia" va en la barra lateral después de "Datos y expediente legal".
+    - Las actuaciones que alcanzaron a un productor van en la pestaña Declaración de su ficha, junto a la nota de seguimiento.
+14. **Migración.** Al bajar de la 0018 se borran las filas de documentos de los tipos y la entidad nuevos; los archivos de Storage quedan.
+15. **Escenario de demostración y simulación.**
+    - El escenario carga los documentos que aplican a una cooperativa agraria (cinco) y la declaración aduanera con los cuatro obligatorios.
+    - No carga política ni actuaciones: su DEX trae `politica_incompleta` y `sin_actuaciones_de_diligencia`.
+    - En la simulación, la declaración de renta reemplaza a los dos registros de exportador. El guion no suma pasos de política ni de actuaciones.
+
+### Para el equipo
+
+1. Al desplegar, el comando de inicio de Render aplica la migración 0018. Ninguna organización recibe una política ni una actuación.
+2. Un lote bloqueado solo por `rnca`, `ruc_comercio_exterior` o `registro_aduanas` queda listo en su siguiente recomprobación.
+3. Revisar el tipo de cada organización en Plataforma: solo la cooperativa agraria ve el registro de cooperativas.
+4. Los pendientes de la sección 14: el contador (18 meses de la renta), el asesor legal (Anexo A) y quién atiende el canal de cada organización antes de publicar su contacto.
+
 ## Anexo A — Política de integridad, trabajo digno y diligencia debida
 
 Versión 1, redactada para revisión de un asesor legal. Lo que va entre llaves lo llena el sistema; las líneas, la organización.

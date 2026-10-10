@@ -282,18 +282,18 @@ def test_expediente_y_datos_de_la_cooperativa(
     # Un documento que venció ayer deja la casilla vencida y el lote bloqueado.
     expediente_cooperativa["ficha_ruc"].fecha_vencimiento = hoy_lima() - timedelta(days=1)
     # Otro falta.
-    expediente_cooperativa["registro_aduanas"].anulado_en = hoy_lima()
+    expediente_cooperativa["vigencia_poderes"].anulado_en = hoy_lima()
     coop.representante_nombre = None
     sesion.flush()
     exp = api.como(operador).get("/cooperativa/expediente").json()
     estados = {c["codigo"]: c["estado"] for c in exp["casillas"]}
     assert exp["estado"] == "incompleto" and estados["ficha_ruc"] == "vencido"
-    assert estados["registro_aduanas"] == "faltante" and estados["rnca"] == "vigente"
+    assert estados["vigencia_poderes"] == "faltante" and estados["rnca"] == "vigente"
     resultado = _recomprobar(api, lote)
     fallan = _fallan(resultado)
     assert {c["codigo"] for c in fallan["expediente_cooperativa_completo"]} == {
         "ficha_ruc",
-        "registro_aduanas",
+        "vigencia_poderes",
     }
     assert [c["texto"] for c in fallan["datos_cooperativa_completos"]] == [
         "Falta el dato: nombre del representante legal"

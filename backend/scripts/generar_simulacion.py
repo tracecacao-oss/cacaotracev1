@@ -788,7 +788,7 @@ def leeme(simulacion: sim.Simulacion) -> str:
         lineas += [
             "",
             f"{c.carpeta}/   {c.razon_social}",
-            "  01-expediente-cooperativa/   Los 6 documentos legales de la cooperativa (PDF).",
+            "  01-expediente-cooperativa/   Los 5 documentos legales de la cooperativa (PDF).",
             "  02-productores/              La copia del DNI de cada uno de los 3 productores (PDF).",
             (
                 "  03-parcelas/                 Una carpeta por parcela (9): su geometría en GeoJSON y en "

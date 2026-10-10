@@ -2,13 +2,17 @@
 
 Desde la adenda 4, la legalidad de la parcela la calcula app/services/legalidad.py: aquí quedan el cotejo,
 la validación de los datos legales al cargar un documento y la casilla con su estado, que usa el expediente
-de la cooperativa (Parte 8). El estado se calcula al consultar, con la fecha del día.
+de la cooperativa (Parte 8). El estado se calcula al consultar, con la fecha del día. Desde la adenda 6, el
+cotejo también acepta el documento de embarque con registro consultable (la declaración aduanera), aun con
+el lote cerrado.
 """
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
+from app.catalogos import documentos_embarque
 from app.catalogos import documentos_legales as catalogo
+from app.config import get_settings
 from app.contexto import Contexto
 from app.errores import error_api
 from app.fechas import ahora, hoy_lima
@@ -79,16 +83,17 @@ def validar_datos_legales(
     Adenda 4, sección 6: la declaración jurada y lo que firma la comunidad no llevan número ni entidad
     emisora, pero sí la fecha de firma; la declaración jurada vence sola a los DECLARACION_VIGENCIA_MESES. El
     título no inscrito dice su clase. Los tipos anteriores (laboral, tributario y zonificación) ya no se
-    cargan."""
+    cargan. Adenda 6, sección 4: la declaración de renta de la organización lleva la fecha de presentación
+    como emisión y vence sola a los RENTA_VIGENCIA_MESES; los dos registros de exportador ya no se cargan."""
     legal = catalogo.tipo_legal(tipo)
     if legal is None:
         return {}
     if legal.anterior:
+        donde = " en la parcela" if tipo in catalogo.POR_CODIGO else ""
         raise error_api(
             422,
             "tipo_anterior",
-            f"{legal.nombre} ya no se carga en la parcela: los cargados se conservan como documentos "
-            "anteriores.",
+            f"{legal.nombre} ya no se carga{donde}: los cargados se conservan como documentos anteriores.",
         )
     exigidos = [("fecha de emisión", fecha_emision)]
     if legal.requiere_numero:
@@ -102,6 +107,10 @@ def validar_datos_legales(
         from app.services.legalidad import vencimiento_declaracion  # evita importación circular
 
         fecha_vencimiento = vencimiento_declaracion(fecha_emision)
+    elif tipo == "renta_anual":
+        from app.services.legalidad import sumar_meses  # evita importación circular
+
+        fecha_vencimiento = sumar_meses(fecha_emision, get_settings().renta_vigencia_meses)
     if fecha_vencimiento is not None and fecha_vencimiento <= fecha_emision:
         raise error_api(422, "vencimiento_invalido", "El vencimiento debe ser posterior a la emisión.")
     clase = (clase or "").strip() or None
@@ -130,8 +139,12 @@ def validar_datos_legales(
 
 
 def cotejar(contexto: Contexto, documento: Documento, nota: str) -> Documento:
-    """Documentos del expediente de la parcela (Parte 4) o de la cooperativa (Parte 8)."""
+    """Documentos del expediente de la parcela (Parte 4) o de la cooperativa (Parte 8), y desde la adenda 6 el
+    documento de embarque con registro consultable (decisión del equipo del 2026-10-09: la declaración
+    aduanera, también con el lote cerrado; mismos campos y misma auditoría)."""
     tipo = catalogo.tipo_legal(documento.tipo)
+    if tipo is None and documento.entidad == "lote":
+        tipo = documentos_embarque.POR_CODIGO.get(documento.tipo)
     if tipo is None:
         raise error_api(400, "no_es_documento_legal", "Solo se cotejan documentos del expediente legal.")
     if documento.entidad == "parcela":

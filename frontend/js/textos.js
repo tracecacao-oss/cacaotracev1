@@ -186,6 +186,9 @@ export const TIPOS_DOCUMENTO = {
   hoja_declaracion_productor: "Hoja firmada de la declaración anual",
   relacion_trabajadores: "Relación de trabajadores permanentes",
   declaracion_renta: "Declaración anual del impuesto a la renta",
+  // Adenda 6: la evidencia de una actuación de diligencia y la declaración aduanera del lote.
+  evidencia_actuacion: "Evidencia de la actuación",
+  dam: "Declaración aduanera",
 };
 
 export function insigniaAlerta(codigo) {
@@ -297,8 +300,11 @@ TIPOS_DOCUMENTO.dop_pdf = "PDF del DOP";
 TIPOS_DOCUMENTO.dpp_pdf = "PDF del DPP";
 // Parte 8: expediente legal de la cooperativa y documentos de embarque del lote.
 Object.assign(TIPOS_DOCUMENTO, {
-  rnca: "Registro Nacional de Cooperativas Agrarias",
+  rnca: "Constancia de inscripción en el Registro Nacional de Cooperativas Agrarias",
   partida_sunarp: "Partida registral en SUNARP",
+  // Adenda 6: la declaración de renta y la política de la organización.
+  renta_anual: "Declaración anual del impuesto a la renta",
+  politica_organizacion: "Política de la organización",
   ficha_ruc: "Ficha RUC",
   vigencia_poderes: "Vigencia de poderes",
   ruc_comercio_exterior: "Sustento del RUC para comercio exterior",

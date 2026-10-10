@@ -50,8 +50,8 @@ TIPOS_POR_ENTIDAD = {
     "dop": ("dop_pdf",),
     "dpp": ("dpp_pdf",),
     "imagen": ("imagen_satelital", "imagen_externa"),
-    # Parte 8
-    "cooperativa": documentos_legales.CODIGOS_COOPERATIVA,
+    # Parte 8; adenda 6: la política de la organización y la declaración aduanera del lote
+    "cooperativa": (*documentos_legales.CODIGOS_COOPERATIVA, "politica_organizacion"),
     "lote": documentos_embarque.CODIGOS,
     # Parte 9
     "certificacion": ("certificacion",),
@@ -66,6 +66,8 @@ TIPOS_POR_ENTIDAD = {
     ),
     # Adenda 5: los papeles de la declaración anual del productor
     "declaracion_productor": ("hoja_declaracion_productor", "relacion_trabajadores", "declaracion_renta"),
+    # Adenda 6: la evidencia de una actuación de diligencia
+    "actuacion": ("evidencia_actuacion",),
 }
 # Parte 9: archivos que genera el sistema al emitir el DEX. No los sube una persona, así que no pasan por el
 # límite de PDF, JPG o PNG; el tipo sale de su extensión.
@@ -99,13 +101,24 @@ NOMBRES_TIPO = {
     "hoja_declaracion_productor": "hoja firmada de la declaración anual",
     "relacion_trabajadores": "relación de trabajadores permanentes",
     "declaracion_renta": "declaración anual del impuesto a la renta",
+    "politica_organizacion": "política de la organización",
+    "evidencia_actuacion": "evidencia de la actuación",
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS},
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS_ANTERIORES},
     **{t.codigo: t.nombre for t in documentos_legales.TIPOS_COOPERATIVA},
+    **{t.codigo: t.nombre for t in documentos_legales.TIPOS_COOPERATIVA_ANTERIORES},
     **{t.codigo: t.nombre for t in documentos_embarque.TIPOS},
 }
-# Parte 8: un documento de embarque solo se carga o se anula en un lote confirmado y sin DEX.
+# Parte 8: un documento de embarque solo se carga o se anula en un lote confirmado y sin DEX. Adenda 6,
+# sección 7, regla 6: la declaración aduanera también se carga y se anula con el lote cerrado.
 ESTADOS_LOTE_CON_EMBARQUE = ("armado", "bloqueado", "listo")
+
+
+def lote_admite(tipo: str, estado_lote: str) -> bool:
+    """El lote en ese estado admite cargar o anular un documento de embarque de ese tipo."""
+    if tipo in documentos_embarque.DESPUES_DEL_DEX:
+        return estado_lote in (*ESTADOS_LOTE_CON_EMBARQUE, "cerrado")
+    return estado_lote in ESTADOS_LOTE_CON_EMBARQUE
 # Los genera el sistema o forman parte de un registro que no se edita: no se anulan a mano.
 NO_ANULABLES = (
     "respuesta_analisis",
@@ -118,6 +131,8 @@ NO_ANULABLES = (
     # Adenda 5: la hoja firmada hizo vigente su declaración, que no se edita.
     "hoja_declaracion_productor",
 )
+# Entidades cuyos documentos anula solo un administrador.
+SOLO_ADMINISTRADOR = ("cooperativa", "certificacion", "actuacion")
 
 
 @dataclass(frozen=True)
@@ -296,9 +311,9 @@ def documento_visible(contexto: Contexto, documento_id: uuid.UUID) -> Documento:
     documento = contexto.sesion.get(Documento, documento_id)
     if documento is None:
         raise no_encontrado("El documento no existe.")
-    if documento.entidad in ("cooperativa", "lote", "certificacion", "dex"):
+    if documento.entidad in ("cooperativa", "lote", "certificacion", "dex", "actuacion"):
         # Partes 8 y 9: los de la cooperativa, los de embarque, las certificaciones y los archivos del DEX
-        # los ve el personal de esa cooperativa.
+        # los ve el personal de esa cooperativa. Adenda 6: también la evidencia de sus actuaciones.
         if contexto.rol == "productor" or documento.cooperativa_id != contexto.cooperativa_id:
             raise no_encontrado("El documento no existe.")
         return documento
@@ -351,15 +366,19 @@ def anular(contexto: Contexto, documento_id: uuid.UUID, motivo: str) -> Document
         raise error_api(
             400, "documento_no_anulable", f"La {NOMBRES_TIPO[documento.tipo]} no se anula a mano."
         )
-    if documento.entidad in ("cooperativa", "certificacion") and contexto.rol != "admin_cooperativa":
+    if documento.tipo == "politica_organizacion":
+        # Adenda 6: se anula la política, con su motivo; su archivo se conserva.
         raise error_api(
-            403, "solo_administrador", "Solo un administrador anula los documentos legales de la cooperativa."
+            400, "anular_la_politica", "El archivo de una política no se anula: se anula la política."
         )
+    if documento.entidad in SOLO_ADMINISTRADOR and contexto.rol != "admin_cooperativa":
+        que = "la evidencia de una actuación" if documento.entidad == "actuacion" else "los documentos"
+        raise error_api(403, "solo_administrador", f"Solo un administrador anula {que} de la cooperativa.")
     if documento.entidad == "lote":
         from app.models import Lote  # evita importación circular
 
         lote = contexto.sesion.get(Lote, documento.entidad_id)
-        if lote.estado not in ESTADOS_LOTE_CON_EMBARQUE:
+        if not lote_admite(documento.tipo, lote.estado):
             raise error_api(
                 400,
                 "lote_cerrado",

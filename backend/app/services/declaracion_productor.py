@@ -1016,6 +1016,8 @@ def hoja(sesion: Session, declaracion: DeclaracionProductor) -> tuple[bytes, str
         "numero": ctx.get("parcelas_activas"),
         "codigos": ", ".join(codigos) if codigos else None,
         "area": f"{Decimal(str(ctx.get('area_total_ha') or 0)):.2f}".replace(".", ","),
+        # Adenda 6, sección 5: el contacto del canal de quejas y denuncias, antes de la firma.
+        "canal": cooperativa.canal_denuncias_contacto,
     }
     copia = None
     if declaracion.declarada_en is not None:

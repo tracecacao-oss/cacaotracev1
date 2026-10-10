@@ -20,6 +20,7 @@ from app.routers import (
     cooperativa,
     declaraciones,
     dex,
+    diligencia,
     documentos,
     exportacion,
     habilitacion,
@@ -172,6 +173,7 @@ def crear_app(
         dex,
         publico,
         declaraciones,
+        diligencia,
     ):
         app.include_router(modulo.router)
     return app

@@ -35,6 +35,11 @@ def _nuevo(
     requisito = next(
         r.requisito for r in estado.requisitos.values() if referencias[0] in r.requisito.referencias
     )
+    # Adenda 6, sección 11, regla 2: las actuaciones vigentes que lo alcanzaron, junto a la nota.
+    alcanzaron = [
+        {"fecha": a.fecha.isoformat(), "tipo": textos.ambos(f"organizacion.tipos.{a.tipo}")}
+        for a in d.actuaciones_productor.get(p.id, [])
+    ]
     return Hallazgo(
         codigo,
         sujeto("productor", p.id, _nombre(p)),
@@ -44,6 +49,7 @@ def _nuevo(
             "nivel_orientador": requisito.nivel,
             "diligencia": requisito.diligencia,
             **datos,
+            **({"actuaciones": alcanzaron} if alcanzaron else {}),
         },
         d.peso_productor(p.id),
         explicacion=estado.vigente.seguimiento_nota,

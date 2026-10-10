@@ -4222,3 +4222,43 @@ button.tira-item:hover {
 .requisitos li.cumple {
   padding: 0 10px;
 }
+
+/* ---------- Adenda 6: organización, diligencia y aduanas ---------- */
+.requisito-org {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.requisito-org .badge {
+  margin-left: 4px;
+}
+fieldset.field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+fieldset.field > legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+}
+.senal-cuenta {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.alcanzados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.verificacion .verif-sub {
+  margin: 18px 0 2px;
+  font-size: 14px;
+}

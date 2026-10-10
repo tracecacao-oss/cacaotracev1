@@ -389,7 +389,9 @@ def _cooperativa(hoy: date, c: dict, geometrias: list[dict]) -> Cooperativa:
     partida_coop = f"11{c['dni']}9001"  # 8 dígitos, distinta de las de las parcelas
     documentos = (
         doc_coop(
-            0, "rnca", "Registro Nacional de Cooperativas Agrarias (MIDAGRI)", f"RNCA-{c['codigo']}-2026-001",
+            0, "rnca",
+            "Constancia de inscripción en el Registro Nacional de Cooperativas Agrarias (MIDAGRI)",
+            f"RNCA-{c['codigo']}-2026-001",
             "MIDAGRI, Dirección General de Asociatividad (muestra)",
             "Constancia de inscripción en el Registro Nacional de Cooperativas Agrarias",
             [
@@ -403,7 +405,7 @@ def _cooperativa(hoy: date, c: dict, geometrias: list[dict]) -> Cooperativa:
             _vence(hoy, 700),
         ),
         doc_coop(
-            1, "partida_sunarp", "Partida registral de la cooperativa en SUNARP", partida_coop,
+            1, "partida_sunarp", "Partida registral de la organización en SUNARP", partida_coop,
             "SUNARP, Zona Registral N.° III, Sede Moyobamba",
             "Copia literal de la partida registral de la persona jurídica",
             [
@@ -447,25 +449,18 @@ def _cooperativa(hoy: date, c: dict, geometrias: list[dict]) -> Cooperativa:
             ],
             _vence(hoy, 270),
         ),
+        # Adenda 6: la declaración anual de renta reemplaza a los dos registros de exportador, que no existen.
         doc_coop(
-            4, "ruc_comercio_exterior", "Sustento del RUC habilitado para comercio exterior", f"CE-{ruc}",
-            "SUNAT", "Constancia de RUC habilitado para operaciones de comercio exterior",
+            4, "renta_anual",
+            "Declaración jurada anual del impuesto a la renta, o constancia de haberla presentado",
+            f"OR-{c['codigo']}-2025-0001", "SUNAT",
+            "Constancia de presentación de la declaración jurada anual del impuesto a la renta",
             [
+                ("Número de orden", f"OR-{c['codigo']}-2025-0001"),
                 ("Número de RUC", ruc),
                 ("Razón social", razon),
-                ("Indicador de comercio exterior", "Exportador"),
-                ("Condición", "Habilitado"),
-            ],
-        ),
-        doc_coop(
-            5, "registro_aduanas", "Registro como exportador ante SUNAT Aduanas",
-            f"EXP-{c['codigo']}-2026-01", "SUNAT, Intendencia Nacional de Aduanas (muestra)",
-            "Constancia de registro como exportador",
-            [
-                ("Código de registro", f"EXP-{c['codigo']}-2026-01"),
-                ("Número de RUC", ruc),
-                ("Razón social", razon),
-                ("Régimen", "Exportación definitiva"),
+                ("Ejercicio", "2025"),
+                ("Fecha de presentación", f"{emision_coop + timedelta(days=4):%d/%m/%Y}"),
             ],
         ),
     )

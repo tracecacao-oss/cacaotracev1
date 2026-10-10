@@ -583,7 +583,7 @@ class _Siembra:
                     representante_dni="00000008",
                 ),
             )
-        for tipo in documentos_legales.TIPOS_COOPERATIVA:
+        for tipo in documentos_legales.tipos_de_organizacion(COOPERATIVA["tipo_organizacion"]):
             with _paso(f"Cargar «{tipo.nombre}» de la cooperativa"):
                 datos_legales = expediente.validar_datos_legales(
                     tipo.codigo,

@@ -16,7 +16,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 
 from app import textos
-from app.catalogos import capas_legales, documentos_legales, perfil_legal
+from app.catalogos import capas_legales, documentos_legales, perfil_legal, requisitos_organizacion
 from app.fechas import ahora, hoy_lima
 from app.models import (
     AnalisisCobertura,
@@ -32,7 +32,7 @@ from app.models import (
     Superposicion,
 )
 from app.pdf import dex as pdf_dex
-from app.services import hallazgos
+from app.services import hallazgos, sello
 from app.services.analisis import huella_parcela
 from app.services.fuentes.mapbiomas import MapBiomas
 from app.services.hallazgos import acopio
@@ -53,6 +53,7 @@ from tests.habilitacion_util import (
     productor_listo,
 )
 from tests.imagenes_util import imagen, png, revision
+from tests.organizacion_util import DESCRIPCION, RESULTADO, actuacion, dam, diligencia_completa, documento
 from tests.proceso_util import calidad, lugar, tanda_validada
 from tests.test_analisis import DOCUMENTOS_CON_NOMBRE_PROPIO, PROHIBIDAS
 from tests.test_recomprobacion import documento_cooperativa, documento_embarque
@@ -588,6 +589,9 @@ def test_las_reglas_no_se_disparan_en_un_lote_sin_novedades(
     ]
     datos = _lote(api, sesion, coop, operador, parcelas)
     lote = _listo(api, sesion, datos, operador)
+    # Adenda 6: la organización tiene su política y sus actuaciones, y el lote su declaración aduanera.
+    diligencia_completa(sesion, coop, admin)
+    dam(sesion, uuid.UUID(lote["id"]), operador)
     informe = _informe(api, lote)
     presentes = set(_codigos(informe))
     assert presentes == SIEMPRE | {"mapbiomas_sin_cobertura_reciente"}
@@ -773,7 +777,7 @@ def test_emision_completa(api, sesion, admin, operador, basico, storage_falso):
     # Adenda 4: el respaldo de cada parcela trae su legalidad por requisito, con las seis capas consultadas.
     sellado = sesion.get(Dex, uuid.UUID(dex["id"])).contenido
     # Adenda 5: versión 3, con el bloque de las declaraciones de los productores.
-    assert sellado["version"] == 3
+    assert sellado["version"] == 4
     assert [x["estado"] for x in sellado["productores"]] == ["vigente"] * len(sellado["productores"])
     for respaldo in sellado["respaldo"]:
         leg = respaldo["legalidad"]
@@ -950,7 +954,7 @@ def test_verificacion_publica_sin_token(api, sesion, admin, operador, basico):
     api.headers.pop("Authorization", None)
     respuesta = api.get(f"/publico/dex/{dex['codigo'].lower()}")
     assert respuesta.status_code == 200
-    publicos = {"codigo", "estado", "emitido_en", "contenido_sha256", "cooperativa", "es_demo"}
+    publicos = {"codigo", "estado", "emitido_en", "contenido_sha256", "cooperativa", "es_demo", "agregado"}
     assert set(respuesta.json()) == publicos
     assert (
         respuesta.json()["estado"] == "vigente"
@@ -1298,3 +1302,158 @@ def test_el_dex_trae_las_declaraciones_de_los_productores(
         texto = " ".join(documento.textos)
         assert titulo in texto and totales in texto
         assert "Vecino Familiar" in texto and SEGUIMIENTO_PRODUCTOR in texto
+
+
+# ---------- Adenda 6: la organización, la declaración aduanera y el DEX ----------
+
+
+def test_asociacion_con_su_identidad_basta_para_un_lote_listo(
+    api, sesion, coop, admin, operador, productor, expediente_cooperativa
+):
+    """Sección 13: una asociación con ficha RUC, partida y poderes vigentes, sin nada más."""
+    coop.tipo_organizacion = "asociacion"
+    for codigo in ("renta_anual", "rnca"):
+        expediente_cooperativa[codigo].anulado_en = ahora()
+    sesion.flush()
+    p1 = _parcela(api, sesion, admin, operador, productor, 0)
+    lote = _listo(api, sesion, _lote(api, sesion, coop, operador, [p1]), operador)
+    por_codigo = _codigos(_informe(api, lote))
+    assert "registro_cooperativas_sin_sustento" not in por_codigo
+    tributos = por_codigo["tributos_organizacion_sin_sustento"][0]
+    assert (tributos["grupo"], tributos["etapa"], tributos["criterio"]) == ("no_verificado", 3, 11)
+    assert tributos["sujeto"]["tipo"] == "organizacion" and coop.razon_social in tributos["hecho"]["es"]
+    assert por_codigo["lote_sin_dam"][0]["sujeto"]["tipo"] == "lote"
+    assert {"politica_incompleta", "sin_actuaciones_de_diligencia"} <= set(por_codigo)
+    assert all(por_codigo[c][0]["grupo"] == "no_verificado" for c in ("politica_incompleta", "lote_sin_dam"))
+
+
+def test_lote_bloqueado_por_un_registro_que_salio_vuelve_a_listo(
+    api, sesion, coop, admin, operador, productor, expediente_cooperativa
+):
+    """Sección 8: un lote bloqueado solo por registro_aduanas pasa a listo en la siguiente recomprobación. Y
+    una cooperativa agraria sin su constancia de inscripción también queda lista."""
+    expediente_cooperativa["rnca"].anulado_en = ahora()
+    p1 = _parcela(api, sesion, admin, operador, productor, 0)
+    datos = _lote(api, sesion, coop, operador, [p1])
+    sesion.get(Lote, uuid.UUID(datos["lote"]["id"])).estado = "bloqueado"
+    sesion.flush()
+    lote = _listo(api, sesion, datos, operador)
+    registro = _codigos(_informe(api, lote))["registro_cooperativas_sin_sustento"][0]
+    assert registro["grupo"] == "no_verificado" and "faltante" in registro["hecho"]["es"]
+
+
+def test_declaracion_aduanera_despues_del_dex(api, sesion, admin, operador, basico):
+    lote = _listo(api, sesion, basico, operador)
+    emitido = _emitir(api, admin, lote)
+    assert emitido.status_code == 201, emitido.text
+    dex = emitido.json()
+    sellado = {h["codigo"]: h for h in dex["contenido"]["informe"]["hallazgos"]}
+    assert (sellado["lote_sin_dam"]["grupo"], sellado["lote_sin_dam"]["criterio"]) == ("no_verificado", 11)
+
+    def cargar(tipo, **datos):
+        return api.como(operador).post(
+            f"/lotes/{lote['id']}/documentos",
+            data={"tipo": tipo, **datos},
+            files={"archivo": (f"{tipo}.pdf", PDF + str(datos).encode(), "application/pdf")},
+        )
+
+    # Con el lote cerrado, la factura comercial no se carga, como antes; la declaración aduanera sí.
+    factura = cargar(
+        "factura_comercial", numero="F001-9", entidad_emisora="Emisor", fecha_emision="2026-10-01"
+    )
+    assert factura.status_code == 400
+    assert cargar("dam", numero="1234", fecha_emision=str(hoy_lima())).status_code == 422
+    assert cargar("dam", numero="DAM-PRUEBA-0002").status_code == 422
+    futura = str(hoy_lima() + timedelta(days=1))
+    assert cargar("dam", numero="DAM-PRUEBA-0002", fecha_emision=futura).status_code == 422
+    cargada = cargar("dam", numero="DAM-PRUEBA-0002", fecha_emision=str(hoy_lima()))
+    assert cargada.status_code == 201, cargada.text
+    assert cargada.json()["entidad_emisora"] == "SUNAT"
+    embarque = api.get(f"/lotes/{lote['id']}/documentos").json()
+    tipos = {t["codigo"]: t for t in embarque["tipos"]}
+    assert not tipos["dam"]["obligatorio"] and tipos["dam"]["editable"] and tipos["dam"]["cargado"]
+    assert len(tipos["dam"]["consultas"]) == 2 and tipos["dam"]["registro_consultable"]
+    assert not tipos["factura_comercial"]["editable"] and embarque["completo"]
+    # El DEX no cambia: su contenido y su huella son los mismos.
+    fila = sesion.get(Dex, uuid.UUID(dex["id"]))
+    sesion.refresh(fila)
+    assert fila.contenido_sha256 == dex["contenido_sha256"] == sello.huella(fila.contenido)
+    detalle = api.get(f"/dex/{dex['id']}").json()
+    assert detalle["contenido"] == dex["contenido"]
+    assert [a["numero"] for a in detalle["agregado"]] == ["DAM-PRUEBA-0002"]
+    # Admite cotejo, también con el lote cerrado.
+    cotejo = api.post(
+        f"/documentos/{cargada.json()['id']}/cotejo",
+        json={"nota": "Consulta pública de SUNAT por número: coincide con el archivo."},
+    )
+    assert cotejo.status_code == 200, cotejo.text
+    acciones = [a.accion for a in sesion.scalars(select(Auditoria).order_by(Auditoria.id))]
+    assert "documento.cotejar" in acciones
+    # La verificación pública la muestra aparte.
+    api.headers.pop("Authorization", None)
+    publico = api.get(f"/publico/dex/{dex['codigo']}").json()
+    [agregado] = publico["agregado"]
+    assert agregado["numero"] == "DAM-PRUEBA-0002" and agregado["cotejado"]
+    assert agregado["fecha_numeracion"] == str(hoy_lima()) and agregado["cargado_en"]
+    assert publico["contenido_sha256"] == dex["contenido_sha256"]
+
+
+def test_el_dex_trae_la_organizacion_y_su_diligencia(
+    api, sesion, coop, admin, operador, productor, con_declaraciones
+):
+    diligencia_completa(sesion, coop, admin)
+    campo = actuacion(
+        sesion, coop, admin, tipo="verificacion_en_campo", temas=("trabajo",), productores=(productor.id,)
+    )
+    documento(sesion, coop.id, "actuacion", campo.id, "evidencia_actuacion", admin)
+    lote = _listo(api, sesion, con_declaraciones, operador)
+    dam(sesion, uuid.UUID(lote["id"]), operador)
+    # Los hallazgos del productor traen las actuaciones que lo alcanzaron.
+    informe = _informe(api.como(operador), lote)
+    del_productor = [h for h in informe["hallazgos"] if h["sujeto"]["tipo"] == "productor"]
+    assert del_productor
+    for h in del_productor:
+        assert [a["tipo"]["es"] for a in h["datos"]["actuaciones"]] == ["Verificación en campo"]
+    assert not {"politica_incompleta", "sin_actuaciones_de_diligencia", "lote_sin_dam"} & set(
+        _codigos(informe)
+    )
+    respuesta = _emitir(api, admin, lote)
+    assert respuesta.status_code == 201, respuesta.text
+    dex = sesion.get(Dex, uuid.UUID(respuesta.json()["id"]))
+    c = dex.contenido
+    assert [d["codigo"] for d in c["exportador"]["documentos"]] == [
+        "ficha_ruc",
+        "partida_sunarp",
+        "vigencia_poderes",
+        "renta_anual",
+        "rnca",
+    ]
+    assert "dam" in [x["tipo"] for x in c["embarque"]]
+    o = c["organizacion"]
+    assert {r["codigo"]: r["estado"] for r in o["requisitos"]} == {
+        "identidad": "sustentado",
+        "tributos": "sustentado",
+        "registro_cooperativas": "sustentado",
+        "integridad": "sustentado",
+        "actuaciones": "sustentado",
+    }
+    assert [x["tema"] for x in o["politica"]] == list(requisitos_organizacion.CODIGOS_TEMAS)
+    assert o["canal_denuncias"] is True and len(o["actuaciones"]) == 2
+    assert {a["nivel"] for a in o["actuaciones"]} == {"declarado", "documentado"}
+    # Ni la evidencia ni los productores alcanzados salen del sistema.
+    sellado = json.dumps(o, ensure_ascii=False)
+    assert productor.dni not in sellado and productor.apellidos not in sellado and "evidencia" not in sellado
+    for idioma, titulo, alcanzaron in (
+        ("es", "La organización y su diligencia", "Actuaciones de la organización que lo alcanzaron"),
+        ("en", "The organisation and its due diligence", "Actions of the organisation that reached them"),
+    ):
+        texto = " ".join(pdf_dex.documento(c, dex.contenido_sha256, "https://x.test", idioma).textos)
+        assert titulo in texto and DESCRIPCION in texto and RESULTADO in texto and alcanzaron in texto
+        limpio = texto
+        for nombre in DOCUMENTOS_CON_NOMBRE_PROPIO:
+            limpio = limpio.replace(nombre, "")
+        assert not PROHIBIDAS.search(limpio) and not PROHIBIDAS_EN.search(limpio)
+        # Un DEX emitido antes de la adenda 6 se sigue leyendo, sin la sección.
+        anterior = {k: v for k, v in c.items() if k != "organizacion"}
+        texto = " ".join(pdf_dex.documento(anterior, dex.contenido_sha256, "https://x.test", idioma).textos)
+        assert titulo not in texto

@@ -75,6 +75,9 @@ class DatosLote:
     hoy: date
     # Adenda 5: la declaración de cada productor ante la organización del lote, con el estado de hoy.
     declaraciones: dict[uuid.UUID, declaracion_productor.EstadoProductor] = field(default_factory=dict)
+    # Adenda 6, sección 11, regla 2: las actuaciones vigentes de la organización que alcanzaron a cada
+    # productor, de la más reciente a la más antigua.
+    actuaciones_productor: dict[uuid.UUID, list[Any]] = field(default_factory=dict)
     # Las nueve comprobaciones de la Parte 8 con la fecha de hoy (las llena quien arma el informe).
     comprobaciones: list[dict[str, Any]] = field(default_factory=list)
     # Bloque de imágenes de cada parcela con la alerta de análisis y las rutas de sus dos imágenes.
@@ -195,6 +198,9 @@ def cargar(sesion: Session, lote: Lote) -> DatosLote:
         p.id: f"{p.nombres} {p.apellidos}".strip()
         for p in (sesion.scalars(select(Perfil).where(Perfil.id.in_(personas))) if personas else [])
     }
+    from app.services import diligencia  # evita importación circular
+
+    hoy = hoy_lima()
     return DatosLote(
         sesion=sesion,
         lote=lote,
@@ -223,11 +229,12 @@ def cargar(sesion: Session, lote: Lote) -> DatosLote:
         decisiones_tanda=dict(decisiones_tanda),
         superposiciones=dict(superposiciones),
         nombres=nombres,
-        hoy=hoy_lima(),
+        hoy=hoy,
         declaraciones={
             productor_id: estado
             for (productor_id, _), estado in declaracion_productor.estados(
                 sesion, {(pid, lote.cooperativa_id) for pid in productores}
             ).items()
         },
+        actuaciones_productor=diligencia.de_productores(sesion, set(productores), lote.cooperativa_id, hoy),
     )

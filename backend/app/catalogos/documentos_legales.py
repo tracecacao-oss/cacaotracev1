@@ -26,6 +26,13 @@ class TipoLegal:
     registro_consultable: bool
     requiere_numero: bool = True  # la declaración jurada y lo que firma la comunidad no llevan número
     anterior: bool = False  # adenda 4: ya no se cargan; los cargados se ven como "documentos anteriores"
+    # Adenda 6, sección 4: el documento de la organización que frena un lote si falta (su identidad), y los
+    # tipos de organización a los que aplica (vacío: a todas).
+    identidad: bool = False
+    aplica_a: tuple[str, ...] = ()
+
+    def aplica(self, tipo_organizacion: str) -> bool:
+        return not self.aplica_a or tipo_organizacion in self.aplica_a
 
 
 # Adenda 4, sección 6: los documentos de la parcela.
@@ -139,44 +146,78 @@ ETIQUETAS_CLASE = {
     "minuta": "Minuta",
 }
 
-# ---------- Parte 8: expediente legal de la cooperativa ----------
-# Seis casillas sin exenciones: las seis deben estar vigentes. `registro_consultable` trae los valores
-# iniciales de la especificación ("Los 6 documentos"), que el equipo debe confirmar.
-
+# ---------- Expediente legal de la organización (Parte 8; desde la adenda 6, sección 4) ----------
+# Cada organización ve lo que le toca según su `tipo_organizacion`. Solo la identidad frena un lote: ficha
+# RUC, partida registral y vigencia de poderes. La declaración de renta vence sola a los RENTA_VIGENCIA_MESES
+# de su presentación. `rnca` es la "Constancia de Inscripción" del Decreto Supremo N.º 023-2021-MIDAGRI
+# (art. 13.4): solo para la cooperativa agraria, no frena (decisión del equipo del 2026-10-09) y no tiene una
+# consulta en línea, aunque el reglamento la prevé (art. 5).
 TIPOS_COOPERATIVA = (
+    TipoLegal("ficha_ruc", "Ficha RUC de SUNAT", "Identidad", False, True, identidad=True),
     TipoLegal(
-        "rnca", "Registro Nacional de Cooperativas Agrarias (MIDAGRI)", "Registro agrario", False, False
+        "partida_sunarp",
+        "Partida registral de la organización en SUNARP",
+        "Identidad",
+        False,
+        True,
+        identidad=True,
     ),
-    TipoLegal(
-        "partida_sunarp", "Partida registral de la cooperativa en SUNARP", "Identificación legal", False, True
-    ),
-    TipoLegal("ficha_ruc", "Ficha RUC de SUNAT", "Identificación legal", False, True),
     TipoLegal(
         "vigencia_poderes",
         "Vigencia de poderes del representante legal (SUNARP)",
-        "Representación legal",
+        "Identidad",
         False,
         True,
+        identidad=True,
     ),
+    TipoLegal(
+        "renta_anual",
+        "Declaración jurada anual del impuesto a la renta, o constancia de haberla presentado",
+        "Tributos y registro",
+        False,
+        False,
+    ),
+    TipoLegal(
+        "rnca",
+        "Constancia de inscripción en el Registro Nacional de Cooperativas Agrarias (MIDAGRI)",
+        "Tributos y registro",
+        False,
+        False,
+        aplica_a=("cooperativa_agraria",),
+    ),
+)
+# Adenda 6, sección 4, regla 4: SUNAT pide para exportar el RUC sin la condición de no habido; no hay un
+# registro aparte de exportadores. Los cargados se conservan como "documentos anteriores".
+TIPOS_COOPERATIVA_ANTERIORES = (
     TipoLegal(
         "ruc_comercio_exterior",
         "Sustento del RUC habilitado para comercio exterior",
-        "Capacidad exportadora",
+        "Anterior",
         False,
         True,
+        anterior=True,
     ),
     TipoLegal(
         "registro_aduanas",
         "Registro como exportador ante SUNAT Aduanas",
-        "Capacidad exportadora",
+        "Anterior",
         False,
         False,
+        anterior=True,
     ),
 )
-POR_CODIGO_COOPERATIVA = {t.codigo: t for t in TIPOS_COOPERATIVA}
-CODIGOS_COOPERATIVA = tuple(POR_CODIGO_COOPERATIVA)
+POR_CODIGO_COOPERATIVA = {t.codigo: t for t in (*TIPOS_COOPERATIVA, *TIPOS_COOPERATIVA_ANTERIORES)}
+CODIGOS_COOPERATIVA = tuple(t.codigo for t in TIPOS_COOPERATIVA)  # los que se cargan
+TODOS_COOPERATIVA = tuple(POR_CODIGO_COOPERATIVA)
+IDENTIDAD = tuple(t.codigo for t in TIPOS_COOPERATIVA if t.identidad)
+
+
+def tipos_de_organizacion(tipo_organizacion: str) -> tuple[TipoLegal, ...]:
+    """Los documentos que le tocan a una organización según su tipo (adenda 6, sección 4)."""
+    return tuple(t for t in TIPOS_COOPERATIVA if t.aplica(tipo_organizacion))
 
 
 def tipo_legal(codigo: str) -> TipoLegal | None:
-    """Un tipo legal de la parcela (adenda 4, también los anteriores) o de la cooperativa (Parte 8)."""
+    """Un tipo legal de la parcela (adenda 4) o de la organización (Parte 8 y adenda 6), también los
+    anteriores."""
     return POR_CODIGO.get(codigo) or POR_CODIGO_COOPERATIVA.get(codigo)

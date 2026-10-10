@@ -60,6 +60,8 @@ def _casos_por_comprobacion(idioma: str, lista: list[Hallazgo]) -> list[str]:
 # Hallazgos que dicen cuántos conjuntos de datos registran algo: el mensaje final da la proporción de cada
 # parcela.
 CON_PROPORCION = ("conjuntos_registran_bosque_2020", "conjuntos_registran_cambio_posterior")
+# Adenda 6: los hallazgos de la organización que listan temas; el mensaje final los nombra.
+CON_TEMAS = ("politica_incompleta", "sin_actuaciones_de_diligencia")
 
 
 def _frases(idioma: str, hallazgos: list[Hallazgo]) -> list[str]:
@@ -82,7 +84,10 @@ def _frases(idioma: str, hallazgos: list[Hallazgo]) -> list[str]:
             de_sujeto = {h.sujeto.get("codigo"): h for h in lista}
             nombres = [
                 textos.t(
-                    idioma, "comun.proporcion_conjuntos", parcela=s, n=de_sujeto[s].datos["n"],
+                    idioma,
+                    "comun.proporcion_conjuntos",
+                    parcela=s,
+                    n=de_sujeto[s].datos["n"],
                     total=de_sujeto[s].datos["total"],
                 )
                 for s in nombres
@@ -103,6 +108,8 @@ def _frases(idioma: str, hallazgos: list[Hallazgo]) -> list[str]:
             "peso": textos.numero(peso) if peso is not None else "",
             "n": len(lista),
         }
+        if codigo in CON_TEMAS:
+            valores["temas"] = textos.en_idioma(idioma, lista[0].datos["temas"])
         if codigo == "analisis_requiere_revision":
             citas: list[str] = []
             for h in lista:

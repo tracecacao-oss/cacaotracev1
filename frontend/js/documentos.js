@@ -32,7 +32,7 @@ export function anularDocumento(documento, alCambiar) {
     campo({ etiqueta: "Motivo", name: "motivo", required: true, maxlength: 200 }),
   );
   const { cerrar } = abrirModal({
-    titulo: `Anular ${TIPOS_DOCUMENTO[documento.tipo].toLowerCase()}`,
+    titulo: `Anular ${(TIPOS_DOCUMENTO[documento.tipo] ?? "documento").toLowerCase()}`,
     subtitulo: documento.nombre_original,
     contenido: formulario,
     pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton],
@@ -42,6 +42,29 @@ export function anularDocumento(documento, alCambiar) {
     cerrar();
     toast("Documento anulado.");
     alCambiar();
+  });
+}
+
+/**
+ * Registra el cotejo en fuente de un documento: qué se consultó y qué se encontró (Parte 4). Desde la adenda 6
+ * lo usan el expediente de la organización y la declaración aduanera del lote. `consultas`: [[url, nombre]] de
+ * los registros públicos donde se coteja; `ayuda`: lo que conviene anotar.
+ */
+export function abrirCotejo(documento, { titulo, consultas = [], ayuda }, alCotejar) {
+  const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-cotejo" }, "Registrar cotejo");
+  const formulario = h(
+    "form",
+    { class: "form", id: "form-cotejo" },
+    h("p", {}, "Cotejar es comprobar el documento en el registro público de quien lo emitió. El sistema no consulta ese registro: lo hace una persona, y queda constancia de quién y cuándo."),
+    consultas.length > 0 && h("p", { class: "fila-acciones" }, consultas.map(([url, nombre]) => h("a", { href: url, target: "_blank", rel: "noopener" }, nombre))),
+    h("label", { class: "field" }, "Qué consultaste y qué encontraste", h("textarea", { class: "input texto-libre", name: "nota", required: true, minlength: 10, maxlength: 4000, rows: 3 }), ayuda && h("small", {}, ayuda)),
+  );
+  const { cerrar } = abrirModal({ titulo: `Cotejar: ${titulo}`, subtitulo: `N.º ${documento.numero ?? "—"} · ${documento.entidad_emisora ?? ""}`, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
+  enviarCon(formulario, boton, async ({ nota }) => {
+    await llamarApi(`/documentos/${documento.id}/cotejo`, { metodo: "POST", cuerpo: { nota } });
+    cerrar();
+    toast("Cotejo registrado.");
+    alCotejar();
   });
 }
 

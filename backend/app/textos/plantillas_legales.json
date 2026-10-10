@@ -49,6 +49,7 @@
     "version": 1,
     "anexo": "Anexo A de la adenda 5",
     "nota": "Versión 1, redactada para revisión de un asesor legal. Adenda 5 de CacaoTrace, Anexo A.",
+    "canal": "**Quejas y denuncias.** Si tienes una queja o una denuncia sobre el trabajo, el trato o el acopio, puedes presentarla ante {organizacion} por este medio: {canal}. Puedes hacerlo con tu nombre o de forma anónima.",
     "bloques": [
       {"tipo": "titulo", "texto": "DECLARACIÓN JURADA ANUAL DEL PRODUCTOR"},
       {"tipo": "subtitulo", "texto": "sobre el trabajo en sus parcelas, el uso de agroquímicos y sus obligaciones tributarias"},
@@ -74,6 +75,29 @@
       {"tipo": "firma", "texto": "**Testigo a ruego** (solo si el declarante no sabe o no puede firmar; el declarante pone su huella)\nNombre: ______________________   DNI N.º __________   Firma: __________"},
       {"tipo": "firma", "texto": "**Recibido por la organización**\nNombre: ______________________   Cargo: ______________   Fecha: ____/____/______   Firma: __________"},
       {"tipo": "referencias", "texto": "Referencias: Ley N.º 31110, Ley del régimen laboral agrario, y su reglamento, Decreto Supremo N.º 005-2021-MIDAGRI; Decreto Supremo N.º 001-2015-MINAGRI, Reglamento del Sistema Nacional de Plaguicidas de Uso Agrícola; Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco del EUDR, requisitos 2.3, 2.7, 4.1 a 4.7, 5.2 a 5.4 y 7.1. Versión 1."}
+    ]
+  },
+  "politica_organizacion": {
+    "version": 1,
+    "anexo": "Anexo A de la adenda 6",
+    "nota": "Versión 1, redactada para revisión de un asesor legal. Adenda 6 de CacaoTrace, Anexo A. Lo que va en blanco lo llena la organización.",
+    "bloques": [
+      {"tipo": "titulo", "texto": "POLÍTICA DE INTEGRIDAD, TRABAJO DIGNO Y DILIGENCIA DEBIDA"},
+      {"tipo": "subtitulo", "texto": "{organizacion} · RUC N.º {ruc} · {tipo_organizacion}"},
+      {"tipo": "parrafo", "texto": "Adoptada por {organo}: ______________________, en sesión del ____ de __________ de 20____."},
+      {"tipo": "parrafo", "texto": "**1. Objeto y alcance.** Esta política fija las reglas con que la organización acopia, procesa y vende cacao. Obliga a sus directivos, a su gerencia y a todo su personal. En lo que les corresponde, la organización la da a conocer a sus socios, a los productores que le entregan cacao y a sus proveedores, y espera de ellos la misma conducta."},
+      {"tipo": "parrafo", "texto": "**2. Integridad.** Nadie que actúe en nombre de la organización ofrece, da, pide ni recibe pagos, regalos o favores indebidos, sea a funcionarios públicos, a compradores, a proveedores o a quienes la auditan. Quien tenga un interés personal o familiar en una decisión lo declara por escrito y no participa en ella. Los registros contables y de acopio reflejan lo que ocurrió."},
+      {"tipo": "parrafo", "texto": "**3. No fraude.** La organización no altera pesos, calidades, fechas, orígenes ni documentos. No registra el cacao de una parcela a nombre de otra. No recibe cacao de origen desconocido ni lo mezcla con cacao de origen registrado. No hace afirmaciones engañosas sobre el origen, el volumen o las cualidades de su cacao."},
+      {"tipo": "parrafo", "texto": "**4. Trabajo digno.** En la organización, y en las parcelas de quienes le entregan cacao, se promueven y se exigen estas reglas: (a) ninguna persona menor de dieciocho (18) años trabaja en las labores del cultivo ni del acopio; (b) todo trabajo es libre, y nadie es retenido por deudas, documentos o pagos pendientes; (c) la jornada, el pago y el seguro de los trabajadores respetan la ley; (d) a igual trabajo corresponde igual pago, sin distinción por sexo, origen, religión u otra condición; (e) no se tolera el acoso sexual ni ninguna forma de violencia; y (f) quien trabaja recibe condiciones seguras y el equipo de protección que su labor requiera."},
+      {"tipo": "parrafo", "texto": "**5. Agroquímicos y envases.** La organización entrega a sus productores la lista de los productos que buscó en el registro del SENASA, los capacita en su uso y en el manejo de los envases vacíos, y no distribuye productos que no figuren en ese registro."},
+      {"tipo": "parrafo", "texto": "**6. Canal de quejas y denuncias.** Cualquier persona —trabajador, socio, productor o tercero— puede presentar una queja o una denuncia por un hecho contrario a esta política. Puede hacerlo con su nombre o de forma anónima, por este medio: {canal}. La recibe: ______________________ (nombre o cargo). La organización guarda reserva sobre la identidad de quien denuncia y sobre el contenido de la denuncia. No toma ni permite represalias contra quien denuncia de buena fe. Acusa recibo en ____ días y responde en ____ días. Lleva un registro de los casos y de lo que resolvió. Si el hecho puede ser delito, lo pone en conocimiento de la autoridad competente."},
+      {"tipo": "parrafo", "texto": "**7. Revisión de documentos.** La organización comprueba los documentos que recibe de productores y proveedores antes de aceptarlos: pide el original o una copia legible; lo compara con el registro público cuando existe; y anota quién lo revisó y en qué fecha. Un documento dudoso, alterado o que no coincide con el registro público no se acepta, y el caso queda anotado."},
+      {"tipo": "parrafo", "texto": "**8. Capacitación.** Al menos una vez al año la organización capacita a su personal y a sus productores sobre esta política, y deja constancia de la fecha, los temas y los asistentes."},
+      {"tipo": "parrafo", "texto": "**9. Faltas.** La falta a esta política se trata según el estatuto y el reglamento interno de la organización, sin perjuicio de las responsabilidades que fije la ley."},
+      {"tipo": "parrafo", "texto": "**10. Vigencia.** Esta política rige desde su adopción. Se revisa cada dos años, o antes si cambia la ley."},
+      {"tipo": "firma", "texto": "Firma: ______________________   Nombre: ______________________   Cargo: ______________"},
+      {"tipo": "firma", "texto": "Firma: ______________________   Nombre: ______________________   Cargo: ______________"},
+      {"tipo": "referencias", "texto": "Referencias: Código Penal, Decreto Legislativo N.º 635; Decreto Legislativo N.º 1385, que sanciona la corrupción en el ámbito privado; Ley N.º 31110, Ley del régimen laboral agrario; Ley N.º 27942, Ley de Prevención y Sanción del Hostigamiento Sexual; Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco del EUDR, requisitos 2.3, 2.7, 4.1 a 4.7, 5.2 a 5.5 y 7.3. Versión 1."}
     ]
   }
 }

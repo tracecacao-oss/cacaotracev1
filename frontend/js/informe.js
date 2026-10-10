@@ -3,7 +3,7 @@
 // tres grupos se distinguen por su título, y ningún bloque muestra puntaje, semáforo ni frase que califique
 // el lote. Los textos del informe llegan hechos de la API, en español y en inglés.
 
-import { h, icono, rejilla, toast } from "./ui.js";
+import { fecha, h, icono, rejilla, toast } from "./ui.js";
 
 const GRUPOS = ["impide_cierre", "requiere_atencion", "no_verificado"];
 const ETAPAS = { 1: "Parcela", 2: "Acopio y proceso", 3: "Lote" };
@@ -16,6 +16,10 @@ const IDIOMAS = [
 export function enlaceSujeto(sujeto, irAPestana) {
   const rutas = { parcela: "parcelas", tanda: "tandas", corrida: "corridas", dop: "dops", dpp: "dpps" };
   if (rutas[sujeto.tipo] && sujeto.id) return h("a", { href: `#/${rutas[sujeto.tipo]}/${sujeto.id}` }, `Ver ${sujeto.codigo}`);
+  // Adenda 6: los hallazgos de la organización llevan a su expediente o a su diligencia.
+  if (sujeto.tipo === "organizacion") {
+    return sujeto.detalle_tipo === "diligencia" ? h("a", { href: "#/cooperativa/diligencia" }, "Ir a Diligencia") : h("a", { href: "#/cooperativa/legal" }, "Ir al expediente de la organización");
+  }
   switch (sujeto.detalle_tipo) {
     case "embarque":
       return irAPestana && h("button", { class: "btn-link", type: "button", onclick: () => irAPestana("embarque") }, "Ir a Embarque");
@@ -49,6 +53,14 @@ function tarjeta(hz, idioma, informe, irAPestana) {
     { class: "hz-f" },
     h("div", { class: "hz-f-h" }, h("b", {}, hz.hecho[idioma]), h("span", { class: "crit", title: criterio }, `Tema ${hz.criterio}`)),
     hz.explicacion && h("p", {}, h("span", { class: "sec" }, idioma === "es" ? "Explicación: " : "Explanation (original text in Spanish): "), hz.explicacion),
+    // Adenda 6: las actuaciones de la organización que alcanzaron al productor, junto a la nota.
+    hz.datos?.actuaciones?.length > 0 &&
+      h(
+        "p",
+        {},
+        h("span", { class: "sec" }, idioma === "es" ? "Actuaciones que lo alcanzaron: " : "Actions that reached them: "),
+        hz.datos.actuaciones.map((a) => `${fecha(a.fecha)}, ${a.tipo[idioma]}`).join("; "),
+      ),
     h(
       "div",
       { class: "hz-f-m" },

@@ -3,6 +3,7 @@
 // los productos el administrador y el operador; la nota de seguimiento la escribe solo el administrador.
 
 import { descargarArchivo, llamarApi } from "../api.js";
+import { tablaActuaciones } from "../diligencia.js";
 import {
   DILIGENCIA,
   ESTADO_DECLARACION,
@@ -391,6 +392,16 @@ function bloqueSeguimiento(p, d, puedo, recargar) {
   });
 }
 
+/** Adenda 6, sección 10: las actuaciones de la organización que alcanzaron al productor. Van en los datos de
+ * sus hallazgos, junto a la nota de seguimiento. */
+function bloqueActuaciones(actuaciones, recargar) {
+  return seccion({
+    titulo: "Actuaciones de la organización que lo alcanzaron",
+    sub: "Capacitaciones, visitas, consultas o apoyo en los que se marcó a este productor. Se registran en Cooperativa › Diligencia.",
+    contenido: actuaciones.length ? tablaActuaciones(actuaciones, recargar) : h("p", { class: "panel-sub" }, "Ninguna todavía."),
+  });
+}
+
 function bloqueHistorial(p, d) {
   const anteriores = d.historial.filter((x) => x.id !== d.vigente?.id && x.id !== d.por_firmar?.id);
   if (!anteriores.length) return null;
@@ -418,7 +429,11 @@ function bloqueHistorial(p, d) {
 }
 
 export async function pestanaDeclaracion(p, { recargar }) {
-  const [d, cuest] = await Promise.all([llamarApi(`/productores/${p.id}/declaracion`), cuestionario()]);
+  const [d, cuest, actuaciones] = await Promise.all([
+    llamarApi(`/productores/${p.id}/declaracion`),
+    cuestionario(),
+    llamarApi("/actuaciones", { parametros: { productor_id: p.id } }),
+  ]);
   const puedo = permisos();
   return h(
     "div",
@@ -428,6 +443,7 @@ export async function pestanaDeclaracion(p, { recargar }) {
     bloqueRequisitos(d),
     bloquePapeles(p, d, cuest, puedo, recargar),
     bloqueSeguimiento(p, d, puedo, recargar),
+    bloqueActuaciones(actuaciones, recargar),
     bloqueHistorial(p, d),
   );
 }

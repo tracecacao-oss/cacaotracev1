@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     declaracion_vigencia_meses: int = Field(12, ge=1)
     # Adenda 5: la declaración anual del productor vale estos meses desde que se declaró.
     declaracion_productor_vigencia_meses: int = Field(12, ge=1)
+    # Adenda 6: la declaración de renta de la organización vence sola a estos meses de su presentación, y una
+    # actuación de diligencia cuenta para sus temas durante estos meses desde su fecha.
+    renta_vigencia_meses: int = Field(18, ge=1)
+    actuacion_vigencia_meses: int = Field(12, ge=1)
     distancia_cuerpo_agua_m: int = Field(100, ge=0, le=5000)
     capas_legales_activas: str = (
         "sernanp_anp,sernanp_amortiguamiento,serfor_zonificacion,"
