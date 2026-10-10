@@ -312,3 +312,66 @@ Son de la etapa 3 y su sujeto es el lote.
 - [ ] Confirmar el 1 % de `DAM_TOLERANCIA_PESO_PCT`.
 - [ ] Confirmar que el cuadro de legalidad se construye ahora, y que va en el DEX.
 - [ ] Preguntar al agente de aduanas si el certificado de origen y el certificado fitosanitario se emiten siempre para el destino de la organización. Si alguno no se emite en todos los embarques, hoy ese lote no podría quedar listo, y conviene que deje de ser obligatorio.
+
+## 12. Construcción (10 de octubre de 2026)
+
+Registro de Claude Code. Rama `feat/adenda-7-lote`, migración 0019.
+
+### Confirmado antes de construir
+
+Las cuatro comprobaciones de la sección 11 y las decisiones del equipo están en el recuadro de "Antes de programar": la anulación de la declaración aduanera arrastra su archivo y la página pública muestra tres datos.
+
+### Decisiones de construcción por confirmar
+
+La adenda no las dice.
+
+1. **Datos de la declaración aduanera.**
+   - El número va de 5 a 30 caracteres.
+   - La subpartida se escribe como figura en la declaración. Se guarda solo con sus dígitos, de 4 a 10.
+   - El peso neto lleva dos decimales.
+   - La entidad emisora del archivo queda SUNAT.
+2. **Comparación.**
+   - La diferencia en porcentaje es (declarado − masa del lote) ÷ masa del lote × 100, con dos decimales.
+   - "Difiere" cuando su valor absoluto pasa de `DAM_TOLERANCIA_PESO_PCT`. Igual a la tolerancia no difiere.
+   - La subpartida difiere si no empieza con la `partida_sa` de la orden.
+3. **Anulación.**
+   - Se anula en los mismos estados del lote en que se carga: armado, bloqueado, listo y cerrado.
+   - Un archivo `dam` cargado entre las adendas 6 y 7, sin sus cuatro datos, no cuenta como declaración. Se anula solo, y la pestaña Embarque pide cargarlo de nuevo con sus datos.
+4. **Alerta después del DEX.**
+   - `dam_difiere_del_lote` se guarda en el lote al cargar una declaración posterior al DEX que difiere, y se audita como `lote.alerta`.
+   - Como `exclusion_posterior_al_cierre`, la alerta no se borra si después se anula la declaración.
+   - Aparece en la ficha del lote y en el inicio, en el grupo "Declaraciones aduaneras que difieren de su lote".
+5. **Hallazgo `dam_difiere_del_lote`.**
+   - Sale también en el informe preliminar, con la declaración sin anular de hoy.
+   - Dice cuál difiere, con los dos valores, y que se compara con lo que escribió la persona.
+6. **Cuadro.**
+   - "Le aplica a" cuenta todo estado distinto de `no_aplica`, también `sin_dato`.
+   - Un productor sin declaración anual vigente queda `sin_dato` en sus siete filas.
+   - Daños ambientales:
+     - sin incidencias ambientales, no aplica;
+     - con alguna abierta, por atender;
+     - con todas cerradas, con sustento, de nivel declarado (la nota de cierre).
+   - Las filas de la organización toman el estado y lo que falta de los requisitos de la adenda 6. No tienen nivel.
+   - La fila Aduanas está `sustentado` con una declaración sin anular (nivel documentado, o verificado en fuente si tiene cotejo), y dice su número y si difiere. Sin declaración, está `sin_sustento` y nombra lo que falta.
+   - El sellado guarda los sujetos de cada fila, con su estado, su nivel, su peso y su sustento: la lista detrás de cada cuenta de un lote cerrado sale del DEX. De los productores, nombres y apellidos, nunca el DNI.
+   - Con el lote cerrado, si su DEX se emitió antes de esta adenda, la ruta responde `no_disponible`.
+   - En un lote en armado o anulado no hay cuadro: responde 400.
+   - El nombre y el motivo de los nueve requisitos que no se piden viven en `es.json` y `en.json`. El 1.5 se escribe "Expropiación con arreglo a la ley", para no usar una palabra prohibida de la Parte 4.
+7. **DEX, versión 5.**
+   - El embarque lleva la declaración sin anular con sus cuatro datos y la comparación. Un archivo `dam` sin datos no va.
+   - "Agregado después de la emisión" lista las declaraciones sin anular que no quedaron selladas. De un DEX anulado, solo las que se cargaron mientras estuvo vigente.
+   - La página pública muestra el nombre del documento, el número, la fecha de numeración y la fecha en que se agregó.
+8. **Caso de una parcela no habilitada.**
+   - Dice "La parcela PA-… (nombre), de {productor}, está …".
+   - Lleva `productor_id` para el enlace "Ir al productor".
+   - El hallazgo `comprobacion_fallida` lo dice en los dos idiomas.
+9. **Pantalla.**
+   - En la pestaña Legalidad, cada sujeto de una cuenta lleva a la ficha de la parcela o a la pestaña Declaración del productor.
+   - En pantallas angostas, cada fila se apila con sus cuatro cuentas.
+10. **Escenario de demostración.** Carga la declaración aduanera con la masa del lote y una subpartida ficticia de la partida 1801 (`1801000000`).
+
+### Para el equipo
+
+1. Al desplegar, el comando de inicio de Render aplica la migración 0019. No cambia ningún lote ni ningún DEX.
+2. Un archivo de declaración aduanera cargado con la adenda 6 antes de este despliegue aparece sin sus cuatro datos: se anula y se carga de nuevo.
+3. Las decisiones pendientes de la sección 11.

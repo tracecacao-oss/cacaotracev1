@@ -174,6 +174,26 @@ def pendientes(contexto: Contexto) -> PendientesSalida:
         for a in lo.alertas or []
         if a.get("codigo") == "exclusion_posterior_al_cierre"
     ]
+    # Adenda 7, sección 4.4, regla 5: la declaración aduanera agregada después del DEX que difiere del lote.
+    aduanas = [
+        Pendiente(
+            titulo=lo.codigo,
+            detalle=f"La declaración aduanera {a.get('numero')}, agregada tras el DEX, difiere del lote en "
+            + " y ".join(
+                x
+                for x, si in (
+                    ("el peso", a.get("peso_difiere")),
+                    ("la subpartida", a.get("subpartida_difiere")),
+                )
+                if si
+            )
+            + ". El DEX no cambia.",
+            enlace=f"#/lotes-exportacion/{lo.id}",
+        )
+        for lo in lotes
+        for a in lo.alertas or []
+        if a.get("codigo") == "dam_difiere_del_lote"
+    ]
     grupos = [
         _grupo(
             "documentos_parcelas_vencidos",
@@ -204,6 +224,7 @@ def pendientes(contexto: Contexto) -> PendientesSalida:
             "lotes_por_entregar", "Lotes que no están listos a 15 días de la entrega", "otro", por_entregar
         ),
         _grupo("exclusion_posterior_al_cierre", "Exclusiones después de cerrar un lote", "otro", alertas),
+        _grupo("dam_difiere_del_lote", "Declaraciones aduaneras que difieren de su lote", "otro", aduanas),
         _grupo("parcelas_observadas", "Parcelas observadas", "otro", observadas),
         _grupo("tandas_sin_validar", "Tandas sin validar", "otro", tandas),
         _declaraciones(contexto, cooperativa_id),

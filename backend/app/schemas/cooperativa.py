@@ -3,6 +3,7 @@ recomprobación del lote y pendientes."""
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, StringConstraints
@@ -111,6 +112,35 @@ class DocumentoEmbarque(BaseModel):
     documentos: list[DocumentoSalida]
 
 
+class ComparacionAduanera(BaseModel):
+    """Adenda 7, sección 4.2: lo que la persona escribió de la declaración aduanera frente al lote. No
+    bloquea."""
+
+    peso_lote_kg: Decimal | None
+    peso_declarado_kg: Decimal
+    diferencia_kg: Decimal | None
+    diferencia_pct: Decimal | None
+    tolerancia_pct: Decimal
+    peso_difiere: bool
+    partida_orden: str
+    subpartida: str
+    subpartida_difiere: bool
+    difiere: bool
+
+
+class DeclaracionAduaneraSalida(BaseModel):
+    id: uuid.UUID
+    numero: str
+    fecha_numeracion: date
+    peso_neto_kg: Decimal
+    subpartida: str
+    posterior_al_dex: bool
+    registrada_por_nombre: str | None
+    registrada_en: datetime
+    documento: DocumentoSalida | None
+    comparacion: ComparacionAduanera
+
+
 class EmbarqueSalida(BaseModel):
     # Los obligatorios.
     completo: bool
@@ -118,6 +148,8 @@ class EmbarqueSalida(BaseModel):
     # Se cargan y se anulan en un lote armado, bloqueado o listo.
     editable: bool
     tipos: list[DocumentoEmbarque]
+    # Adenda 7: la declaración aduanera sin anular, con sus cuatro datos y la comparación con el lote.
+    declaracion: DeclaracionAduaneraSalida | None = None
 
 
 # ---------- Recomprobación ----------
@@ -135,6 +167,9 @@ class Caso(BaseModel):
     tipo: TipoCaso
     id: str | None = None
     codigo: str | None = None
+    # Adenda 7: en una parcela no habilitada, su productor.
+    productor_id: str | None = None
+    productor: str | None = None
 
 
 class Comprobacion(BaseModel):

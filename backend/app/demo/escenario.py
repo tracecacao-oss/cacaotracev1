@@ -55,7 +55,7 @@ from app.auth_admin import ClienteAuthAdmin
 from app.catalogos import documentos_embarque, documentos_legales, etapas_proceso, perfil_legal
 from app.contexto import Contexto
 from app.fechas import ahora, dia_lima, hoy_lima
-from app.models import Perfil
+from app.models import Lote, Perfil
 from app.pdf.base import FUENTES
 from app.schemas.cooperativa import CooperativaCambios
 from app.schemas.dex import EmisionDex
@@ -996,6 +996,7 @@ class _Siembra:
 
     def _embarque(self, numero: int) -> None:
         lote_id = self.resultado.lotes[numero]
+        masa = self.sesion.get(Lote, lote_id).masa_neta_kg
         for n, tipo in enumerate(documentos_embarque.TIPOS, start=1):
             with _paso(f"Lote de la orden {numero}: cargar «{tipo.nombre}»"):
                 embarque.cargar(
@@ -1007,6 +1008,10 @@ class _Siembra:
                     f"DEMO-LOTE{numero}-{n}",
                     ENTIDAD_EMISORA,
                     self.hoy,
+                    # Adenda 7: la declaración aduanera lleva su peso neto y su subpartida (ficticia, de la
+                    # partida 1801); aquí, la misma masa del lote.
+                    masa if tipo.codigo == "dam" else None,
+                    "1801000000" if tipo.codigo == "dam" else None,
                 )
 
     def _recomprobar(self, numero: int, esperado: str) -> None:

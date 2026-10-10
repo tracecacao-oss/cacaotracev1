@@ -1,18 +1,16 @@
-"""Reglas de la etapa 3 sobre la organización y la declaración aduanera del lote (adenda 6, sección 11), con
-el estado de hoy. Una función por regla.
+"""Reglas de la etapa 3 sobre la organización y la declaración aduanera del lote (adenda 6, sección 11, y
+adenda 7, sección 8), con el estado de hoy. Una función por regla.
 
-Su sujeto es la organización, salvo `lote_sin_dam`, que es del lote. Todas van a No verificado: son
-documentos o registros que faltan. Nada de esto frena el lote ni dice que la organización cumple o no: dice
-qué falta en su expediente, en su política o en su registro de actuaciones.
+Su sujeto es la organización, salvo `lote_sin_dam` y `dam_difiere_del_lote`, que son del lote. Las de la
+organización y `lote_sin_dam` van a No verificado: son documentos o registros que faltan;
+`dam_difiere_del_lote`, a Requiere atención. Nada de esto frena el lote ni dice que la organización cumple o
+no: dice qué falta en su expediente, en su política o en su registro de actuaciones, y en qué difiere lo
+declarado en aduanas.
 """
 
-from sqlalchemy import select
-
 from app import textos
-from app.catalogos import documentos_embarque
-from app.models import Documento
 from app.services import cooperativa as servicio_cooperativa
-from app.services import diligencia
+from app.services import diligencia, embarque
 from app.services.hallazgos.catalogo import Hallazgo, sujeto
 from app.services.hallazgos.datos import DatosLote
 
@@ -104,26 +102,61 @@ def sin_actuaciones_de_diligencia(d: DatosLote) -> list[Hallazgo]:
     ]
 
 
+def _lote(d: DatosLote) -> dict:
+    return sujeto("lote", d.lote.id, d.lote.codigo) | {"detalle_tipo": "embarque"}
+
+
 def lote_sin_dam(d: DatosLote) -> list[Hallazgo]:
-    """Sección 7, regla 5: el lote no tiene la declaración aduanera al emitir el DEX (y en el informe
-    preliminar, hoy)."""
-    tiene = d.sesion.scalar(
-        select(Documento.id)
-        .where(
-            Documento.entidad == "lote",
-            Documento.entidad_id == d.lote.id,
-            Documento.tipo.in_(documentos_embarque.DESPUES_DEL_DEX),
-            Documento.anulado_en.is_(None),
-        )
-        .limit(1)
-    )
-    if tiene:
+    """Adenda 6, sección 7, regla 5, y adenda 7, sección 8: el lote no tiene una declaración aduanera sin
+    anular al emitir el DEX (y en el informe preliminar, hoy)."""
+    if embarque.vigente(d.sesion, d.lote.id) is not None:
         return []
+    return [Hallazgo("lote_sin_dam", _lote(d), {"lote": d.lote.codigo, "referencias": "7.2"})]
+
+
+def dam_difiere_del_lote(d: DatosLote) -> list[Hallazgo]:
+    """Adenda 7, sección 4.2: el peso o la subpartida que la persona escribió de la declaración aduanera
+    difieren del lote. Dice cuál, con los dos valores. No bloquea."""
+    declaracion = embarque.vigente(d.sesion, d.lote.id)
+    if declaracion is None:
+        return []
+    c = embarque.comparar(d.sesion, declaracion, d.lote)
+    if not c.difiere:
+        return []
+    valores = {
+        "peso_declarado": textos.numero(c.peso_declarado_kg),
+        "peso_lote": textos.numero(c.peso_lote_kg),
+        "diferencia_pct": textos.numero(c.diferencia_pct) if c.diferencia_pct is not None else "—",
+        "subpartida": c.subpartida,
+        "partida": c.partida_orden,
+    }
+    partes = {
+        i: textos.lista(
+            i,
+            [
+                *([textos.t(i, "aduanas.difiere_peso", **valores)] if c.peso_difiere else []),
+                *([textos.t(i, "aduanas.difiere_subpartida", **valores)] if c.subpartida_difiere else []),
+            ],
+        )
+        for i in textos.IDIOMAS
+    }
     return [
         Hallazgo(
-            "lote_sin_dam",
-            sujeto("lote", d.lote.id, d.lote.codigo) | {"detalle_tipo": "embarque"},
-            {"lote": d.lote.codigo, "referencias": "7.2"},
+            "dam_difiere_del_lote",
+            _lote(d),
+            {
+                "lote": d.lote.codigo,
+                "numero": declaracion.numero,
+                "diferencias": partes,
+                "peso_difiere": c.peso_difiere,
+                "subpartida_difiere": c.subpartida_difiere,
+                "peso_declarado_kg": c.peso_declarado_kg,
+                "peso_lote_kg": c.peso_lote_kg,
+                "diferencia_pct": c.diferencia_pct,
+                "subpartida": c.subpartida,
+                "partida_orden": c.partida_orden,
+                "referencias": "7.2",
+            },
         )
     ]
 
@@ -134,4 +167,5 @@ REGLAS = (
     politica_incompleta,
     sin_actuaciones_de_diligencia,
     lote_sin_dam,
+    dam_difiere_del_lote,
 )

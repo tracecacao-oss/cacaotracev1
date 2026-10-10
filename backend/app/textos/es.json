@@ -122,7 +122,8 @@
     "registro_cooperativas_sin_sustento": "{organizacion}, cooperativa agraria, no tiene vigente en su expediente la constancia de inscripción en el Registro Nacional de Cooperativas Agrarias ({estado}). Orientador, requisito 7.1; Ley N.º 31335.",
     "politica_incompleta": "Temas de la política de {organizacion} sin sustento: {temas}. Orientador, requisitos 7.3 y 5.5.",
     "sin_actuaciones_de_diligencia": "{organizacion} no registró una actuación de diligencia vigente en estos temas, en los que se espera una: {temas}.",
-    "lote_sin_dam": "El lote {lote} no tiene cargada la Declaración Aduanera de Mercancías. Orientador, requisito 7.2."
+    "lote_sin_dam": "El lote {lote} no tiene cargada la Declaración Aduanera de Mercancías. Orientador, requisito 7.2.",
+    "dam_difiere_del_lote": "La declaración aduanera {numero} del lote {lote} difiere de lo que registra el sistema: {diferencias}. Lo compara con lo que escribió la persona que la cargó. Orientador, requisito 7.2."
   },
   "mensaje": {
     "analisis_requiere_revision": "El análisis de cobertura forestal de {sujetos}, que {aporta} {peso} % del lote, devolvió {citas}.",
@@ -187,7 +188,8 @@
     "registro_cooperativas_sin_sustento": "La cooperativa agraria no tiene vigente su constancia de inscripción en el Registro Nacional de Cooperativas Agrarias.",
     "politica_incompleta": "Temas de la política de la organización sin sustento: {temas}.",
     "sin_actuaciones_de_diligencia": "Temas en los que se espera una actuación de diligencia y no hay una vigente: {temas}.",
-    "lote_sin_dam": "El lote no tiene cargada la Declaración Aduanera de Mercancías."
+    "lote_sin_dam": "El lote no tiene cargada la Declaración Aduanera de Mercancías.",
+    "dam_difiere_del_lote": "La declaración aduanera difiere del lote: {diferencias}."
   },
   "comun": {
     "aporta_uno": "aporta",
@@ -316,7 +318,7 @@
     "documentos_embarque_completos": "Documentos de embarque"
   },
   "casos": {
-    "parcela_estado": "la parcela {codigo} está {estado}",
+    "parcela_estado": "la parcela {codigo}, de {productor}, está {estado}",
     "parcela_excluida": "la parcela {codigo} está excluida",
     "dop_estado": "el DOP {codigo} está {estado}",
     "dpp_estado": "el DPP {codigo} está {estado}",
@@ -566,7 +568,10 @@
     "temas": "Temas",
     "falta": "Falta",
     "actuaciones_alcanzaron": "Actuaciones de la organización que lo alcanzaron",
-    "requisito_organizacion": "Requisito"
+    "requisito_organizacion": "Requisito",
+    "embarque_dam": "Declaración aduanera: N.º {numero}, numerada el {fecha}, peso neto {peso} kg, subpartida {subpartida}. {comparacion}",
+    "dam_coincide": "Coincide con el lote.",
+    "dam_difiere": "Difiere del lote: {diferencias}."
   },
   "anexo": {
     "nota_general": "Ayuda para el importador con los campos de la declaración de diligencia debida que salen de este flujo, en el orden del Anexo II del Reglamento (UE) 2023/1115 (texto consolidado del 18/09/2026). No es un envío a TRACES ni usa su interfaz.",
@@ -597,6 +602,8 @@
     "- anexo_ii.json: los campos de la declaración de diligencia debida que salen de este flujo, en el orden del Anexo II del Reglamento (UE) 2023/1115. La afirmación de riesgo y la firma corresponden al operador.",
     "- hallazgos.json: el informe de hallazgos estructurado, en español y en inglés.",
     "- LEEME.txt: este archivo.",
+    "",
+    "Los dos PDF traen la sección «Legalidad por requisito»: el lote frente a cada requisito del orientador, con cuentas y porcentajes de masa, sin calificarlo. hallazgos.json la trae también, para leerla con un programa.",
     "",
     "Los documentos de evidencia no van en el paquete: el expediente los lista con su número, su fecha y su huella, y la cooperativa entrega copias si el importador las pide.",
     "",
@@ -829,5 +836,91 @@
     "falta_contacto": "falta el contacto del canal",
     "canal_si": "Registrado en los datos de la organización",
     "canal_no": "Sin registrar"
+  },
+  "aduanas": {
+    "difiere_peso": "peso neto declarado {peso_declarado} kg frente a {peso_lote} kg de masa neta del lote ({diferencia_pct} %)",
+    "difiere_subpartida": "subpartida declarada {subpartida}, que no empieza con la partida {partida} de la orden"
+  },
+  "cuadro": {
+    "titulo": "Legalidad por requisito",
+    "sub": "Los requisitos son los del Documento orientador para la diligencia debida de la legalidad del café y cacao en el marco del EUDR (MIDAGRI, MINCETUR y ADEX; European Forest Institute, 2026), que no es jurídicamente vinculante. El cuadro cuenta los sujetos del lote en cada estado, con el porcentaje de la masa del lote que aportan; no califica al lote.",
+    "grupos": {
+      "parcela": "Parcelas",
+      "productor": "Productores",
+      "organizacion": "Organización",
+      "lote": "Lote"
+    },
+    "requisito": "Requisito",
+    "aplica": "Le aplica a",
+    "con_sustento": "Con sustento",
+    "por_atender": "Por atender",
+    "sin_sustento": "Sin sustento",
+    "estado": "Estado",
+    "falta": "Falta",
+    "no_aplica_lote": "No aplica a este lote",
+    "niveles": "declarado {declarado} · documentado {documentado} · verificado en fuente {verificado_en_fuente}",
+    "no_se_piden_titulo": "Requisitos que no se piden",
+    "no_disponible": "Este DEX se emitió antes del cuadro de legalidad por requisito.",
+    "filas": {
+      "tenencia": "Tenencia",
+      "acuerdo_comunal": "Acuerdo con la comunidad",
+      "area_protegida": "Área protegida",
+      "tierra_forestal": "Tierra forestal",
+      "agua_de_riego": "Agua de riego",
+      "faja_marginal": "Faja marginal",
+      "instrumento_ambiental": "Instrumento ambiental",
+      "patrimonio_cultural": "Patrimonio cultural",
+      "danos_ambientales": "Daños ambientales",
+      "agroquimicos": "Agroquímicos",
+      "envases": "Envases",
+      "condiciones_de_trabajo": "Condiciones de trabajo",
+      "igualdad_y_maternidad": "Igualdad y maternidad",
+      "menores_de_edad": "Menores de edad",
+      "trabajo_libre": "Trabajo libre",
+      "tributos_productor": "Tributos del productor",
+      "tributos_organizacion": "Tributos de la organización",
+      "registro_cooperativas": "Registro de cooperativas",
+      "integridad": "Integridad",
+      "actuaciones": "Actuaciones de diligencia",
+      "aduanas": "Aduanas"
+    },
+    "no_se_piden": {
+      "1.5": [
+        "Expropiación con arreglo a la ley",
+        "No pertinente: no hay expropiaciones para cultivar café o cacao"
+      ],
+      "2.6": [
+        "Vertimientos a fuentes de agua",
+        "Solo para café"
+      ],
+      "2.8": [
+        "Estándares de calidad ambiental de suelo",
+        "No pertinente: lo cubre 2.12"
+      ],
+      "2.9": [
+        "Emisiones dentro de los límites",
+        "No pertinente: no hay límite para la actividad agrícola"
+      ],
+      "3.2": [
+        "Derecho de las comunidades a un ambiente sano",
+        "No pertinente: lo cubre la categoría 2"
+      ],
+      "3.4 bis": [
+        "Instrumento ambiental con participación ciudadana",
+        "No pertinente: las parcelas están bajo el umbral de 50 ha"
+      ],
+      "4.8": [
+        "Libertad sindical",
+        "No pertinente: agricultura familiar sin relación de subordinación"
+      ],
+      "5.1": [
+        "Respeto general de los derechos humanos",
+        "No pertinente: lo cubren otros requisitos"
+      ],
+      "6.1": [
+        "Consulta previa",
+        "No pertinente: el Estado no autoriza cambios de uso para café o cacao"
+      ]
+    }
   }
 }

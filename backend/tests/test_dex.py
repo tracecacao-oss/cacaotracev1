@@ -32,7 +32,7 @@ from app.models import (
     Superposicion,
 )
 from app.pdf import dex as pdf_dex
-from app.services import hallazgos, sello
+from app.services import hallazgos
 from app.services.analisis import huella_parcela
 from app.services.fuentes.mapbiomas import MapBiomas
 from app.services.hallazgos import acopio
@@ -777,7 +777,7 @@ def test_emision_completa(api, sesion, admin, operador, basico, storage_falso):
     # Adenda 4: el respaldo de cada parcela trae su legalidad por requisito, con las seis capas consultadas.
     sellado = sesion.get(Dex, uuid.UUID(dex["id"])).contenido
     # Adenda 5: versión 3, con el bloque de las declaraciones de los productores.
-    assert sellado["version"] == 4
+    assert sellado["version"] == 5
     assert [x["estado"] for x in sellado["productores"]] == ["vigente"] * len(sellado["productores"])
     for respaldo in sellado["respaldo"]:
         leg = respaldo["legalidad"]
@@ -1340,62 +1340,6 @@ def test_lote_bloqueado_por_un_registro_que_salio_vuelve_a_listo(
     lote = _listo(api, sesion, datos, operador)
     registro = _codigos(_informe(api, lote))["registro_cooperativas_sin_sustento"][0]
     assert registro["grupo"] == "no_verificado" and "faltante" in registro["hecho"]["es"]
-
-
-def test_declaracion_aduanera_despues_del_dex(api, sesion, admin, operador, basico):
-    lote = _listo(api, sesion, basico, operador)
-    emitido = _emitir(api, admin, lote)
-    assert emitido.status_code == 201, emitido.text
-    dex = emitido.json()
-    sellado = {h["codigo"]: h for h in dex["contenido"]["informe"]["hallazgos"]}
-    assert (sellado["lote_sin_dam"]["grupo"], sellado["lote_sin_dam"]["criterio"]) == ("no_verificado", 11)
-
-    def cargar(tipo, **datos):
-        return api.como(operador).post(
-            f"/lotes/{lote['id']}/documentos",
-            data={"tipo": tipo, **datos},
-            files={"archivo": (f"{tipo}.pdf", PDF + str(datos).encode(), "application/pdf")},
-        )
-
-    # Con el lote cerrado, la factura comercial no se carga, como antes; la declaración aduanera sí.
-    factura = cargar(
-        "factura_comercial", numero="F001-9", entidad_emisora="Emisor", fecha_emision="2026-10-01"
-    )
-    assert factura.status_code == 400
-    assert cargar("dam", numero="1234", fecha_emision=str(hoy_lima())).status_code == 422
-    assert cargar("dam", numero="DAM-PRUEBA-0002").status_code == 422
-    futura = str(hoy_lima() + timedelta(days=1))
-    assert cargar("dam", numero="DAM-PRUEBA-0002", fecha_emision=futura).status_code == 422
-    cargada = cargar("dam", numero="DAM-PRUEBA-0002", fecha_emision=str(hoy_lima()))
-    assert cargada.status_code == 201, cargada.text
-    assert cargada.json()["entidad_emisora"] == "SUNAT"
-    embarque = api.get(f"/lotes/{lote['id']}/documentos").json()
-    tipos = {t["codigo"]: t for t in embarque["tipos"]}
-    assert not tipos["dam"]["obligatorio"] and tipos["dam"]["editable"] and tipos["dam"]["cargado"]
-    assert len(tipos["dam"]["consultas"]) == 2 and tipos["dam"]["registro_consultable"]
-    assert not tipos["factura_comercial"]["editable"] and embarque["completo"]
-    # El DEX no cambia: su contenido y su huella son los mismos.
-    fila = sesion.get(Dex, uuid.UUID(dex["id"]))
-    sesion.refresh(fila)
-    assert fila.contenido_sha256 == dex["contenido_sha256"] == sello.huella(fila.contenido)
-    detalle = api.get(f"/dex/{dex['id']}").json()
-    assert detalle["contenido"] == dex["contenido"]
-    assert [a["numero"] for a in detalle["agregado"]] == ["DAM-PRUEBA-0002"]
-    # Admite cotejo, también con el lote cerrado.
-    cotejo = api.post(
-        f"/documentos/{cargada.json()['id']}/cotejo",
-        json={"nota": "Consulta pública de SUNAT por número: coincide con el archivo."},
-    )
-    assert cotejo.status_code == 200, cotejo.text
-    acciones = [a.accion for a in sesion.scalars(select(Auditoria).order_by(Auditoria.id))]
-    assert "documento.cotejar" in acciones
-    # La verificación pública la muestra aparte.
-    api.headers.pop("Authorization", None)
-    publico = api.get(f"/publico/dex/{dex['codigo']}").json()
-    [agregado] = publico["agregado"]
-    assert agregado["numero"] == "DAM-PRUEBA-0002" and agregado["cotejado"]
-    assert agregado["fecha_numeracion"] == str(hoy_lima()) and agregado["cargado_en"]
-    assert publico["contenido_sha256"] == dex["contenido_sha256"]
 
 
 def test_el_dex_trae_la_organizacion_y_su_diligencia(

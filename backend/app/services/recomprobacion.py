@@ -32,6 +32,7 @@ from app.models import (
     OrdenCompra,
     Parcela,
     Perfil,
+    Productor,
     Recomprobacion,
     Tanda,
     TandaFinal,
@@ -113,6 +114,10 @@ def comprobar(sesion: Session, lote: Lote) -> list[dict[str, Any]]:
             select(Parcela).where(Parcela.id.in_({f.parcela_id for f in filas})).order_by(Parcela.codigo)
         )
     )
+    productores = {
+        x.id: x
+        for x in sesion.scalars(select(Productor).where(Productor.id.in_({p.productor_id for p in parcelas})))
+    }
     # Evaluar pasa a observada la parcela habilitada que dejó de cumplir algún requisito (Parte 4).
     evaluaciones = habilitacion.evaluar(sesion, parcelas)
     no_habilitadas = []
@@ -131,9 +136,12 @@ def comprobar(sesion: Session, lote: Lote) -> list[dict[str, Any]]:
             )
         if p.habilitacion_estado != "habilitada":
             incumplidos = [r.detalle for r in evaluaciones[p.id].requisitos if not r.cumple]
+            # Adenda 7, sección 2, regla 2: el caso nombra al productor, para ir directo a corregirlo.
+            productor = productores.get(p.productor_id)
+            nombre = f"{productor.nombres} {productor.apellidos}".strip() if productor else "—"
             no_habilitadas.append(
                 Caso(
-                    texto=f"La parcela {p.codigo} ({p.nombre}) está {p.habilitacion_estado}",
+                    texto=f"La parcela {p.codigo} ({p.nombre}), de {nombre}, está {p.habilitacion_estado}",
                     detalle=(
                         "Requisito que no cumple: " + "; ".join(d.rstrip(".") for d in incumplidos) + "."
                     )
@@ -142,6 +150,8 @@ def comprobar(sesion: Session, lote: Lote) -> list[dict[str, Any]]:
                     tipo="parcela",
                     id=str(p.id),
                     codigo=p.codigo,
+                    productor_id=str(p.productor_id),
+                    productor=nombre,
                 )
             )
     dops = list(sesion.scalars(select(Dop).where(Dop.id.in_({f.dop_id for f in filas})).order_by(Dop.codigo)))

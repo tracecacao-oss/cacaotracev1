@@ -99,6 +99,8 @@ CATALOGO: dict[str, Entrada] = {
     "politica_incompleta": Entrada("no_verificado", 3, 5),
     "sin_actuaciones_de_diligencia": Entrada("no_verificado", 3, 11),
     "lote_sin_dam": Entrada("no_verificado", 3, 11),
+    # Adenda 7, sección 8: lo declarado en aduanas difiere del lote.
+    "dam_difiere_del_lote": Entrada("requiere_atencion", 3, 3),
     "parcela_cambio_de_estado": Entrada("requiere_atencion", 3, None),
     "desviacion_fifo": Entrada("requiere_atencion", 3, 3),
     # Siempre presentes

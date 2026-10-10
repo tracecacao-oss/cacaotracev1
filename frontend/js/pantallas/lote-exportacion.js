@@ -1,5 +1,6 @@
 // Detalle de un lote de exportación con pestañas Selección, Genealogía, Indicadores, Embarque y
-// Recomprobación (Parte 8), y Hallazgos y DEX (Parte 9). Un lote con desviación FIFO muestra su etiqueta y su
+// Recomprobación (Parte 8), y Hallazgos y DEX (Parte 9). La adenda 7 suma Legalidad, el cuadro de legalidad
+// por requisito, y la declaración aduanera con sus cuatro datos en Embarque. Un lote con desviación FIFO muestra su etiqueta y su
 // motivo; uno bloqueado, una franja fija con las comprobaciones que fallan. Los resultados se nombran "sin
 // observaciones" y "con observaciones". Un lote armado se anula con motivo; uno bloqueado o listo, solo un
 // administrador. El DEX lo emite solo un administrador, sobre un lote listo, después de leer el mensaje final
@@ -10,6 +11,7 @@ import { abrirCotejo, anularDocumento, verDocumento } from "../documentos.js";
 import { rolEfectivo } from "../estado.js";
 import { estadoLote, insignia, insigniaFifo, tarjetasIndicadores, vistaGenealogia } from "../exportacion.js";
 import { hoyLima as hoy } from "../fechas.js";
+import { vistaCuadro } from "../cuadro-legalidad.js";
 import { mensajeFinal, vistaInforme } from "../informe.js";
 import { codigoQr, huella } from "../tandas.js";
 import { insigniaNivel, kilos } from "../textos.js";
@@ -19,6 +21,7 @@ const PESTANAS = [
   ["seleccion", "Selección"],
   ["genealogia", "Genealogía"],
   ["indicadores", "Indicadores"],
+  ["legalidad", "Legalidad"],
   ["embarque", "Embarque"],
   ["recomprobacion", "Recomprobación"],
   ["hallazgos", "Hallazgos"],
@@ -125,7 +128,49 @@ function pestanaIndicadores(l) {
   });
 }
 
+// ---------- Legalidad (adenda 7, sección 5) ----------
+
+function pestanaLegalidad(l) {
+  const caja = h("div", {}, cargando());
+  llamarApi(`/lotes/${l.id}/legalidad`)
+    .then((cuadro) => reemplazar(caja, vistaCuadro(cuadro, l.id)))
+    .catch((error) => reemplazar(caja, errorDeCarga(error)));
+  return seccion({
+    titulo: "Legalidad por requisito",
+    sub: "El lote completo frente a cada requisito del orientador, pesado por kilos. Lo calcula el sistema desde lo que ya está cargado; nadie lo escribe.",
+    contenido: caja,
+  });
+}
+
 // ---------- Embarque ----------
+
+/** La comparación de la declaración aduanera con el lote (adenda 7, sección 4.2). No bloquea. */
+export function textoComparacion(c) {
+  const kilos2 = (v) => `${Number(v).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
+  const peso =
+    c.diferencia_kg === null
+      ? "El lote no tiene masa neta para comparar."
+      : `Peso: ${kilos2(c.peso_declarado_kg)} declarados frente a ${kilos2(c.peso_lote_kg)} del lote; diferencia ${kilos2(c.diferencia_kg)} (${c.diferencia_pct} %). ${c.peso_difiere ? `Difiere: pasa de ${c.tolerancia_pct} %.` : `No difiere: hasta ${c.tolerancia_pct} %.`}`;
+  const subpartida = `Subpartida ${c.subpartida}: ${c.subpartida_difiere ? `difiere, no empieza con la partida ${c.partida_orden} de la orden.` : `empieza con la partida ${c.partida_orden} de la orden.`}`;
+  return [peso, subpartida];
+}
+
+function abrirAnulacionDeclaracion(l, alAnular) {
+  const boton = h("button", { class: "btn btn-danger", type: "submit", form: "form-anular-dam" }, "Anular declaración");
+  const formulario = h(
+    "form",
+    { class: "form", id: "form-anular-dam" },
+    h("p", {}, "La declaración aduanera no se edita ni se borra: se anula con su archivo y su motivo, y después se puede cargar otra."),
+    h("label", { class: "field" }, "Motivo", h("textarea", { class: "input texto-libre", name: "motivo", required: true, minlength: 10, maxlength: 4000, rows: 3 })),
+  );
+  const { cerrar } = abrirModal({ titulo: "Anular la declaración aduanera", subtitulo: l.codigo, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
+  enviarCon(formulario, boton, async ({ motivo }) => {
+    await llamarApi(`/lotes/${l.id}/declaracion-aduanera/anular`, { metodo: "POST", cuerpo: { motivo } });
+    cerrar();
+    toast("Declaración aduanera anulada.", "warn");
+    alAnular();
+  });
+}
 
 function abrirCargaEmbarque(l, tipo, alCargar) {
   const boton = h("button", { class: "btn btn-primary", type: "submit", form: "form-embarque" }, "Cargar documento");
@@ -139,21 +184,30 @@ function abrirCargaEmbarque(l, tipo, alCargar) {
       ? h(
           "div",
           { class: "grid2" },
-          campo({ etiqueta: "Número de la declaración", name: "numero", required: true, minlength: 5, maxlength: 30, class: "input mono", ayuda: "Como lo da SUNAT: aduana, año, régimen y número." }),
+          campo({ etiqueta: "Número de la declaración", name: "numero", required: true, minlength: 5, maxlength: 30, class: "input mono", ayuda: "Como figura en ella: aduana, año, régimen y número." }),
           campo({ etiqueta: "Fecha de numeración", name: "fecha_emision", type: "date", max: hoy(), required: true }),
+          // Adenda 7, sección 4.1: el peso neto y la subpartida, para compararlos con el lote.
+          campo({ etiqueta: "Peso neto declarado (kg)", name: "peso_neto_kg", type: "number", min: "0.01", step: "0.01", required: true, inputmode: "decimal", class: "input mono" }),
+          campo({ etiqueta: "Subpartida nacional", name: "subpartida", required: true, maxlength: 20, inputmode: "numeric", class: "input mono", ayuda: "Como figura en la declaración; se guarda solo con dígitos." }),
         )
       : [
           h("div", { class: "grid2" }, campo({ etiqueta: "Número", name: "numero", required: true, maxlength: 200 }), campo({ etiqueta: "Entidad emisora", name: "entidad_emisora", required: true, maxlength: 200, ayuda: `Habitualmente: ${tipo.emisor_habitual}.` })),
           campo({ etiqueta: "Fecha de emisión", name: "fecha_emision", type: "date", max: hoy(), required: true }),
         ],
     h("label", { class: "field" }, "Archivo (foto o PDF, hasta 10 MB)", archivo),
-    h("p", { class: "panel-sub" }, dam && l.estado === "cerrado" ? "El DEX emitido no cambia: la declaración aduanera se muestra aparte, en la pestaña DEX y en su página pública." : "El sistema no lee el documento ni compara sus cifras con las del lote: eso lo revisa una persona."),
+    h(
+      "p",
+      { class: "panel-sub" },
+      dam
+        ? `El sistema no lee el archivo: compara el peso y la subpartida que escribas con el lote.${l.estado === "cerrado" ? " El DEX emitido no cambia: la declaración se muestra aparte, en la pestaña DEX y en su página pública." : ""}`
+        : "El sistema no lee el documento ni compara sus cifras con las del lote: eso lo revisa una persona.",
+    ),
   );
   const { cerrar } = abrirModal({ titulo: `Cargar: ${tipo.nombre}`, subtitulo: l.codigo, contenido: formulario, pie: [h("button", { class: "btn btn-ghost", type: "button", onclick: () => cerrar() }, "Cancelar"), boton] });
   enviarCon(formulario, boton, async (datos) => {
     const cuerpo = new FormData();
     cuerpo.append("tipo", tipo.codigo);
-    for (const clave of ["numero", "entidad_emisora", "fecha_emision"]) if (datos[clave]) cuerpo.append(clave, datos[clave]);
+    for (const clave of ["numero", "entidad_emisora", "fecha_emision", "peso_neto_kg", "subpartida"]) if (datos[clave]) cuerpo.append(clave, datos[clave]);
     cuerpo.append("archivo", archivo.files[0]);
     await llamarApi(`/lotes/${l.id}/documentos`, { metodo: "POST", formulario: cuerpo });
     cerrar();
@@ -169,8 +223,33 @@ function tonoEmbarque(t) {
   return t.obligatorio ? "bloquea" : "opcional";
 }
 
-function filaEmbarque(l, t, opera, recargar) {
-  const vigentes = t.documentos.filter((d) => d.vigente);
+/** Adenda 7: la declaración aduanera con sus cuatro datos, la comparación con el lote y sus acciones. */
+function bloqueDeclaracion(l, t, d, recargar) {
+  const rol = rolEfectivo();
+  const consultas = t.consultas.map((c) => [c.url, c.nombre]);
+  const doc = d.documento;
+  return h(
+    "div",
+    { class: "casilla-doc" },
+    h("span", {}, `N.º ${d.numero} · numerada el ${fecha(d.fecha_numeracion)} · peso neto ${Number(d.peso_neto_kg).toLocaleString("es-PE", { minimumFractionDigits: 2 })} kg · subpartida ${d.subpartida}`),
+    textoComparacion(d.comparacion).map((x) => h("span", { class: "sec" }, x)),
+    d.posterior_al_dex && h("span", { class: "sec" }, "Agregada después de emitir el DEX: el DEX no cambia."),
+    doc?.cotejado_en && h("span", { class: "sec" }, `Cotejada el ${fecha(doc.cotejado_en)}: ${doc.cotejo_nota}`),
+    h(
+      "span",
+      { class: "fila-acciones" },
+      doc && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => verDocumento(doc) }, icono("eye"), "Ver"),
+      doc && !doc.cotejado_en && ["admin_cooperativa", "operador"].includes(rol) && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => abrirCotejo(doc, { titulo: t.nombre, consultas, ayuda: "Anota qué consulta usaste y si el número, la fecha y el exportador coinciden." }, recargar) }, "Cotejar en fuente"),
+      rol === "admin_cooperativa" && t.editable && h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => abrirAnulacionDeclaracion(l, recargar) }, "Anular"),
+    ),
+  );
+}
+
+function filaEmbarque(l, t, opera, recargar, declaracion) {
+  const dam = t.codigo === "dam";
+  // La declaración aduanera se muestra por su registro; un archivo cargado antes de la adenda 7, sin sus cuatro
+  // datos, se muestra aparte para anularlo y cargarlo de nuevo.
+  const vigentes = t.documentos.filter((d) => d.vigente && !(dam && d.id === declaracion?.documento?.id));
   const cerrado = l.estado === "cerrado";
   const consultas = t.consultas.map((c) => [c.url, c.nombre]);
   return h(
@@ -180,14 +259,16 @@ function filaEmbarque(l, t, opera, recargar) {
       "div",
       { class: "casilla-h" },
       h("div", {}, h("b", {}, t.nombre), h("span", { class: "sec" }, `Emisor habitual: ${t.emisor_habitual}`)),
-      h("span", { class: "fila-acciones" }, insignia(t.cargado ? ["ok", "Cargado"] : t.obligatorio ? ["bad", "Falta"] : ["", "No frena el lote"]), vigentes.some((d) => d.cotejado_en) && insigniaNivel("verificado_en_fuente")),
+      h("span", { class: "fila-acciones" }, insignia(t.cargado ? ["ok", "Cargado"] : t.obligatorio ? ["bad", "Falta"] : ["", "No frena el lote"]), (vigentes.some((d) => d.cotejado_en) || declaracion?.documento?.cotejado_en) && insigniaNivel("verificado_en_fuente")),
     ),
+    dam && declaracion && bloqueDeclaracion(l, t, declaracion, recargar),
     !t.obligatorio && consultas.length > 0 && h("p", { class: "panel-sub fila-acciones" }, "Consulta pública: ", consultas.map(([url, nombre]) => h("a", { href: url, target: "_blank", rel: "noopener" }, nombre))),
     vigentes.map((d) =>
       h(
         "div",
         { class: "casilla-doc" },
         h("span", {}, `N.º ${d.numero ?? "—"} · ${d.entidad_emisora ?? "—"} · ${t.codigo === "dam" ? "numerada" : "emitido"} ${fecha(d.fecha_emision)}`),
+        dam && h("span", { class: "sec" }, "Cargada sin el peso neto ni la subpartida: anúlala y cárgala de nuevo con sus cuatro datos."),
         d.cotejado_en && h("span", { class: "sec" }, `Cotejada el ${fecha(d.cotejado_en)}: ${d.cotejo_nota}`),
         h(
           "span",
@@ -198,7 +279,8 @@ function filaEmbarque(l, t, opera, recargar) {
         ),
       ),
     ),
-    opera && t.editable && h("div", { class: "fila-acciones" }, h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirCargaEmbarque(l, t, recargar) }, icono("upload"), cerrado && !vigentes.length ? "Agregar la declaración aduanera" : vigentes.length ? "Cargar otro" : "Cargar documento")),
+    // Adenda 7: como máximo una declaración aduanera sin anular; para cargar otra, se anula la que hay.
+    opera && t.editable && !(dam && declaracion) && h("div", { class: "fila-acciones" }, h("button", { class: "btn btn-sm", type: "button", onclick: () => abrirCargaEmbarque(l, t, recargar) }, icono("upload"), dam ? (cerrado ? "Agregar la declaración aduanera" : "Cargar la declaración aduanera") : vigentes.length ? "Cargar otro" : "Cargar documento")),
   );
 }
 
@@ -213,7 +295,7 @@ function pestanaEmbarque(l, opera, recargar) {
         h(
           "ul",
           { class: "casillas" },
-          [...ordenarPorTono(e.tipos.filter((t) => t.obligatorio), tonoEmbarque), ...e.tipos.filter((t) => !t.obligatorio)].map((t) => filaEmbarque(l, t, opera, recargar)),
+          [...ordenarPorTono(e.tipos.filter((t) => t.obligatorio), tonoEmbarque), ...e.tipos.filter((t) => !t.obligatorio)].map((t) => filaEmbarque(l, t, opera, recargar, e.declaracion)),
         ),
       ),
     )
@@ -233,7 +315,8 @@ function pestanaEmbarque(l, opera, recargar) {
 function enlaceCaso(c, irAPestana) {
   switch (c.tipo) {
     case "parcela":
-      return h("a", { href: `#/parcelas/${c.id}` }, "Ir a la parcela");
+      // Adenda 7, sección 2, regla 2: también al productor, para ir directo a corregirlo.
+      return [h("a", { href: `#/parcelas/${c.id}` }, "Ir a la parcela"), c.productor_id && h("a", { href: `#/productores/${c.productor_id}/declaracion` }, "Ir al productor")];
     case "dop":
       return h("a", { href: `#/dops/${c.id}` }, "Ir al DOP");
     case "dpp":
@@ -412,7 +495,8 @@ function abrirAnulacionDex(dex, alAnular) {
   });
 }
 
-/** Adenda 6, sección 7, regla 7: lo que se cargó en el lote después de emitir el DEX. El DEX no cambia. */
+/** Adenda 6, sección 7, regla 7, y adenda 7, sección 4.4: lo que se cargó en el lote después de emitir el DEX,
+ * con sus cuatro datos y la comparación. El DEX no cambia. */
 export function bloqueAgregado(agregado) {
   return [
     h("h4", { class: "dex-sub" }, "Agregado después de la emisión"),
@@ -421,6 +505,7 @@ export function bloqueAgregado(agregado) {
       agregado.flatMap((a) => [
         { etiqueta: a.nombre, valor: a.numero, mono: true, extra: a.cotejado ? insigniaNivel("verificado_en_fuente") : "Sin cotejo en fuente" },
         { etiqueta: "Fecha de numeración", valor: fecha(a.fecha_numeracion) },
+        a.peso_neto_kg && { etiqueta: "Peso neto y subpartida", valor: `${a.peso_neto_kg} kg · ${a.subpartida}`, mono: true, extra: a.comparacion && textoComparacion(a.comparacion) },
         { etiqueta: "Cargada", valor: fecha(a.cargado_en, { hora: true }) },
       ]),
     ),
@@ -544,6 +629,7 @@ export default async function loteExportacion({ parametros: [id, pestana], recar
     seleccion: () => pestanaSeleccion(l, opera, recargar),
     genealogia: () => pestanaGenealogia(l),
     indicadores: () => pestanaIndicadores(l),
+    legalidad: () => pestanaLegalidad(l),
     embarque: () => pestanaEmbarque(l, opera, recargar),
     recomprobacion: () => pestanaRecomprobacion(l, opera, recargar, mostrar),
     hallazgos: () => pestanaHallazgos(l, mostrar),
@@ -597,6 +683,17 @@ export default async function loteExportacion({ parametros: [id, pestana], recar
       l.alertas
         .filter((a) => a.codigo === "exclusion_posterior_al_cierre")
         .map((a) => h("div", { class: "verif warn" }, icono("alert"), h("div", {}, h("b", {}, `La parcela ${a.parcela_codigo} se excluyó después de cerrar el lote`), h("span", {}, "El DEX no cambia porque está sellado. Informar al importador corresponde a la cooperativa.")))),
+      // Adenda 7, sección 4.4, regla 5.
+      l.alertas
+        .filter((a) => a.codigo === "dam_difiere_del_lote")
+        .map((a) =>
+          h(
+            "div",
+            { class: "verif warn" },
+            icono("alert"),
+            h("div", {}, h("b", {}, `La declaración aduanera ${a.numero}, agregada después del DEX, difiere del lote`), h("span", {}, `En ${[a.peso_difiere && "el peso", a.subpartida_difiere && "la subpartida"].filter(Boolean).join(" y ")}. El DEX no cambia porque está sellado.`)),
+          ),
+        ),
       l.desviacion_fifo && h("div", { class: "verif warn" }, icono("alert"), h("div", {}, h("b", {}, "La selección se apartó del orden FIFO"), h("span", {}, `Motivo: ${l.motivo_desviacion}`))),
       l.estado === "anulado" && h("div", { class: "verif bad" }, icono("alert"), h("div", {}, h("b", {}, `Lote anulado el ${fecha(l.anulado_en, { hora: true })}${l.anulado_por_nombre ? ` por ${l.anulado_por_nombre}` : ""}`), h("span", {}, `Motivo: ${l.motivo_anulacion}`))),
       h("div", { class: "ins-tabs seg-scroll" }, barra),

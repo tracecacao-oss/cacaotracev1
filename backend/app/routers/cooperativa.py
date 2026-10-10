@@ -5,6 +5,7 @@ administrador o el operador. Desde la adenda 6, la declaración aduanera tambié
 
 import uuid
 from datetime import date
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
@@ -20,6 +21,7 @@ from app.schemas.cooperativa import (
     PendientesSalida,
     RecomprobacionSalida,
 )
+from app.schemas.diligencia import Anulacion
 from app.schemas.parcelas import DocumentoSalida
 from app.services import cooperativa, embarque, pendientes, recomprobacion
 from app.services.productores import documento_salida
@@ -90,11 +92,30 @@ def cargar_documento_de_embarque(
     numero: Annotated[str | None, Form()] = None,
     entidad_emisora: Annotated[str | None, Form()] = None,
     fecha_emision: Annotated[date | None, Form()] = None,
+    peso_neto_kg: Annotated[Decimal | None, Form(max_digits=10, decimal_places=2)] = None,
+    subpartida: Annotated[str | None, Form(max_length=20)] = None,
 ):
+    """Adenda 7: la declaración aduanera lleva además su peso neto y su subpartida; `fecha_emision` es su
+    fecha de numeración."""
     documento = embarque.cargar(
-        contexto, storage, lote_id, tipo, leer_archivo(archivo), numero, entidad_emisora, fecha_emision
+        contexto,
+        storage,
+        lote_id,
+        tipo,
+        leer_archivo(archivo),
+        numero,
+        entidad_emisora,
+        fecha_emision,
+        peso_neto_kg,
+        subpartida,
     )
     return documento_salida(documento, None)
+
+
+@router.post("/lotes/{lote_id}/declaracion-aduanera/anular", response_model=EmbarqueSalida)
+def anular_declaracion_aduanera(lote_id: uuid.UUID, datos: Anulacion, contexto: Administrador):
+    """Adenda 7: se anula con motivo, junto con su archivo; después se puede cargar otra."""
+    return embarque.anular_declaracion(contexto, lote_id, datos.motivo)
 
 
 @router.get("/lotes/{lote_id}/documentos", response_model=EmbarqueSalida)

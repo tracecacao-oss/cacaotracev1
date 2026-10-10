@@ -122,7 +122,8 @@
     "registro_cooperativas_sin_sustento": "{organizacion}, an agrarian cooperative, has no current certificate of registration in the National Registry of Agrarian Cooperatives in its file ({estado}). Guidance document, requirement 7.1; Law No. 31335.",
     "politica_incompleta": "Topics of the policy of {organizacion} without support: {temas}. Guidance document, requirements 7.3 and 5.5.",
     "sin_actuaciones_de_diligencia": "{organizacion} did not record a current due diligence action on these topics, where one is expected: {temas}.",
-    "lote_sin_dam": "Lot {lote} has no Customs Goods Declaration (DAM) uploaded. Guidance document, requirement 7.2."
+    "lote_sin_dam": "Lot {lote} has no Customs Goods Declaration (DAM) uploaded. Guidance document, requirement 7.2.",
+    "dam_difiere_del_lote": "Customs declaration {numero} of lot {lote} differs from what the system records: {diferencias}. It is compared with what the person who uploaded it wrote. Guidance document, requirement 7.2."
   },
   "mensaje": {
     "analisis_requiere_revision": "The forest cover analysis of {sujetos}, which {aporta} {peso} % of the lot, returned {citas}.",
@@ -187,7 +188,8 @@
     "registro_cooperativas_sin_sustento": "The agrarian cooperative has no current certificate of registration in the National Registry of Agrarian Cooperatives.",
     "politica_incompleta": "Topics of the policy of the organisation without support: {temas}.",
     "sin_actuaciones_de_diligencia": "Topics where a due diligence action is expected and there is no current one: {temas}.",
-    "lote_sin_dam": "The lot has no Customs Goods Declaration (DAM) uploaded."
+    "lote_sin_dam": "The lot has no Customs Goods Declaration (DAM) uploaded.",
+    "dam_difiere_del_lote": "The customs declaration differs from the lot: {diferencias}."
   },
   "comun": {
     "aporta_uno": "contributes",
@@ -316,7 +318,7 @@
     "documentos_embarque_completos": "Shipping documents"
   },
   "casos": {
-    "parcela_estado": "plot {codigo} is {estado}",
+    "parcela_estado": "plot {codigo}, of {productor}, is {estado}",
     "parcela_excluida": "plot {codigo} is excluded",
     "dop_estado": "DOP {codigo} is {estado}",
     "dpp_estado": "DPP {codigo} is {estado}",
@@ -566,7 +568,10 @@
     "temas": "Topics",
     "falta": "Missing",
     "actuaciones_alcanzaron": "Actions of the organisation that reached them",
-    "requisito_organizacion": "Requirement"
+    "requisito_organizacion": "Requirement",
+    "embarque_dam": "Customs declaration: No. {numero}, registered on {fecha}, net weight {peso} kg, subheading {subpartida}. {comparacion}",
+    "dam_coincide": "Matches the lot.",
+    "dam_difiere": "Differs from the lot: {diferencias}."
   },
   "anexo": {
     "nota_general": "Help for the importer with the due diligence statement fields that come from this flow, in the order of Annex II to Regulation (EU) 2023/1115 (consolidated text of 18/09/2026). It is not a submission to TRACES and does not use its interface.",
@@ -597,6 +602,8 @@
     "- anexo_ii.json: the due diligence statement fields that come from this flow, in the order of Annex II to Regulation (EU) 2023/1115. The risk statement and the signature are for the operator.",
     "- hallazgos.json: the structured findings report, in Spanish and English.",
     "- LEEME.txt: this file.",
+    "",
+    "Both PDFs include the section \"Legality by requirement\": the lot against each requirement of the guidance document, with counts and mass percentages, without rating it. hallazgos.json includes it too, to read it with a program.",
     "",
     "The evidence documents are not in the package: the file lists them with their number, date and fingerprint, and the cooperative provides copies if the importer asks for them.",
     "",
@@ -829,5 +836,91 @@
     "falta_contacto": "the contact of the channel is missing",
     "canal_si": "Recorded in the data of the organisation",
     "canal_no": "Not recorded"
+  },
+  "aduanas": {
+    "difiere_peso": "declared net weight {peso_declarado} kg against {peso_lote} kg net mass of the lot ({diferencia_pct} %)",
+    "difiere_subpartida": "declared subheading {subpartida}, which does not start with heading {partida} of the order"
+  },
+  "cuadro": {
+    "titulo": "Legality by requirement",
+    "sub": "The requirements are those of the Guidance document for due diligence on the legality of coffee and cocoa under the EUDR (MIDAGRI, MINCETUR and ADEX; European Forest Institute, 2026), which is not legally binding. The table counts the subjects of the lot in each status, with the share of the lot's mass they contribute; it does not rate the lot.",
+    "grupos": {
+      "parcela": "Plots",
+      "productor": "Producers",
+      "organizacion": "Organisation",
+      "lote": "Lot"
+    },
+    "requisito": "Requirement",
+    "aplica": "Applies to",
+    "con_sustento": "With support",
+    "por_atender": "To address",
+    "sin_sustento": "Without support",
+    "estado": "Status",
+    "falta": "Missing",
+    "no_aplica_lote": "Does not apply to this lot",
+    "niveles": "declared {declarado} · documented {documentado} · checked at source {verificado_en_fuente}",
+    "no_se_piden_titulo": "Requirements not requested",
+    "no_disponible": "This DEX was issued before the legality-by-requirement table.",
+    "filas": {
+      "tenencia": "Land tenure",
+      "acuerdo_comunal": "Agreement with the community",
+      "area_protegida": "Protected area",
+      "tierra_forestal": "Forest land",
+      "agua_de_riego": "Irrigation water",
+      "faja_marginal": "Riverbank strip",
+      "instrumento_ambiental": "Environmental instrument",
+      "patrimonio_cultural": "Cultural heritage",
+      "danos_ambientales": "Environmental damage",
+      "agroquimicos": "Agrochemicals",
+      "envases": "Containers",
+      "condiciones_de_trabajo": "Working conditions",
+      "igualdad_y_maternidad": "Equality and maternity",
+      "menores_de_edad": "Minors",
+      "trabajo_libre": "Free labour",
+      "tributos_productor": "Producer's taxes",
+      "tributos_organizacion": "Organisation's taxes",
+      "registro_cooperativas": "Cooperative registry",
+      "integridad": "Integrity",
+      "actuaciones": "Due diligence actions",
+      "aduanas": "Customs"
+    },
+    "no_se_piden": {
+      "1.5": [
+        "Expropriation in accordance with the law",
+        "Not relevant: there are no expropriations to grow coffee or cocoa"
+      ],
+      "2.6": [
+        "Discharges into water sources",
+        "Coffee only"
+      ],
+      "2.8": [
+        "Environmental quality standards for soil",
+        "Not relevant: covered by 2.12"
+      ],
+      "2.9": [
+        "Emissions within limits",
+        "Not relevant: there is no limit for agricultural activity"
+      ],
+      "3.2": [
+        "Right of communities to a healthy environment",
+        "Not relevant: covered by category 2"
+      ],
+      "3.4 bis": [
+        "Environmental instrument with public participation",
+        "Not relevant: plots are below the 50 ha threshold"
+      ],
+      "4.8": [
+        "Freedom of association",
+        "Not relevant: family farming without a subordinate relationship"
+      ],
+      "5.1": [
+        "General respect for human rights",
+        "Not relevant: covered by other requirements"
+      ],
+      "6.1": [
+        "Prior consultation",
+        "Not relevant: the State does not authorise land-use changes for coffee or cocoa"
+      ]
+    }
   }
 }
